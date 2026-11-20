@@ -1,11 +1,13 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { sandbox } from '../lib/sandbox.js'
+import { allTestsPassed } from '../lib/runner.js'
 import { play } from '../lib/sfx.js'
 import CodeEditor from './CodeEditor.vue'
 import Terminal from './Terminal.vue'
 import Markdown from './Markdown.vue'
 import Icon from './Icon.vue'
+import TestDiagnosis from './exercises/TestDiagnosis.vue'
 
 const props = defineProps({
   wsId: { type: String, required: true },
@@ -21,7 +23,7 @@ const props = defineProps({
   envLabel: { type: String, default: '' },
   runLabel: { type: String, default: 'Uruchom testy' },
 })
-const emit = defineEmits(['update:issues', 'ready'])
+const emit = defineEmits(['update:issues', 'run'])
 
 const phase = ref('opening') // opening | ready | error
 const progress = ref('')
@@ -45,6 +47,11 @@ const EXT_LANG = {
   sh: 'shell', yml: 'yaml', yaml: 'yaml', html: 'html', css: 'css', xml: 'xml', toml: 'ini', mod: 'go',
 }
 const langOf = (p) => EXT_LANG[p.split('.').pop().toLowerCase()] || 'plaintext'
+// Kod do wskazania linii z błędem: otwarty plik albo główny plik zadania.
+const diagnosisCode = computed(() => {
+  const path = active.value && !isTest(active.value) ? active.value : props.mainFile
+  return files[path]?.content || ''
+})
 const isTest = (p) => props.testPaths.includes(p) || /^tests?\//.test(p)
 
 const visibleTree = computed(() => {
@@ -77,7 +84,6 @@ async function open(reset = false) {
     const first = props.mainFile && tree.value.some((f) => f.path === props.mainFile) ? props.mainFile : tree.value.find((f) => !f.dir && !isTest(f.path))?.path
     if (first) await openFile(first)
     startPolling()
-    emit('ready')
   } catch (err) {
     phase.value = 'error'
     error.value = err.message
@@ -163,6 +169,7 @@ async function runTests() {
   } finally {
     running.value = false
   }
+  emit('run', run.value)
   poll()
   return run.value
 }
@@ -170,8 +177,7 @@ async function runTests() {
 async function runTestsClick() {
   const r = await runTests()
   if (!r || props.busy) return
-  const ok = !r.compileError && r.results.length && r.results.every((x) => x.ok)
-  ok ? play('sparkle') : play('pop', 0.6)
+  allTestsPassed(r) ? play('sparkle') : play('pop', 0.6)
 }
 
 function runInTerminal() {
@@ -241,7 +247,7 @@ onBeforeUnmount(() => {
   flush()
 })
 
-defineExpose({ runTests, userFiles, flush, showReview: () => (panel.value = 'review'), getRun: () => run.value })
+defineExpose({ runTests, userFiles, showReview: () => (panel.value = 'review') })
 </script>
 
 <template>
@@ -341,6 +347,7 @@ defineExpose({ runTests, userFiles, flush, showReview: () => (panel.value = 'rev
           <span v-if="running" class="muted">Uruchamiam w kontenerze…</span>
           <span v-else-if="!run" class="muted">Kliknij „Uruchom testy” albo odpal je w terminalu.</span>
           <template v-else>
+            <TestDiagnosis :run="run" :code="diagnosisCode" />
             <span v-for="(r, i) in run.results" :key="i" :class="r.ok ? 'good' : 'bad'">{{ r.ok ? '✓' : '✗' }} {{ r.name }}<template v-if="!r.ok"> — {{ r.error }}</template></span>
             <pre v-if="run.compileError || !run.results.length" class="raw">{{ run.compileError || run.output }}</pre>
             <details v-else class="rawd"><summary>Pełne wyjście</summary><pre class="raw">{{ run.output }}</pre></details>
@@ -348,7 +355,7 @@ defineExpose({ runTests, userFiles, flush, showReview: () => (panel.value = 'rev
         </div>
         <div v-if="panel === 'review'" class="list">
           <span v-if="busy" class="muted">{{ providerName }} robi review…</span>
-          <Markdown v-else-if="review?.summary" :src="review.summary" class="review" />
+          <Markdown read-aloud v-else-if="review?.summary" :src="review.summary" class="review" />
           <span v-else class="muted">Review pojawi się po „Sprawdź z {{ providerName }}”.</span>
         </div>
       </div>

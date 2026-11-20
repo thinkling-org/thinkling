@@ -1,13 +1,15 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import Markdown from '../Markdown.vue'
 import CodeBlock from '../CodeBlock.vue'
 import CodeEditor from '../CodeEditor.vue'
 import SandboxIDE from '../SandboxIDE.vue'
-import { RUNNABLE, runTests } from '../../lib/runner.js'
+import TestDiagnosis from './TestDiagnosis.vue'
+import { allTestsPassed, RUNNABLE, runTests } from '../../lib/runner.js'
 import { wsIdFor, mergeFiles } from '../../lib/sandbox.js'
 import { play } from '../../lib/sfx.js'
 import { useApp } from '../../stores/app.js'
+import { suggestTools } from '../../lib/glossary.js'
 
 const props = defineProps({
   exercise: { type: Object, required: true },
@@ -25,7 +27,58 @@ const LANG_LABEL = { javascript: 'JavaScript', typescript: 'TypeScript', python:
 const ext = computed(() => ({ javascript: 'js', typescript: 'ts', python: 'py', go: 'go', rust: 'rs', java: 'java', csharp: 'cs', cpp: 'cpp' })[lang.value] || 'txt')
 const fileName = computed(() => props.exercise.fileName || `solution.${ext.value}`)
 const testFile = computed(() => fileName.value.replace(/\.(\w+)$/, '.test.js'))
+// Lista z lekcji; dla starszych lekcji zgadujemy ją z wzorcowego rozwiązania.
+const tools = computed(() => {
+  const own = (props.exercise.toolbox || []).filter((t) => t?.name?.trim())
+  if (own.length) return own
+  const solution = [props.exercise.solution, ...(props.exercise.solutionFiles || []).map((f) => f.content)].join('\n')
+  return suggestTools(solution, lang.value)
+})
 const providerName = computed(() => (app.settings.provider === 'codex' ? 'Codex' : 'Claude'))
+
+const openTool = ref(null)
+const activeTool = computed(() => tools.value.find((t) => t.name === openTool.value) || null)
+
+// Dokładny tekst wyjścia: generator zapisuje go w wymaganiach w backtickach.
+const expectedOutput = computed(() => {
+  for (const r of props.exercise.requirements || []) {
+    if (!/wypis|wyświetl|wyjści|output|komunikat|print/i.test(r)) continue
+    const spans = [...r.matchAll(/`([^`]+)`/g)].map((m) => m[1])
+    const text = spans.filter((s) => !/^(print|console\.log)\b/.test(s)).pop()
+    if (text) return text
+  }
+  return ''
+})
+
+// Ostatnie uruchomienie testów (lokalne albo w kontenerze) steruje checklistą.
+const lastRun = ref(null)
+watch(() => props.exercise.id, () => {
+  lastRun.value = null
+  openTool.value = null
+})
+const reqState = computed(() => {
+  const r = lastRun.value
+  if (!r || (!r.compileError && !r.results?.length)) return 'todo'
+  return allTestsPassed(r) ? 'ok' : 'bad'
+})
+const scoreLabel = computed(() => {
+  const n = props.exercise.requirements?.length || 0
+  const r = lastRun.value
+  if (reqState.value === 'ok') return `${n} / ${n} spełnione`
+  if (reqState.value === 'bad') {
+    const ok = r.results?.filter((x) => x.ok).length || 0
+    return `testy ${ok} / ${r.results?.length || 0}`
+  }
+  return `0 / ${n}`
+})
+const failNote = computed(() => {
+  const r = lastRun.value
+  if (r?.compileError) return 'Kod się nie uruchamia — szczegóły w zakładce Testy.'
+  const bad = r?.results?.filter((x) => !x.ok).length || 0
+  const few = bad % 10 >= 2 && bad % 10 <= 4 && (bad % 100 < 12 || bad % 100 > 14)
+  const what = bad === 1 ? 'test nie przechodzi' : few ? 'testy nie przechodzą' : 'testów nie przechodzi'
+  return `${bad} ${what} — szczegóły w zakładce Testy.`
+})
 
 const tab = ref('file') // file | tests
 const panel = ref('tests') // tests | console | review
@@ -49,9 +102,8 @@ async function runAll() {
   running.value = true
   panel.value = 'tests'
   try {
-    run.value = await runTests({ code: props.modelValue, tests: props.exercise.tests, language: lang.value })
-    const ok = !run.value.compileError && run.value.results.length && run.value.results.every((r) => r.ok)
-    if (!props.busy) ok ? play('sparkle') : play('pop', 0.6)
+    run.value = lastRun.value = await runTests({ code: props.modelValue, tests: props.exercise.tests, language: lang.value })
+    if (!props.busy) allTestsPassed(run.value) ? play('sparkle') : play('pop', 0.6)
   } finally {
     running.value = false
   }
@@ -67,24 +119,57 @@ defineExpose({
   get runnable() {
     return sandboxMode.value || runnable.value
   },
-  sandbox: sandboxMode,
   getFiles: () => ideRef.value?.userFiles() ?? Promise.resolve([]),
-  getRun: () => (sandboxMode.value ? ideRef.value?.getRun() : run.value),
   showReview: () => (sandboxMode.value ? ideRef.value?.showReview() : (panel.value = 'review')),
 })
 </script>
 
 <template>
   <div class="cx">
-    <section class="task">
-      <span class="label" style="color: var(--purple-link)">Zadanie w edytorze</span>
-      <Markdown tag="h1" class="title" :src="exercise.title || 'Zadanie'" inline />
-      <Markdown class="desc" :src="exercise.prompt" />
-      <div v-if="exercise.requirements?.length" class="card box">
-        <span class="label">Wymagania</span>
-        <ul>
-          <li v-for="(r, i) in exercise.requirements" :key="i"><Markdown inline tag="span" :src="r" /></li>
+    <section class="task" aria-label="Zadanie">
+      <header class="head">
+        <span class="kicker">Zadanie</span>
+        <Markdown tag="h1" fit-heading class="title" :src="exercise.title || 'Zadanie'" inline />
+        <Markdown read-aloud class="desc" :src="exercise.prompt" />
+      </header>
+
+      <div v-if="expectedOutput" class="group">
+        <span class="label">Oczekiwany output</span>
+        <div class="out"><span class="prompt" aria-hidden="true">›</span>{{ expectedOutput }}</div>
+      </div>
+
+      <div v-if="exercise.requirements?.length" class="group">
+        <div class="group-head">
+          <span class="label">Wymagania</span>
+          <span class="score" :class="reqState">{{ scoreLabel }}</span>
+        </div>
+        <ul class="reqs">
+          <li v-for="(r, i) in exercise.requirements" :key="i" :class="reqState">
+            <span class="dot" aria-hidden="true">{{ reqState === 'ok' ? '✓' : '' }}</span>
+            <Markdown inline tag="span" class="rtext" :src="r" />
+          </li>
         </ul>
+        <span v-if="reqState === 'bad'" class="fail-note">{{ failNote }}</span>
+        <span v-else-if="reqState === 'todo'" class="hint-note">Uruchom testy, a wymagania odhaczą się same.</span>
+      </div>
+
+      <div v-if="tools.length" class="group">
+        <span class="label">Przydatne · kliknij, żeby zobaczyć</span>
+        <div class="chips">
+          <button
+            v-for="t in tools"
+            :key="t.name"
+            type="button"
+            class="chip"
+            :class="{ on: openTool === t.name }"
+            :aria-pressed="openTool === t.name"
+            @click="openTool = openTool === t.name ? null : t.name"
+          >{{ t.name }}</button>
+        </div>
+        <div v-if="activeTool" class="tool-desc">
+          <code>{{ activeTool.name }}</code>
+          <Markdown inline tag="span" :src="activeTool.description" />
+        </div>
       </div>
       <div v-if="exercise.example" class="card box">
         <span class="label">Przykład</span>
@@ -119,6 +204,7 @@ defineExpose({
       :busy="busy"
       :provider-name="providerName"
       @update:issues="emit('update:issues', $event)"
+      @run="lastRun = $event"
     />
 
     <section v-else class="ide">
@@ -186,6 +272,7 @@ defineExpose({
             <span v-else-if="!run" class="muted">Kliknij „Uruchom testy” albo od razu „Sprawdź z {{ providerName }}”.</span>
             <template v-else>
               <span v-if="run.compileError" class="bad">✗ {{ run.compileError }}</span>
+              <TestDiagnosis :run="run" :code="modelValue" />
               <span v-for="(r, i) in run.results" :key="i" :class="r.ok ? 'good' : 'bad'">
                 {{ r.ok ? '✓' : '✗' }} {{ r.name }}<template v-if="!r.ok"> — {{ r.error }}</template>
               </span>
@@ -198,7 +285,7 @@ defineExpose({
           </template>
           <template v-else>
             <span v-if="busy" class="muted">{{ providerName }} robi review…</span>
-            <Markdown v-else-if="result?.data?.summary" :src="result.data.summary" class="review" />
+            <Markdown read-aloud v-else-if="result?.data?.summary" :src="result.data.summary" class="review" />
             <span v-else class="muted">Review pojawi się po „Sprawdź z {{ providerName }}”.</span>
           </template>
         </div>
@@ -227,8 +314,21 @@ defineExpose({
   overflow-y: auto;
   padding-right: 6px;
 }
+.head {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.kicker {
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--purple-link);
+}
 .title {
-  font-size: 28px;
+  margin: 0;
+  font-size: 24px;
   line-height: 1.2;
   font-weight: 900;
 }
@@ -236,8 +336,155 @@ defineExpose({
   font-size: 0.8em;
 }
 .desc {
-  font-size: 16px;
-  color: #c3c9ce;
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--text-3);
+}
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.group .label {
+  font-size: 11px;
+}
+.group-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.out {
+  background: #0b0d0f;
+  border: 2px solid var(--border);
+  border-radius: 12px;
+  padding: 10px 14px;
+  font-family: var(--mono);
+  font-size: 15px;
+  color: #c3e88d;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.out .prompt {
+  color: #6e777e;
+  margin-right: 8px;
+}
+.score {
+  font-size: 12px;
+  font-weight: 900;
+  border-radius: 8px;
+  padding: 2px 8px;
+  background: var(--divider);
+  color: var(--muted);
+}
+.score.ok {
+  background: var(--green-soft);
+  color: var(--green-light);
+}
+.score.bad {
+  background: var(--yellow-bg);
+  color: var(--yellow-light);
+}
+.reqs {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+.reqs li {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 6px 0;
+}
+.dot {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  margin-top: 1px;
+  box-sizing: border-box;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 13px;
+  font-weight: 900;
+  background: var(--divider);
+  border: 2px solid #3a4247;
+  color: var(--green-ink);
+  transition: all 0.2s;
+}
+.reqs li.ok .dot {
+  background: var(--green);
+  border-color: var(--green);
+}
+.rtext {
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.4;
+  color: var(--text-2);
+}
+.reqs li.ok .rtext {
+  color: var(--muted);
+  text-decoration: line-through;
+  text-decoration-color: #3a4247;
+}
+.fail-note {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--red-light);
+}
+.hint-note {
+  font-size: 13px;
+  font-weight: 600;
+  color: #8a939a;
+}
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.chip {
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 700;
+  padding: 6px 10px;
+  border-radius: 10px;
+  cursor: pointer;
+  background: var(--surface);
+  color: var(--code-ink);
+  border: 2px solid var(--border);
+}
+.chip:hover {
+  border-color: #3a4247;
+}
+.chip.on {
+  background: var(--purple-soft);
+  color: var(--purple-light);
+  border-color: var(--purple);
+}
+.tool-desc {
+  background: #1e1a33;
+  border: 2px solid #3a3260;
+  border-radius: 12px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #e4e8eb;
+  animation: dlpop 0.2s ease-out;
+}
+.tool-desc code {
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--purple-light);
+}
+@keyframes dlpop {
+  from {
+    transform: translateY(4px);
+    opacity: 0;
+  }
 }
 .box {
   padding: 16px;
@@ -245,15 +492,6 @@ defineExpose({
   flex-direction: column;
   gap: 10px;
   border-radius: 16px;
-}
-.box ul {
-  margin: 0;
-  padding-left: 1.1em;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  font-weight: 700;
-  color: var(--text-2);
 }
 .ex-md :deep(pre) {
   margin: 0;
@@ -456,4 +694,5 @@ defineExpose({
     height: 80vh;
   }
 }
+
 </style>

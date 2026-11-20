@@ -1,16 +1,19 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
-import { play } from '../lib/sfx.js'
+import { play, prepareSfx } from '../lib/sfx.js'
 import { useRoute, useRouter } from 'vue-router'
 import { useApp } from '../stores/app.js'
 import { ai } from '../lib/api.js'
-import { firstSentence } from '../lib/markdown.js'
+import { allTestsPassed } from '../lib/runner.js'
+import { describeVisualization, readComparisonSteps, readLessonVisualization } from '../lib/lesson-visualizations.js'
 import CodeTrace from '../components/CodeTrace.vue'
 import Icon from '../components/Icon.vue'
 import Gem from '../components/Gem.vue'
-import Markdown from '../components/Markdown.vue'
 import LessonFooter from '../components/LessonFooter.vue'
+import LessonIntro from '../components/LessonIntro.vue'
+import Markdown from '../components/Markdown.vue'
 import AskDrawer from '../components/AskDrawer.vue'
+import ExerciseFooter from '../components/exercises/ExerciseFooter.vue'
 import OpenExercise from '../components/exercises/OpenExercise.vue'
 import LearnCard from '../components/exercises/LearnCard.vue'
 import ChoiceExercise from '../components/exercises/ChoiceExercise.vue'
@@ -23,16 +26,50 @@ const app = useApp()
 const id = computed(() => route.params.id)
 const meta = computed(() => app.findLesson(id.value))
 const lesson = computed(() => app.lessons[id.value])
+const intro = computed(() => lesson.value?.intro)
 const gen = computed(() => app.lessonGen[id.value])
-const exercises = computed(() => lesson.value?.exercises || [])
+const allExercises = computed(() => lesson.value?.exercises || [])
+
+// Uczeń deklaruje na ekranie powitalnym, ile już wie; od tego zależy, ile teorii zobaczy.
+const LEVELS = [
+  { label: 'Pierwszy raz słyszę', plan: 'Zaczniemy od podstaw i przykładów, bez pośpiechu.', pick: (list) => list },
+  {
+    label: 'Coś kojarzę',
+    plan: 'Jedna karta przypomnienia, potem od razu ćwiczenia.',
+    pick: (list) => list.filter((e, k) => e.stage !== 'learn' || list.findIndex((x) => x.stage === 'learn') === k),
+  },
+  {
+    label: 'Znam, chcę powtórkę',
+    plan: 'Od razu pytania sprawdzające, bez teorii. Wyjaśnienie zobaczysz po każdej odpowiedzi.',
+    pick: (list) => list.filter((e) => e.stage === 'check' || e.stage === 'challenge'),
+  },
+]
+const level = ref(0)
+const levels = computed(() => {
+  if (meta.value?.kind === 'test') return []
+  return LEVELS.map((option) => ({ ...option, exercises: option.pick(allExercises.value) }))
+    .filter((option, k) => k === 0 || option.exercises.length)
+})
+const exercises = computed(() => levels.value[level.value]?.exercises || allExercises.value)
+const MINUTES = { learn: 2, choice: 1, open: 2, code: 5 }
+const estimate = computed(() => {
+  const list = exercises.value
+  const minutes = Math.max(1, Math.round(list.reduce((sum, e) => sum + (MINUTES[e.type] || 1), 0)))
+  const graded = list.filter((e) => e.stage === 'check')
+  const xpMax = graded.reduce((sum, e) => sum + (e.type === 'code' ? 20 : 10), 0) + (meta.value?.status === 'done' ? 5 : 20)
+  const n = list.length
+  const noun = n === 1 ? 'ćwiczenie' : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14) ? 'ćwiczenia' : 'ćwiczeń'
+  return { minutes, count: `${n} ${noun}`, xp: xpMax }
+})
 const providerName = computed(() => (app.settings.provider === 'codex' ? 'Codex' : 'Claude'))
 
-const phase = ref('loading') // loading | error | play | summary
+const phase = ref('loading') // loading | error | intro | play | summary
 const loadError = ref('')
 const idx = ref(0)
 const answers = reactive({})
 const results = reactive({})
 const issues = reactive({})
+const stage = ref(null)
 const busy = ref(false)
 const xp = ref(0)
 const bonus = ref(0)
@@ -42,6 +79,7 @@ let timeCommitted = false
 const ex = computed(() => exercises.value[idx.value])
 const res = computed(() => (ex.value ? results[ex.value.id] : null))
 const progress = computed(() => {
+  if (phase.value === 'intro' || phase.value === 'loading') return 0
   const n = exercises.value.length || 1
   return Math.round(((idx.value + (res.value ? 1 : 0)) / n) * 100)
 })
@@ -53,7 +91,7 @@ async function load() {
   try {
     await app.ensureLesson(id.value)
     initAnswers()
-    phase.value = 'play'
+    phase.value = 'intro'
   } catch (err) {
     loadError.value = err.message
     phase.value = 'error'
@@ -65,10 +103,12 @@ async function regenerate() {
   try {
     await app.regenerateLesson(id.value)
     idx.value = 0
-    for (const k of Object.keys(results)) delete results[k]
-    for (const k of Object.keys(issues)) delete issues[k]
+    level.value = 0
+    for (const state of [answers, results, issues]) {
+      for (const key of Object.keys(state)) delete state[key]
+    }
     initAnswers()
-    phase.value = 'play'
+    phase.value = 'intro'
   } catch (err) {
     loadError.value = err.message
     phase.value = 'error'
@@ -76,7 +116,7 @@ async function regenerate() {
 }
 
 function initAnswers() {
-  for (const e of exercises.value) {
+  for (const e of allExercises.value) {
     if (answers[e.id] !== undefined) continue
     answers[e.id] = e.type === 'choice' ? null : e.type === 'code' ? e.starterCode || '' : ''
     if (e.type === 'code') issues[e.id] = []
@@ -98,6 +138,7 @@ const codeRef = ref(null)
 
 async function check() {
   if (!canCheck.value) return
+  prepareSfx()
   const e = ex.value
   if (e.type === 'choice') return checkChoice(e)
   if (e.type === 'open') return checkOpen(e)
@@ -105,9 +146,11 @@ async function check() {
 }
 
 function checkChoice(e) {
+  if (e.stage === 'practice') return revealPractice(e, true)
   const ok = answers[e.id] === e.correctIndex
   results[e.id] = { status: ok ? 'correct' : 'wrong' }
-  nextTick(() => document.querySelector('.explain')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }))
+  nextTick(() => stage.value?.querySelector('.explain')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }))
+  if (e.stage === 'challenge') return
   if (e.warmup) {
     // rozgrzewka przed kartą wiedzy — bez kary, bez fiszki
     xp.value += ok ? 5 : 2
@@ -119,6 +162,12 @@ function checkChoice(e) {
     const front = `${e.prompt}${e.code ? `\n\n\`\`\`${e.codeLanguage || ''}\n${e.code}\n\`\`\`` : ''}`
     app.addFlashcards([{ front, back: `**${e.options[e.correctIndex]}**\n\n${e.explanation}` }], `błąd w lekcji: ${meta.value?.title}`)
   }
+}
+
+function revealPractice(e, submitted = false) {
+  play(submitted ? (answers[e.id] === e.correctIndex ? 'correct' : 'almost') : 'pop')
+  results[e.id] = { status: 'practice' }
+  nextTick(() => stage.value?.querySelector('.explain')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }))
 }
 
 async function checkOpen(e) {
@@ -147,9 +196,8 @@ async function checkCode(e) {
     if (e.runtime === 'docker') payload.files = await codeRef.value.getFiles()
     else payload.code = answers[e.id]
     const data = await ai('reviewCode', payload)
-    const allPass = run && !run.compileError && run.results.length && run.results.every((r) => r.ok)
     // przy niezweryfikowanych testach decyduje review modelu
-    const testsOk = !run || allPass || e.testsStatus === 'unverified'
+    const testsOk = !run || allTestsPassed(run) || e.testsStatus === 'unverified'
     const status = data.passed && testsOk ? 'correct' : data.score >= 5 ? 'almost' : 'wrong'
     const prev = results[e.id]?.status
     results[e.id] = { status, data }
@@ -168,9 +216,9 @@ async function checkCode(e) {
   }
 }
 
-function retryCode() {
-  // pozwala poprawić kod po review i sprawdzić ponownie
-  if (results[ex.value.id]) results[ex.value.id] = { ...results[ex.value.id], retry: true }
+function retryExercise() {
+  if (res.value.status === 'error') delete results[ex.value.id]
+  else res.value.retry = true
 }
 
 const codeRetrying = computed(() => ex.value?.type === 'code' && res.value?.retry)
@@ -197,6 +245,8 @@ watch(
 
 function skip() {
   const e = ex.value
+  if (e.stage === 'practice') return revealPractice(e)
+  if (e.stage === 'challenge') return next()
   results[e.id] = { status: 'skipped' }
   if (!e.warmup) app.recordAnswer({ score: 0 })
 }
@@ -207,22 +257,32 @@ function dontKnow() {
   results[e.id] = { status: 'unknown' }
   app.recordAnswer({ score: 0 })
   app.addFlashcards([{ front: e.prompt, back: e.referenceAnswer }], `„nie wiem” w lekcji: ${meta.value?.title}`)
-  nextTick(() => document.querySelector('.feedback')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }))
+  nextTick(() => stage.value?.querySelector('.feedback')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }))
 }
 
-/** Karta wiedzy: "Znam to" pomija wszystkie kolejne karty wiedzy pod rząd. */
-function knowIt() {
-  let j = idx.value
-  while (j < exercises.value.length && exercises.value[j].type === 'learn') j++
-  window.scrollTo({ top: 0 })
-  if (j >= exercises.value.length) return finish()
-  idx.value = j
+function saveConcept({ term, explanation }) {
+  app.addWeakSpot(term)
+  app.addFlashcards([{ front: `Co oznacza ${term}?`, back: explanation }], `pojęcie z lekcji: ${meta.value?.title}`)
 }
 
 // ------------------------------------------------------------- prześledzenie kodu
 
 const showTrace = ref(false)
-const traceState = reactive({}) // exId -> { loading, chars, error }
+const activeVariant = ref(0)
+const comparisonIndex = ref(0)
+const traceState = reactive({})
+const comparisonVariant = computed(() => {
+  const visualization = readLessonVisualization(ex.value)
+  return visualization?.type === 'code-comparison' ? visualization.variants[activeVariant.value] : null
+})
+const comparisonSteps = computed(() => readComparisonSteps(comparisonVariant.value))
+const comparisonStep = computed(() => comparisonSteps.value[comparisonIndex.value] || null)
+const hasNextComparisonStep = computed(() => comparisonIndex.value < comparisonSteps.value.length - 1)
+
+function selectVariant(index) {
+  activeVariant.value = index
+  comparisonIndex.value = 0
+}
 
 async function openTrace() {
   const e = ex.value
@@ -230,37 +290,52 @@ async function openTrace() {
   showTrace.value = true
   window.scrollTo({ top: 0 })
   if (e.trace || traceState[e.id]?.loading) return
-  traceState[e.id] = { loading: true, chars: 0, error: null }
+  const state = (traceState[e.id] = reactive({ loading: true, chars: 0, error: null }))
   try {
-    const data = await ai('trace', { exercise: e, chosenIndex: answers[e.id] }, { onProgress: (p) => (traceState[e.id].chars = p.chars) })
+    const data = await ai('trace', { exercise: e, chosenIndex: answers[e.id] }, { onProgress: (p) => (state.chars = p.chars) })
     if (!data?.steps?.length) throw new Error('Model nie zwrócił kroków')
-    e.trace = data // zapisuje się razem z lekcją
-    traceState[e.id].loading = false
+    e.trace = data
   } catch (err) {
-    traceState[e.id] = { loading: false, chars: 0, error: err.message }
+    state.error = err.message
+  } finally {
+    state.loading = false
   }
 }
 
-function retryTrace() {
-  delete traceState[ex.value.id]
-  openTrace()
+function next() {
+  if (hasNextComparisonStep.value) {
+    comparisonIndex.value++
+    play('pop', 1.2)
+    return
+  }
+  advanceExercise()
 }
 
-function next() {
+function advanceExercise() {
   if (ex.value?.type === 'learn') play('pop', 1.2)
+  goToExercise(idx.value + 1)
+}
+
+async function startLesson() {
+  phase.value = 'play'
+  await nextTick()
+  const heading = stage.value?.querySelector('h1')
+  heading?.setAttribute('tabindex', '-1')
+  heading?.focus()
+}
+
+function goToExercise(index) {
+  selectVariant(0)
   showTrace.value = false
   drawerOpen.value = false
   drawer.value?.reset()
   window.scrollTo({ top: 0 })
-  if (idx.value < exercises.value.length - 1) {
-    idx.value++
-  } else {
-    finish()
-  }
+  if (index >= exercises.value.length) finish()
+  else idx.value = index
 }
 
 function finish() {
-  const graded = exercises.value.filter((e) => e.type !== 'learn' && !e.warmup)
+  const graded = exercises.value.filter((e) => e.stage ? e.stage === 'check' : e.type !== 'learn' && !e.warmup)
   const correct = graded.filter((e) => results[e.id]?.status === 'correct').length
   accuracy.value = graded.length ? Math.round((correct / graded.length) * 100) : 100
   bonus.value = app.completeLesson(id.value, { xp: xp.value }) || 0
@@ -287,30 +362,6 @@ function close() {
   router.push('/path')
 }
 
-// ------------------------------------------------------------- stopka
-
-const footer = computed(() => {
-  const r = res.value
-  if (!r || codeRetrying.value) return { tone: 'idle' }
-  const e = ex.value
-  if (r.status === 'error') return { tone: 'wrong', title: 'Coś poszło nie tak', message: r.error }
-  if (r.status === 'skipped') return { tone: 'skipped', title: 'Pominięto', message: '' }
-  if (r.status === 'unknown') return { tone: 'skipped', title: 'Nic straconego', message: 'Przeczytaj wzorcową odpowiedź — dodałem ją do fiszek.' }
-  if (e.type === 'choice' && e.warmup) {
-    return r.status === 'correct'
-      ? { tone: 'correct', title: 'Dobra intuicja!', message: 'Zobaczmy, dlaczego tak jest.' }
-      : { tone: 'almost', title: 'Dobra próba!', message: 'To rozgrzewka — za chwilę wszystko się wyjaśni.' }
-  }
-  if (e.type === 'choice') {
-    const short = e.trace?.headline || firstSentence(e.explanation)
-    return r.status === 'correct'
-      ? { tone: 'correct', title: 'Świetnie!', message: short }
-      : { tone: 'wrong', title: 'Niepoprawnie', message: short }
-  }
-  const titles = { correct: 'Świetnie!', almost: 'Prawie!', wrong: 'Jeszcze nie' }
-  return { tone: r.status, title: titles[r.status], message: r.data?.headline || '' }
-})
-
 // ------------------------------------------------------------- dopytaj
 
 const drawer = ref(null)
@@ -321,8 +372,11 @@ const drawerContext = computed(() => {
   const a = answers[e.id]
   const r = res.value
   const parts = [`Lekcja: ${meta.value?.title} (${meta.value?.module?.title})`, `Typ ćwiczenia: ${e.type}`]
+  if (app.profile?.description) parts.push(`Deklarowane doświadczenie i cel ucznia: ${app.profile.description}`)
   if (e.type === 'learn') {
-    parts.push(`Karta wiedzy: ${e.title}\n${e.prompt}${e.code ? `\n\nPrzykład:\n\`\`\`\n${e.code}\n\`\`\`` : ''}\n\nPułapka: ${e.explanation}`)
+    parts.push(`Karta wiedzy: ${e.title}\n${e.prompt}${e.code ? `\n\nPrzykład:\n\`\`\`\n${e.code}\n\`\`\`` : ''}\n\nWyjaśnienie: ${e.explanation}`)
+    const visualization = describeVisualization(readLessonVisualization(e))
+    if (visualization) parts.push(visualization)
   } else if (e.type === 'code') {
     parts.push(`Zadanie: ${e.title}\n${e.prompt}\nWymagania: ${(e.requirements || []).join('; ')}`)
     parts.push(`Kod ucznia:\n\`\`\`\n${a}\n\`\`\``)
@@ -348,15 +402,18 @@ function openAsk() {
 }
 function explainInChat() {
   drawerOpen.value = true
-  setTimeout(() => drawer.value?.explain({ exercise: ex.value, chosenIndex: answers[ex.value.id] }), 0)
+  const exercise = ex.value
+  drawer.value?.explain({ exercise, chosenIndex: answers[exercise.id] })
 }
 
 // ------------------------------------------------------------- klawiatura
 
 function onKey(e) {
-  if (phase.value !== 'play' || drawerOpen.value) return
-  const t = e.target
-  const typing = t && (t.tagName === 'TEXTAREA' || t.tagName === 'INPUT' || t.closest?.('.monaco-editor'))
+  if (e.defaultPrevented || e.repeat || e.altKey || e.shiftKey || phase.value !== 'play' || drawerOpen.value) return
+  if (showTrace.value && ex.value?.type === 'learn') return
+  const target = e.target
+  const typing = target.closest?.('textarea, input, .monaco-editor') || target.isContentEditable
+  if (target.closest?.('button, a, select, summary, audio, [role=button]')) return
   if (e.key === 'Enter' && (!typing || e.ctrlKey || e.metaKey)) {
     if (ex.value?.type === 'learn' || (res.value && !codeRetrying.value)) {
       e.preventDefault()
@@ -366,9 +423,9 @@ function onKey(e) {
       check()
     }
   }
-  if (!typing && ex.value?.type === 'choice' && !res.value) {
+  if (!typing && !e.ctrlKey && !e.metaKey && ex.value?.type === 'choice' && !res.value) {
     const n = Number(e.key)
-    if (n >= 1 && n <= ex.value.options.length) answers[ex.value.id] = n - 1
+    if (Number.isInteger(n) && n >= 1 && n <= ex.value.options.length) answers[ex.value.id] = n - 1
   }
 }
 
@@ -381,9 +438,9 @@ onBeforeUnmount(() => {
   if (phase.value !== 'summary' && Object.keys(results).length) commitTime()
 })
 
-const wide = computed(() => ex.value?.type === 'code')
+const wide = computed(() => phase.value === 'play' && ex.value?.type === 'code')
 const loadingTips = [
-  'Lekcje generują się na bieżąco pod twoje słabe punkty.',
+  'Po przykładzie możesz spróbować samodzielnie, z podpowiedzią i bez oceny.',
   'Następna lekcja przygotowuje się w tle, gdy robisz tę.',
   'Błędy trafiają do fiszek — wrócą w powtórce.',
   'Enter = sprawdź / dalej. Klawisze 1–4 wybierają odpowiedź.',
@@ -392,7 +449,7 @@ const tip = loadingTips[Math.floor(Math.random() * loadingTips.length)]
 </script>
 
 <template>
-  <div class="lesson" :class="{ wide, tracing: showTrace }">
+  <div class="lesson" :class="{ wide, tracing: showTrace, 'ask-open': drawerOpen }">
     <header class="lh">
       <button class="x" aria-label="Zamknij lekcję" @click="close"><Icon name="x" :size="26" :stroke="2.8" /></button>
       <div class="bar"><div :style="{ width: `${phase === 'summary' ? 100 : progress}%` }" /></div>
@@ -423,6 +480,10 @@ const tip = loadingTips[Math.floor(Math.random() * loadingTips.length)]
       </div>
     </main>
 
+    <main v-else-if="phase === 'intro'" class="stage">
+      <LessonIntro v-model:level="level" :meta="meta" :intro="intro" :levels="levels" />
+    </main>
+
     <!-- podsumowanie -->
     <main v-else-if="phase === 'summary'" class="center">
       <Gem :index="meta?.moduleIndex || 0" :size="120" glow class="pop" />
@@ -436,31 +497,42 @@ const tip = loadingTips[Math.floor(Math.random() * loadingTips.length)]
     </main>
 
     <!-- ćwiczenia -->
-    <main v-else-if="ex" class="stage">
+    <main v-else-if="ex" ref="stage" class="stage">
       <div class="inner" :key="ex.id">
-        <LearnCard v-if="ex.type === 'learn'" :exercise="ex" />
-        <OpenExercise
-          v-else-if="ex.type === 'open'"
-          v-model="answers[ex.id]"
-          :exercise="ex"
-          :result="res"
-          :busy="busy"
-          @submit="check"
-        />
-        <template v-else-if="ex.type === 'choice' && showTrace">
-          <button class="link-btn back" @click="showTrace = false"><Icon name="arrow-left" :size="16" />Wróć do pytania</button>
+        <template v-if="showTrace && (ex.type === 'learn' || ex.type === 'choice')">
+          <button class="link-btn back" @click="showTrace = false">
+            <Icon name="arrow-left" :size="16" />{{ ex.type === 'learn' ? 'Wróć do karty wiedzy' : 'Wróć do pytania' }}
+          </button>
           <CodeTrace v-if="ex.trace" :exercise="ex" :trace="ex.trace" :chosen-index="answers[ex.id]" />
           <div v-else-if="traceState[ex.id]?.error" class="card trace-wait">
             <strong style="color: var(--red-light)">Nie udało się przygotować prześledzenia</strong>
             <span class="err">{{ traceState[ex.id].error }}</span>
-            <button class="btn btn-sm btn-primary" @click="retryTrace">Spróbuj ponownie</button>
+            <button class="btn btn-sm btn-primary" @click="openTrace">Spróbuj ponownie</button>
           </div>
           <div v-else class="card trace-wait">
             <span class="spinner" />
             <span>{{ providerName }} śledzi wykonanie kodu… <span class="muted mono">{{ traceState[ex.id]?.chars || 0 }} zn</span></span>
           </div>
         </template>
-        <ChoiceExercise v-else-if="ex.type === 'choice'" v-model="answers[ex.id]" :exercise="ex" :result="res" @trace="openTrace" />
+        <LearnCard
+          v-else-if="ex.type === 'learn'"
+          :active-variant="activeVariant"
+          :comparison-step="comparisonStep"
+          :exercise="ex"
+          @update:active-variant="selectVariant"
+          @trace="openTrace"
+          @review-concept="saveConcept"
+        />
+        <OpenExercise
+          v-else-if="ex.type === 'open'"
+          v-model="answers[ex.id]"
+          :exercise="ex"
+          :result="res"
+          :busy="busy"
+          :provider-name="providerName"
+          @submit="check"
+        />
+        <ChoiceExercise v-else-if="ex.type === 'choice'" v-model="answers[ex.id]" :exercise="ex" :result="res" />
         <CodeExercise
           v-else-if="ex.type === 'code'"
           ref="codeRef"
@@ -474,68 +546,45 @@ const tip = loadingTips[Math.floor(Math.random() * loadingTips.length)]
       </div>
     </main>
 
-    <LessonFooter v-if="phase === 'summary'" tone="idle">
+    <LessonFooter v-if="phase === 'intro'" tone="idle">
+      <template #left>
+        <span class="intro-stats">
+          <span>~{{ estimate.minutes }} min</span><span aria-hidden="true">·</span>
+          <span>{{ estimate.count }}</span><span aria-hidden="true">·</span>
+          <span class="xp">do +{{ estimate.xp }} XP</span>
+        </span>
+      </template>
+      <button type="button" class="btn btn-primary btn-lg" @click="startLesson">
+        {{ meta?.kind === 'test' ? 'Rozpocznij sprawdzian' : 'Zacznij naukę' }}
+      </button>
+    </LessonFooter>
+
+    <LessonFooter v-else-if="phase === 'summary'" tone="idle">
       <template #left>
         <RouterLink v-if="app.dueCards.length" to="/review" class="btn btn-ghost">Fiszki ({{ app.dueCards.length }})</RouterLink>
       </template>
       <RouterLink to="/path" class="btn btn-primary btn-lg">Dalej</RouterLink>
     </LessonFooter>
 
-    <LessonFooter v-else-if="phase === 'play' && ex" :tone="footer.tone" :title="footer.title" :message="footer.message">
-      <template #message>
-        <Markdown v-if="footer.message" :src="footer.message" />
-      </template>
-      <template #left>
-        <template v-if="ex.type === 'learn'">
-          <button class="btn btn-ghost" @click="knowIt">Znam to — pomiń</button>
-          <button class="btn btn-ghost" @click="openAsk"><Icon name="chat" :size="18" />Dopytaj</button>
-        </template>
-        <template v-else>
-          <button v-if="ex.type === 'open'" class="btn btn-ghost" :disabled="busy" @click="dontKnow">Nie wiem</button>
-          <button v-else class="btn btn-ghost" :disabled="busy" @click="skip">Pomiń</button>
-          <button v-if="ex.type !== 'choice'" class="btn btn-ghost" :disabled="busy" @click="openAsk">
-            <Icon name="chat" :size="18" />Podpowiedź
-          </button>
-        </template>
-      </template>
-
-      <!-- karta wiedzy -->
-      <template v-if="ex.type === 'learn'">
-        <button class="btn btn-green btn-lg" @click="next">Rozumiem</button>
-      </template>
-
-      <!-- przed sprawdzeniem -->
-      <template v-else-if="footer.tone === 'idle'">
-        <button v-if="busy" class="btn btn-primary btn-lg" disabled><span class="spinner" style="border-color: #ffffff55; border-top-color: #fff" />Sprawdzam…</button>
-        <button v-else class="btn btn-lg" :class="canCheck ? (ex.type === 'code' ? 'btn-primary' : 'btn-green') : ''" :disabled="!canCheck" @click="check">
-          {{ ex.type === 'code' ? `Sprawdź z ${providerName}` : ex.type === 'open' ? 'Sprawdź' : 'Sprawdź' }}
-        </button>
-      </template>
-
-      <!-- po sprawdzeniu -->
-      <template v-else>
-        <template v-if="footer.tone === 'correct'">
-          <button v-if="ex.type === 'choice' && ex.code && !ex.warmup && !showTrace" class="btn btn-ghost-green" @click="openTrace">Prześledź kod</button>
-          <button class="btn btn-ghost-green" @click="openAsk">Dopytaj {{ providerName }}</button>
-          <button class="btn btn-green btn-lg" @click="next">Dalej</button>
-        </template>
-        <template v-else-if="footer.tone === 'almost'">
-          <button v-if="ex.type === 'code'" class="btn btn-ghost-yellow" @click="retryCode">Poprawię kod</button>
-          <button class="btn btn-ghost-yellow" @click="openAsk">Dopytaj {{ providerName }}</button>
-          <button class="btn btn-yellow btn-lg" @click="next">Dalej</button>
-        </template>
-        <template v-else-if="footer.tone === 'wrong'">
-          <button v-if="res?.status === 'error'" class="btn btn-ghost-red" @click="results[ex.id] = undefined">Spróbuj ponownie</button>
-          <button v-else-if="ex.type === 'choice' && !showTrace" class="btn btn-ghost-red" @click="openTrace">Wyjaśnij krok po kroku</button>
-          <button v-else-if="ex.type === 'code'" class="btn btn-ghost-red" @click="retryCode">Poprawię kod</button>
-          <button v-if="(ex.type !== 'choice' || showTrace) && res?.status !== 'error'" class="btn btn-ghost-red" @click="openAsk">Dopytaj {{ providerName }}</button>
-          <button class="btn btn-red btn-lg" @click="next">Rozumiem</button>
-        </template>
-        <template v-else>
-          <button class="btn btn-primary btn-lg" @click="next">Dalej</button>
-        </template>
-      </template>
-    </LessonFooter>
+    <ExerciseFooter
+      v-else-if="phase === 'play' && ex"
+      :exercise="ex"
+      :result="res"
+      :provider-name="providerName"
+      :busy="busy"
+      :can-check="canCheck"
+      :tracing="showTrace"
+      :next-step="hasNextComparisonStep"
+      :can-skip-learn="!comparisonVariant || hasNextComparisonStep"
+      @ask="openAsk"
+      @check="check"
+      @dont-know="dontKnow"
+      @know-it="advanceExercise"
+      @next="next"
+      @retry="retryExercise"
+      @skip="skip"
+      @trace="openTrace"
+    />
 
     <AskDrawer ref="drawer" :open="drawerOpen" :context="drawerContext" @close="drawerOpen = false" />
   </div>
@@ -543,9 +592,15 @@ const tip = loadingTips[Math.floor(Math.random() * loadingTips.length)]
 
 <style scoped>
 .lesson {
+  --ask-width: clamp(340px, 28vw, 440px);
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+}
+@media (min-width: 1100px) {
+  .lesson.ask-open {
+    padding-right: var(--ask-width);
+  }
 }
 .lh {
   display: flex;
@@ -588,6 +643,17 @@ const tip = loadingTips[Math.floor(Math.random() * loadingTips.length)]
   width: 100%;
   max-width: 760px;
   animation: dl-pop 0.25s ease-out;
+}
+.intro-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  color: var(--muted);
+  font-size: 15px;
+  font-weight: 800;
+}
+.intro-stats .xp {
+  color: var(--blue);
 }
 .wide .stage {
   padding: 4px 28px 20px;

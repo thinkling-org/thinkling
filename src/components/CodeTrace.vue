@@ -10,8 +10,6 @@ const props = defineProps({
   trace: { type: Object, required: true }, // { headline, mistake, takeaway, steps[] }
   chosenIndex: { type: Number, default: null },
 })
-const emit = defineEmits(['done'])
-
 const i = ref(0)
 const steps = computed(() => props.trace.steps || [])
 const step = computed(() => steps.value[i.value] || {})
@@ -35,6 +33,7 @@ const KIND_COLOR = {
 }
 
 const leftEl = ref(null)
+const lessons = ref(null)
 const tutorTop = ref(0)
 async function placeTutor() {
   await nextTick()
@@ -71,8 +70,7 @@ watch(i, (n, o) => {
 watch(atEnd, (v) => {
   if (!v) return
   setTimeout(() => play('sparkle'), 280)
-  emit('done')
-  nextTick(() => document.querySelector('.trace .lessons')?.scrollIntoView({ block: 'center', behavior: 'smooth' }))
+  nextTick(() => lessons.value?.scrollIntoView({ block: 'center', behavior: 'smooth' }))
 })
 onMounted(() => {
   placeTutor()
@@ -90,8 +88,10 @@ onBeforeUnmount(() => {
   <div class="trace">
     <div class="th">
       <h2>Prześledźmy to razem</h2>
-      <span v-if="chosenIndex != null && !correct" class="chip-r">twoja: {{ exercise.options[chosenIndex] }}</span>
-      <span class="chip-g">poprawna: {{ exercise.options[exercise.correctIndex] }}</span>
+      <template v-if="exercise.type !== 'learn'">
+        <span v-if="chosenIndex != null && !correct" class="chip-r">twoja: {{ exercise.options[chosenIndex] }}</span>
+        <span class="chip-g">poprawna: {{ exercise.options[exercise.correctIndex] }}</span>
+      </template>
     </div>
 
     <div class="grid">
@@ -165,20 +165,20 @@ onBeforeUnmount(() => {
           </svg>
           <div class="bubble" :key="i">
             <span class="kicker">{{ step.title }}</span>
-            <Markdown :src="step.say" class="say" />
+            <Markdown read-aloud :src="step.say" class="say" />
           </div>
         </div>
       </aside>
     </div>
 
-    <div v-if="atEnd" class="lessons">
+    <div v-if="atEnd" ref="lessons" class="lessons">
       <div class="card ls">
-        <span class="label" :style="{ color: correct ? 'var(--green-light)' : 'var(--red-light)' }">{{ correct ? 'Co było kluczowe' : 'Gdzie był błąd' }}</span>
-        <Markdown :src="trace.mistake" />
+        <span class="label" :style="{ color: correct || exercise.type === 'learn' ? 'var(--green-light)' : 'var(--red-light)' }">{{ correct || exercise.type === 'learn' ? 'Co było kluczowe' : 'Gdzie był błąd' }}</span>
+        <Markdown read-aloud :src="trace.mistake" />
       </div>
       <div class="card ls">
         <span class="label" style="color: var(--green-light)">Zapamiętaj</span>
-        <Markdown :src="trace.takeaway" />
+        <Markdown read-aloud :src="trace.takeaway" />
       </div>
     </div>
     <p v-else class="hint muted">Klikaj strzałkę (albo ← →), aż Hex dojdzie do końca kodu.</p>

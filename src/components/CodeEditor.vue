@@ -185,11 +185,6 @@ function applyFix(issue, idx) {
   emit('apply', idx)
 }
 
-defineExpose({
-  focus: () => editor.value?.focus(),
-  getValue: () => editor.value?.getValue() ?? props.modelValue,
-  revealLine: (n) => editor.value?.revealLineInCenter(n),
-})
 </script>
 
 <template>

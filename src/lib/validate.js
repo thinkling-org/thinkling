@@ -1,6 +1,6 @@
 // Weryfikacja wygenerowanych testów: wzorcowe rozwiązanie musi przechodzić wszystkie testy,
 // a szablon startowy musi oblać przynajmniej jeden. Przy problemie — jedna prośba do modelu o poprawkę.
-import { RUNNABLE, runTests } from './runner.js'
+import { allTestsPassed, RUNNABLE, runTests } from './runner.js'
 import { ai } from './api.js'
 import { sandbox, mergeFiles } from './sandbox.js'
 
@@ -21,7 +21,7 @@ async function verifyDocker(ex, language, onStage) {
     } catch (err) {
       return { status: 'unverified', note: err.message }
     }
-    const ok = allPass(solutionRun) && failsSomething(starterRun)
+    const ok = allTestsPassed(solutionRun) && failsSomething(starterRun)
     const patch = attempt > 0 ? cur : undefined
     if (ok) return { status: 'verified', patch, fixed: attempt > 0, total: solutionRun.results.length, note }
     if (attempt === 1) return { status: 'unverified', patch, note }
@@ -42,7 +42,6 @@ async function verifyDocker(ex, language, onStage) {
   return { status: 'unverified' }
 }
 
-const allPass = (run) => !!run && !run.compileError && run.results.length > 0 && run.results.every((r) => r.ok)
 const failsSomething = (run) => !!run && (!!run.compileError || run.results.some((r) => !r.ok))
 
 /**
@@ -59,7 +58,7 @@ export async function verifyExercise(ex, planLanguage, { onStage } = {}) {
   for (let attempt = 0; attempt < 2; attempt++) {
     const solutionRun = await runTests({ code: cur.solution, tests: cur.tests, language })
     const starterRun = await runTests({ code: cur.starterCode, tests: cur.tests, language })
-    const ok = allPass(solutionRun) && failsSomething(starterRun)
+    const ok = allTestsPassed(solutionRun) && failsSomething(starterRun)
     const patch = attempt > 0 ? cur : undefined
     if (ok) return { status: 'verified', patch, fixed: attempt > 0, total: solutionRun.results.length, note }
     if (attempt === 1) return { status: 'unverified', patch, note }

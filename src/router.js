@@ -13,6 +13,7 @@ export const router = createRouter({
     { path: '/flashcards', component: () => import('./views/FlashcardsView.vue') },
     { path: '/review', component: () => import('./views/ReviewView.vue') },
     { path: '/settings', component: () => import('./views/SettingsView.vue') },
+    { path: '/setup', component: () => import('./views/SetupView.vue') },
     { path: '/sandbox', component: () => import('./views/PlaygroundView.vue') },
     { path: '/:pathMatch(.*)*', redirect: '/' },
   ],
@@ -20,6 +21,7 @@ export const router = createRouter({
 
 router.beforeEach((to) => {
   const app = useApp()
+  if (!app.settings.setupDone && to.path !== '/setup') return '/setup'
   if (to.meta.needsPlan && !app.plan) return '/start'
   if (to.path === '/plan' && !app.plan && app.gen.status === 'idle') return '/start'
 })

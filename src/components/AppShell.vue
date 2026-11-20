@@ -31,7 +31,7 @@ const fmt = (n) => n.toLocaleString('pl-PL')
           <span class="dot" :class="{ off: !provider?.available }" />
           {{ providerName }} {{ provider?.available ? 'połączony' : 'niedostępny' }}
         </div>
-        <span class="meta">localhost:{{ app.status?.port || 3141 }} · {{ app.settings.model || 'domyślny model' }}</span>
+        <span class="meta">localhost:{{ app.status?.port || 3141 }} · {{ app.settings.model || 'domyślny model' }}{{ app.settings.effort ? ` · ${app.settings.effort}` : '' }}</span>
       </RouterLink>
     </nav>
 

@@ -1,4 +1,5 @@
 // DevLingo — lokalny serwer: API + (w trybie produkcyjnym) zbudowany frontend.
+import './check-node.js'
 import express from 'express'
 import fs from 'node:fs'
 import path from 'node:path'
@@ -8,6 +9,9 @@ import { readState, writeState, DB_PATH } from './store.js'
 import * as P from './prompts.js'
 import { WebSocketServer } from 'ws'
 import * as SB from './sandbox.js'
+import { registerSpeech } from './speech.js'
+import { registerDictation } from './dictation.js'
+import { registerSetup, features } from './setup.js'
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const PORT = Number(process.env.PORT) || 3141
@@ -31,6 +35,10 @@ app.use('/api', (req, res, next) => {
   next()
 })
 
+registerDictation(app, ROOT)
+registerSpeech(app, ROOT)
+registerSetup(app, ROOT)
+
 // --------------------------------------------------------------- stan
 
 app.get('/api/state', (_req, res) => res.json(readState()))
@@ -45,8 +53,12 @@ app.put('/api/state', (req, res) => {
 
 app.get('/api/status', async (_req, res) => {
   const s = readState().settings
-  const [claude, codex] = await Promise.all([providerStatus('claude', s.claudeBin), providerStatus('codex', s.codexBin)])
-  res.json({ active: s.provider, model: s.model, port: PORT, providers: { claude, codex } })
+  const [claude, codex, feat] = await Promise.all([
+    providerStatus('claude', s.claudeBin),
+    providerStatus('codex', s.codexBin),
+    features(ROOT),
+  ])
+  res.json({ active: s.provider, model: s.model, effort: s.effort, port: PORT, providers: { claude, codex }, features: feat })
 })
 
 // --------------------------------------------------------------- zadania AI (strumień NDJSON)
@@ -55,7 +67,7 @@ const TASKS = {
   plan: { build: P.planTask, system: P.SYSTEM_JSON },
   refinePlan: { build: P.refinePlanTask, system: P.SYSTEM_JSON },
   lesson: { build: P.lessonTask, system: P.SYSTEM_JSON },
-  gradeOpen: { build: P.gradeOpenTask, system: P.SYSTEM_JSON },
+  gradeOpen: { build: P.gradeOpenTask, system: P.SYSTEM_GRADE },
   reviewCode: { build: P.reviewCodeTask, system: P.SYSTEM_JSON },
   explain: { build: P.explainTask, system: P.SYSTEM_CHAT },
   trace: { build: P.traceTask, system: P.SYSTEM_JSON },
@@ -99,6 +111,7 @@ app.post('/api/ai/:task', async (req, res) => {
     const { data } = await runAI({
       provider,
       model: req.body?.model ?? s.model,
+      effort: req.body?.effort ?? s.effort,
       binPath: provider === 'codex' ? s.codexBin : s.claudeBin,
       system: task.system,
       prompt: built.prompt,

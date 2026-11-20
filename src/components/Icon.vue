@@ -43,6 +43,10 @@ defineProps({
     <template v-else-if="name === 'arrow-right'"><path d="M5 12h14M13 6l6 6-6 6" /></template>
     <template v-else-if="name === 'arrow-left'"><path d="M19 12H5M11 6l-6 6 6 6" /></template>
     <template v-else-if="name === 'play'"><path d="M7 5v14l11-7z" /></template>
+    <template v-else-if="name === 'pause'"><path d="M9 5v14M15 5v14" /></template>
+    <template v-else-if="name === 'microphone'"><rect x="9" y="3" width="6" height="12" rx="3" /><path d="M5 10v2a7 7 0 0 0 14 0v-2M12 19v3M9 22h6" /></template>
+    <template v-else-if="name === 'volume'"><path d="M3 9h4l5-4v14l-5-4H3zM16 9a4 4 0 0 1 0 6M19 6a8 8 0 0 1 0 12" /></template>
+    <template v-else-if="name === 'stop'"><rect x="6" y="6" width="12" height="12" rx="2" /></template>
     <template v-else-if="name === 'refresh'"><path d="M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7" /></template>
     <template v-else-if="name === 'chat'"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z" /></template>
     <template v-else-if="name === 'lock'"><rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" /></template>

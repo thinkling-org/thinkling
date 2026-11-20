@@ -47,7 +47,7 @@ export function normalizeLang(lang) {
   return map[l] || l
 }
 
-export function escapeHtml(s) {
+function escapeHtml(s) {
   return String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c])
 }
 

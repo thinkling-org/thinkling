@@ -9,15 +9,16 @@ const props = defineProps({
   modelValue: { type: Number, default: null },
   result: { type: Object, default: null },
 })
-const emit = defineEmits(['update:modelValue', 'trace'])
+const emit = defineEmits(['update:modelValue'])
 
 const short = computed(() => props.exercise.options.every((o) => String(o).length <= 28))
 const isOutput = computed(() => !!props.exercise.code)
+const isPractice = computed(() => props.exercise.stage === 'practice')
 
 function state(i) {
   if (!props.result) return props.modelValue === i ? 'selected' : ''
   if (i === props.exercise.correctIndex) return 'right'
-  if (i === props.modelValue) return 'wrong'
+  if (i === props.modelValue) return isPractice.value ? 'selected' : 'wrong'
   return 'dim'
 }
 </script>
@@ -25,9 +26,15 @@ function state(i) {
 <template>
   <div class="ex">
     <span v-if="exercise.warmup" class="kind label warm">Rozgrzewka · zgaduj śmiało, błąd się nie liczy</span>
+    <span v-else-if="isPractice" class="kind label">Próba bez oceny</span>
+    <span v-else-if="exercise.stage === 'challenge'" class="kind label warm">Opcjonalne wyzwanie</span>
     <span v-else class="kind label">{{ isOutput ? 'Co wypisze ten kod?' : 'Quiz' }}</span>
-    <Markdown tag="h1" class="q" :src="exercise.prompt" />
+    <Markdown read-aloud tag="h1" fit-heading class="q" :src="exercise.prompt" />
     <CodeBlock v-if="exercise.code" :code="exercise.code" :language="exercise.codeLanguage" />
+    <details v-if="isPractice && exercise.hint && !result" class="card hint">
+      <summary>Pokaż podpowiedź</summary>
+      <Markdown :src="exercise.hint" />
+    </details>
 
     <div role="radiogroup" aria-label="Odpowiedzi" class="opts" :class="{ grid: short }">
       <button
@@ -52,8 +59,8 @@ function state(i) {
       <span>Za chwilę karta wiedzy wyjaśni, dlaczego jest właśnie tak.</span>
     </div>
     <div v-else-if="result && exercise.explanation" class="card explain" :class="result.status">
-      <span class="label">Wyjaśnienie</span>
-      <Markdown :src="exercise.explanation" />
+      <span class="label">{{ isPractice ? 'Jak rozwiązać to ćwiczenie' : 'Wyjaśnienie' }}</span>
+      <Markdown read-aloud :src="exercise.explanation" />
     </div>
   </div>
 </template>
@@ -69,6 +76,17 @@ function state(i) {
 }
 .kind.warm {
   color: var(--yellow);
+}
+.hint {
+  padding: 10px 16px;
+  color: var(--text-2);
+}
+.hint summary {
+  cursor: pointer;
+  font-weight: 800;
+}
+.hint[open] summary {
+  margin-bottom: 8px;
 }
 .q {
   font-size: clamp(24px, 3.2vw, 32px);
@@ -113,6 +131,8 @@ function state(i) {
 .opt.mono .ot {
   font-family: var(--mono);
   letter-spacing: 0.08em;
+  /* odpowiedź typu „co wypisze” może mieć kilka linii wyjścia */
+  white-space: pre-line;
 }
 .opts.grid .opt.mono {
   justify-content: center;
@@ -123,7 +143,9 @@ function state(i) {
   overflow-wrap: anywhere;
 }
 .opts.grid .opt.mono .ot {
-  flex: none;
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow-wrap: break-word;
 }
 .n {
   flex: none;

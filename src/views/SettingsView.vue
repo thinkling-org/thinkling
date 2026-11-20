@@ -1,10 +1,12 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useApp } from '../stores/app.js'
 import { ai, putJSON } from '../lib/api.js'
 import AppShell from '../components/AppShell.vue'
 import Icon from '../components/Icon.vue'
+import VoiceDesign from '../components/VoiceDesign.vue'
+import ModelPicker from '../components/ModelPicker.vue'
 import { play, playStep } from '../lib/sfx.js'
 
 const SOUND_DEMO = [
@@ -24,26 +26,16 @@ const PROVIDERS = [
     id: 'claude',
     name: 'Claude Code',
     desc: 'Używa CLI `claude` zalogowanego w ramach subskrypcji Claude (Pro/Max). Klucz ANTHROPIC_API_KEY jest ignorowany.',
-    models: [
-      { v: '', l: 'Domyślny z CLI' },
-      { v: 'opus', l: 'Opus — najlepsza jakość' },
-      { v: 'sonnet', l: 'Sonnet — balans' },
-      { v: 'haiku', l: 'Haiku — najszybszy' },
-    ],
   },
   {
     id: 'codex',
     name: 'Codex',
     desc: 'Używa CLI `codex exec` zalogowanego kontem ChatGPT. Klucz OPENAI_API_KEY jest ignorowany.',
-    models: [{ v: '', l: 'Domyślny z ~/.codex/config.toml' }],
   },
 ]
 
 const testing = ref(false)
 const testResult = ref(null)
-const current = computed(() => PROVIDERS.find((p) => p.id === app.settings.provider))
-const isPreset = computed(() => current.value.models.some((m) => m.v === app.settings.model))
-const customModel = ref(isPreset.value ? '' : app.settings.model)
 
 async function saveNow() {
   await putJSON('/api/state', app.persisted())
@@ -51,17 +43,14 @@ async function saveNow() {
 
 async function choose(id) {
   if (app.settings.provider === id) return
-  app.settings.provider = id
-  app.settings.model = ''
-  customModel.value = ''
+  app.switchProvider(id)
   testResult.value = null
   await saveNow()
   app.refreshStatus()
 }
 
-async function setModel(v) {
-  app.settings.model = v
-  await saveNow()
+function runSetup(step) {
+  router.push(step ? { path: '/setup', query: { step } } : '/setup')
 }
 
 async function saveBins() {
@@ -126,17 +115,8 @@ function resetAll() {
       </section>
 
       <section class="sec">
-        <h2>Model</h2>
-        <div class="seg">
-          <button v-for="m in current.models" :key="m.v" class="chip" :aria-pressed="app.settings.model === m.v" @click="setModel(m.v); customModel = ''">{{ m.l }}</button>
-        </div>
-        <div class="inline">
-          <label for="custom-model" class="label">Własny identyfikator modelu</label>
-          <div class="row">
-            <input id="custom-model" v-model="customModel" class="input" :placeholder="app.settings.provider === 'claude' ? 'np. claude-opus-5-5' : 'np. nazwa modelu dla codex -m'" />
-            <button class="btn btn-sm" :disabled="!customModel.trim()" @click="setModel(customModel.trim())">Ustaw</button>
-          </div>
-        </div>
+        <h2>Model i effort — {{ app.settings.provider === 'codex' ? 'Codex' : 'Claude Code' }}</h2>
+        <ModelPicker />
         <div class="row">
           <button class="btn btn-primary btn-sm" :disabled="testing" @click="test">
             <span v-if="testing" class="spinner" style="width: 16px; height: 16px; border-width: 2px; border-color: #ffffff55; border-top-color: #fff" />
@@ -201,6 +181,19 @@ function resetAll() {
         </div>
       </section>
 
+      <VoiceDesign v-if="app.status?.features?.speech" />
+      <section v-else class="sec">
+        <h2>Głos lektora</h2>
+        <div class="card dk">
+          <div class="ph">
+            <strong>Czytanie lekcji na głos</strong>
+            <span class="tag tag-red">{{ app.status ? 'niezainstalowany lub wyłączony' : '…' }}</span>
+          </div>
+          <span class="pd">Lokalny model mowy ZONOS3-Mini działa w Dockerze. Instalację uruchomisz w kreatorze konfiguracji.</span>
+          <button class="btn btn-sm" style="align-self: flex-start" @click="runSetup('voice')">Zainstaluj głos</button>
+        </div>
+      </section>
+
       <section class="sec">
         <h2>Ścieżki do CLI (opcjonalnie)</h2>
         <p class="muted">Zostaw puste, żeby wykrywać automatycznie (PATH, ~/.local/bin, rozszerzenia VS Code/Cursor, instalacja Codex).</p>
@@ -214,6 +207,7 @@ function resetAll() {
         <h2>Dane</h2>
         <p class="muted">Wszystko jest zapisane lokalnie w <code>data/db.json</code> w katalogu projektu.</p>
         <div class="row">
+          <button class="btn btn-sm" @click="runSetup()">Kreator konfiguracji</button>
           <button class="btn btn-sm" @click="newPlan">Ułóż nowy plan</button>
           <button class="btn btn-sm btn-ghost-red" @click="resetAll">Wyczyść wszystko</button>
         </div>

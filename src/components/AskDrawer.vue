@@ -1,5 +1,5 @@
 <script setup>
-import { nextTick, ref, watch } from 'vue'
+import { nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { ai } from '../lib/api.js'
 import { play } from '../lib/sfx.js'
 import { useApp } from '../stores/app.js'
@@ -31,17 +31,31 @@ async function run(task, payload, userText) {
   busy.value = true
   progress.value = 0
   scroll()
-  ctrl = new AbortController()
+  const request = new AbortController()
+  ctrl = request
   try {
-    const text = await ai(task, payload, { signal: ctrl.signal, onProgress: (p) => (progress.value = p.chars) })
+    const text = await ai(task, payload, {
+      signal: request.signal,
+      onProgress: (p) => {
+        if (ctrl === request) progress.value = p.chars
+      },
+    })
+    if (ctrl !== request) return
     messages.value.push({ role: 'assistant', content: String(text) })
     play('blip')
   } catch (err) {
-    if (err.name !== 'AbortError') messages.value.push({ role: 'assistant', content: `**Błąd:** ${err.message}`, error: true })
+    if (ctrl === request && err.name !== 'AbortError') {
+      messages.value.push({ role: 'assistant', content: `**Błąd:** ${err.message}`, error: true })
+    }
   } finally {
-    busy.value = false
-    scroll()
-    nextTick(() => inputEl.value?.focus())
+    if (ctrl === request) {
+      ctrl = null
+      busy.value = false
+      scroll()
+      nextTick(() => {
+        if (props.open) inputEl.value?.focus()
+      })
+    }
   }
 }
 
@@ -59,7 +73,10 @@ function explain(payload, label = 'Wyjaśnij krok po kroku') {
 
 function reset() {
   ctrl?.abort()
+  ctrl = null
   messages.value = []
+  input.value = ''
+  progress.value = 0
   busy.value = false
 }
 
@@ -68,7 +85,8 @@ watch(
   (o) => o && nextTick(() => inputEl.value?.focus()),
 )
 
-defineExpose({ ask, explain, reset })
+onBeforeUnmount(reset)
+defineExpose({ explain, reset })
 
 const SUGGESTIONS = ['Daj prostszy przykład', 'Gdzie to się przydaje w praktyce?', 'Jakie są typowe pułapki?']
 </script>
@@ -86,7 +104,7 @@ const SUGGESTIONS = ['Daj prostszy przykład', 'Gdzie to się przydaje w praktyc
           <button v-for="s in SUGGESTIONS" :key="s" class="chip" @click="ask(s)">{{ s }}</button>
         </div>
         <div v-for="(m, i) in messages" :key="i" class="msg" :class="m.role">
-          <Markdown v-if="m.role === 'assistant'" :src="m.content" />
+          <Markdown read-aloud v-if="m.role === 'assistant'" :src="m.content" />
           <template v-else>{{ m.content }}</template>
         </div>
         <div v-if="busy" class="msg assistant thinking">
@@ -100,12 +118,17 @@ const SUGGESTIONS = ['Daj prostszy przykład', 'Gdzie to się przydaje w praktyc
           v-model="input"
           rows="2"
           placeholder="Twoje pytanie…"
+          aria-label="Twoje pytanie"
+          data-dictation-dock
           :disabled="busy"
           @keydown.enter.exact.prevent="ask()"
         />
-        <button class="btn btn-primary btn-sm" type="submit" :disabled="busy || !input.trim()" aria-label="Wyślij">
-          <Icon name="send" :size="18" :stroke="2.6" />
-        </button>
+        <div class="ask-actions">
+          <div class="mic-slot" data-dictation-slot />
+          <button class="btn btn-primary btn-sm send" type="submit" :disabled="busy || !input.trim()">
+            <Icon name="send" :size="17" :stroke="2.6" />Wyślij
+          </button>
+        </div>
       </form>
     </aside>
   </Transition>
@@ -124,6 +147,12 @@ const SUGGESTIONS = ['Daj prostszy przykład', 'Gdzie to się przydaje w praktyc
   display: flex;
   flex-direction: column;
   box-shadow: -20px 0 40px rgba(0, 0, 0, 0.35);
+}
+@media (min-width: 1100px) {
+  .drawer {
+    width: var(--ask-width);
+    box-shadow: none;
+  }
 }
 .drawer-enter-active,
 .drawer-leave-active {
@@ -214,24 +243,40 @@ const SUGGESTIONS = ['Daj prostszy przykład', 'Gdzie to się przydaje w praktyc
   font-size: 12px;
 }
 .ask {
-  display: flex;
-  gap: 8px;
-  padding: 14px;
-  border-top: 2px solid var(--divider);
-  align-items: flex-end;
+  display: grid;
+  gap: 6px;
+  margin: 12px 16px 16px;
+  padding: 8px;
+  background: var(--bg-deep);
+  border: 2px solid var(--border);
+  border-radius: 16px;
+}
+.ask:focus-within {
+  border-color: var(--purple);
 }
 .ask textarea {
-  flex: 1;
+  width: 100%;
+  min-width: 0;
   resize: none;
-  background: var(--surface);
-  border: 2px solid var(--border);
-  border-radius: 14px;
-  padding: 10px 12px;
+  background: transparent;
+  border: none;
+  padding: 6px 7px;
   font-size: 15px;
   outline: none;
   line-height: 1.4;
 }
-.ask textarea:focus {
-  border-color: var(--purple);
+.ask-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.mic-slot {
+  flex: 1;
+  min-width: 36px;
+  min-height: 36px;
+}
+.send {
+  min-height: 36px;
 }
 </style>

@@ -12,7 +12,7 @@ const EXT_DIRS = ['.vscode', '.vscode-insiders', '.cursor', '.windsurf', '.vscod
   path.join(home, d, 'extensions'),
 )
 
-export const WORK_DIR = path.join(os.tmpdir(), 'devlingo-work')
+const WORK_DIR = path.join(os.tmpdir(), 'devlingo-work')
 fs.mkdirSync(WORK_DIR, { recursive: true })
 
 function exists(p) {
@@ -114,7 +114,7 @@ const PROVIDERS = {
 
 const resolveCache = new Map()
 
-export function resolveProvider(id, overridePath) {
+function resolveProvider(id, overridePath) {
   const def = PROVIDERS[id]
   if (!def) throw new Error(`Nieznany dostawca: ${id}`)
   const key = `${id}|${overridePath || ''}`
@@ -166,11 +166,118 @@ export async function providerStatus(id, overridePath) {
   return { id, label: PROVIDERS[id].label, available: !!version, path: cmd.path, version }
 }
 
+const EFFORTS = ['low', 'medium', 'high', 'xhigh', 'max']
+const EFFORT_LABELS = { low: 'Niski', medium: 'Średni', high: 'Wysoki', xhigh: 'Bardzo wysoki', max: 'Maksymalny' }
+
+function safeEffort(effort) {
+  return EFFORTS.includes(effort) ? effort : ''
+}
+
+function runQuiet(cmd, args, id, timeout = 20_000) {
+  return new Promise((resolve) => {
+    const child = spawn(cmd.cmd, [...cmd.prefix, ...args], { env: cleanEnv(id), windowsHide: true, cwd: WORK_DIR })
+    let out = ''
+    let err = ''
+    const timer = setTimeout(() => child.kill(), timeout)
+    child.stdout.on('data', (d) => (out += d))
+    child.stderr.on('data', (d) => (err += d))
+    child.on('error', () => resolve({ code: -1, out, err }))
+    child.on('close', (code) => {
+      clearTimeout(timer)
+      resolve({ code, out, err })
+    })
+    child.stdin.end()
+  })
+}
+
+const authCache = new Map()
+
+/** Czy CLI jest zalogowane subskrypcją. `null` = nie wiadomo (stara wersja CLI). */
+export async function providerAuth(id, overridePath) {
+  const cmd = resolveProvider(id, overridePath)
+  if (!cmd) return { loggedIn: false, method: null }
+  const cached = authCache.get(cmd.path)
+  if (cached && Date.now() - cached.at < 30_000) return cached.value
+  let value
+  if (id === 'claude') {
+    const r = await runQuiet(cmd, ['auth', 'status', '--json'], id)
+    try {
+      const j = JSON.parse(r.out)
+      value = { loggedIn: !!j.loggedIn, method: j.authMethod || null }
+    } catch {
+      value = { loggedIn: r.code === 0 ? null : false, method: null }
+    }
+  } else {
+    const r = await runQuiet(cmd, ['login', 'status'], id)
+    const text = `${r.out}\n${r.err}`
+    value = { loggedIn: r.code === 0 && /logged in/i.test(text), method: /chatgpt/i.test(text) ? 'chatgpt' : /api key/i.test(text) ? 'api-key' : null }
+  }
+  authCache.set(cmd.path, { at: Date.now(), value })
+  return value
+}
+
+export function clearProviderCaches() {
+  resolveCache.clear()
+  versionCache.clear()
+  authCache.clear()
+}
+
+const CLAUDE_MODELS = [
+  { id: 'fable', label: 'Fable', description: 'Najmocniejszy model, najlepsza jakość lekcji i ocen.' },
+  { id: 'opus', label: 'Opus', description: 'Bardzo dobra jakość, szybszy od Fable.' },
+  { id: 'sonnet', label: 'Sonnet', description: 'Balans jakości i szybkości.' },
+  { id: 'haiku', label: 'Haiku', description: 'Najszybszy i najtańszy w limitach subskrypcji.' },
+].map((m) => ({ ...m, efforts: EFFORTS }))
+
+const modelsCache = new Map()
+
+/** Lista modeli i poziomów effortu, które obsługuje dane CLI. */
+export async function providerModels(id, overridePath) {
+  const effortList = (list) => list.filter((e) => EFFORTS.includes(e)).map((e) => ({ id: e, label: EFFORT_LABELS[e] }))
+  if (id === 'claude') {
+    return {
+      models: CLAUDE_MODELS.map((m) => ({ ...m, efforts: effortList(m.efforts) })),
+      efforts: effortList(EFFORTS),
+      defaultLabel: 'Domyślny z CLI',
+    }
+  }
+  const cmd = resolveProvider(id, overridePath)
+  const key = cmd?.path || ''
+  const cached = modelsCache.get(key)
+  if (cached && Date.now() - cached.at < 10 * 60_000) return cached.value
+  let raw = null
+  if (cmd) {
+    const r = await runQuiet(cmd, ['debug', 'models'], id)
+    try {
+      raw = JSON.parse(r.out).models
+    } catch {}
+  }
+  if (!raw) {
+    try {
+      raw = JSON.parse(fs.readFileSync(path.join(process.env.CODEX_HOME || path.join(home, '.codex'), 'models_cache.json'), 'utf8')).models
+    } catch {
+      raw = []
+    }
+  }
+  const models = raw
+    .filter((m) => m?.slug && (m.visibility ?? 'list') === 'list')
+    .map((m) => ({
+      id: m.slug,
+      label: m.display_name || m.slug,
+      description: m.description || '',
+      defaultEffort: m.default_reasoning_level || '',
+      efforts: effortList((m.supported_reasoning_levels || []).map((l) => l.effort)),
+    }))
+  const value = { models, efforts: effortList(EFFORTS), defaultLabel: 'Domyślny z ~/.codex/config.toml' }
+  if (models.length) modelsCache.set(key, { at: Date.now(), value })
+  return value
+}
+
 /**
  * Uruchamia jedno zapytanie do modelu.
  * @returns {Promise<{data:any,text:string}>}
  */
-export function runAI({ provider = 'claude', model, binPath, system, prompt, schema, onProgress, signal, timeoutMs = 6 * 60_000 }) {
+export function runAI({ provider = 'claude', model, effort, binPath, system, prompt, schema, onProgress, signal, timeoutMs = 6 * 60_000 }) {
   const cmd = resolveProvider(provider, binPath)
   if (!cmd) {
     return Promise.reject(
@@ -182,8 +289,8 @@ export function runAI({ provider = 'claude', model, binPath, system, prompt, sch
     )
   }
   return provider === 'codex'
-    ? runCodex({ cmd, model, system, prompt, schema, onProgress, signal, timeoutMs })
-    : runClaude({ cmd, model, system, prompt, schema, onProgress, signal, timeoutMs })
+    ? runCodex({ cmd, model, effort: safeEffort(effort), system, prompt, schema, onProgress, signal, timeoutMs })
+    : runClaude({ cmd, model, effort: safeEffort(effort), system, prompt, schema, onProgress, signal, timeoutMs })
 }
 
 function spawnWithGuards(cmd, args, { env, signal, timeoutMs, onTimeout }) {
@@ -229,7 +336,7 @@ function tryParseJson(text) {
   return null
 }
 
-function runClaude({ cmd, model, system, prompt, schema, onProgress, signal, timeoutMs }) {
+function runClaude({ cmd, model, effort, system, prompt, schema, onProgress, signal, timeoutMs }) {
   return new Promise((resolve, reject) => {
     const args = [
       '-p',
@@ -242,6 +349,7 @@ function runClaude({ cmd, model, system, prompt, schema, onProgress, signal, tim
     ]
     if (system) args.push('--system-prompt', system)
     if (model) args.push('--model', model)
+    if (effort) args.push('--effort', effort)
     if (schema) args.push('--json-schema', JSON.stringify(schema))
 
     let timedOut = false
@@ -315,7 +423,7 @@ function runClaude({ cmd, model, system, prompt, schema, onProgress, signal, tim
   })
 }
 
-function runCodex({ cmd, model, system, prompt, schema, onProgress, signal, timeoutMs }) {
+function runCodex({ cmd, model, effort, system, prompt, schema, onProgress, signal, timeoutMs }) {
   return new Promise((resolve, reject) => {
     const id = crypto.randomUUID()
     const outFile = path.join(WORK_DIR, `codex-${id}.txt`)
@@ -326,6 +434,7 @@ function runCodex({ cmd, model, system, prompt, schema, onProgress, signal, time
       args.push('--output-schema', schemaFile)
     }
     if (model) args.push('-m', model)
+    if (effort) args.push('-c', `model_reasoning_effort=${JSON.stringify(effort)}`)
     args.push('-')
 
     let timedOut = false

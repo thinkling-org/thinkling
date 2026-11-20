@@ -1,5 +1,9 @@
 export const RUNNABLE = ['javascript', 'typescript']
 
+export function allTestsPassed(run) {
+  return Boolean(run && !run.compileError && run.results.length > 0 && run.results.every((result) => result.ok))
+}
+
 /**
  * @returns {Promise<{results:{name:string,ok:boolean,error?:string,ms:number}[], logs:{level:string,text:string}[], compileError?:string, timedOut?:boolean}>}
  */

@@ -3,17 +3,28 @@ import { ref, onMounted } from 'vue'
 import Markdown from '../Markdown.vue'
 import CodeBlock from '../CodeBlock.vue'
 import Icon from '../Icon.vue'
+import SpeechPlayer from '../SpeechPlayer.vue'
+import { readableSpeechText } from '../../lib/speech-text.js'
 
 const props = defineProps({
   exercise: { type: Object, required: true },
   modelValue: { type: String, default: '' },
   result: { type: Object, default: null },
+  providerName: { type: String, required: true },
   busy: Boolean,
 })
 const emit = defineEmits(['update:modelValue', 'submit'])
 const showModel = ref(false)
+const gradedFeedback = ref(null)
 const ta = ref(null)
 onMounted(() => ta.value?.focus())
+
+function feedbackText() {
+  const card = gradedFeedback.value
+  const points = Array.from(card.querySelectorAll('.feedback-point .md'), readableSpeechText)
+  const example = readableSpeechText(card.querySelector('.model'))
+  return [`Wynik: ${props.result.data.score} na 10.`, ...points, example && `Wzorcowa odpowiedź. ${example}`]
+}
 
 const POINT = {
   good: { icon: 'check', color: 'var(--green)' },
@@ -25,7 +36,7 @@ const POINT = {
 <template>
   <div class="ex">
     <span class="kind label">Pytanie otwarte</span>
-    <Markdown tag="h1" class="q" :src="exercise.prompt" />
+    <Markdown read-aloud tag="h1" fit-heading class="q" :src="exercise.prompt" />
     <CodeBlock v-if="exercise.code" :code="exercise.code" :language="exercise.codeLanguage" />
 
     <div class="group">
@@ -45,32 +56,34 @@ const POINT = {
 
     <div v-if="busy" class="card grading">
       <span class="spinner" />
-      <span>Claude czyta twoją odpowiedź…</span>
+      <span>{{ providerName }} czyta twoją odpowiedź…</span>
     </div>
 
     <div v-if="result?.status === 'unknown'" class="card feedback">
       <span class="label" style="color: var(--purple-link)">Wzorcowa odpowiedź</span>
-      <Markdown :src="exercise.referenceAnswer" class="ptxt" />
+      <Markdown read-aloud :src="exercise.referenceAnswer" class="ptxt" />
       <template v-if="exercise.keyPoints?.length">
         <span class="label">Kluczowe elementy</span>
-        <div v-for="(k, i) in exercise.keyPoints" :key="i" class="pt">
-          <span class="pi" style="color: var(--yellow)"><Icon name="bulb" :size="18" :stroke="2.6" /></span>
-          <Markdown inline tag="span" :src="k" class="ptxt" />
-        </div>
+        <Markdown v-for="(k, i) in exercise.keyPoints" :key="i" inline tag="span" :src="k" class="ptxt">
+          <template #leading>
+            <span class="pi" style="color: var(--yellow)"><Icon name="bulb" :size="18" :stroke="2.6" /></span>
+          </template>
+        </Markdown>
       </template>
     </div>
 
-    <div v-if="result?.data" class="card feedback">
-      <div class="fh">
-        <span class="tag" :class="result.status === 'correct' ? 'tag-green' : result.status === 'almost' ? 'tag-yellow' : 'tag-red'">
+    <div v-if="result?.data" ref="gradedFeedback" class="card feedback">
+      <SpeechPlayer :key="showModel ? 'with-example' : 'feedback'" :get-text="feedbackText">
+        <span class="tag grade" :class="result.status === 'correct' ? 'tag-green' : result.status === 'almost' ? 'tag-yellow' : 'tag-red'">
           {{ result.data.score }} / 10
         </span>
-      </div>
-      <div v-for="(p, i) in result.data.points" :key="i" class="pt">
-        <span class="pi" :style="{ color: POINT[p.kind]?.color }"><Icon :name="POINT[p.kind]?.icon || 'bulb'" :size="18" :stroke="3" /></span>
-        <Markdown :src="p.text" class="ptxt" />
-      </div>
-      <button class="link-btn" @click="showModel = !showModel">{{ showModel ? 'Ukryj' : 'Pokaż' }} wzorcową odpowiedź</button>
+      </SpeechPlayer>
+      <Markdown v-for="(p, i) in result.data.points" :key="i" :src="p.text" class="ptxt feedback-point">
+        <template #leading>
+          <span class="pi" :style="{ color: POINT[p.kind]?.color }"><Icon :name="POINT[p.kind]?.icon || 'bulb'" :size="18" :stroke="3" /></span>
+        </template>
+      </Markdown>
+      <button class="link-btn" :aria-expanded="showModel" @click="showModel = !showModel">{{ showModel ? 'Ukryj' : 'Pokaż' }} wzorcową odpowiedź</button>
       <Markdown v-if="showModel" class="model" :src="result.data.modelAnswer || exercise.referenceAnswer" />
     </div>
   </div>
@@ -113,18 +126,14 @@ const POINT = {
   gap: 14px;
   animation: dl-pop 0.25s ease-out;
 }
-.fh .tag {
+.grade {
   font-size: 15px;
   font-weight: 900;
 }
-.pt {
-  display: flex;
-  gap: 12px;
-  align-items: flex-start;
-}
 .pi {
-  flex: none;
-  margin-top: 3px;
+  display: flex;
+  align-items: center;
+  min-height: 1.6em;
 }
 .ptxt {
   font-size: 16px;

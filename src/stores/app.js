@@ -20,11 +20,11 @@ function emptyState() {
   return {
     profile: null, // { description, minutesPerDay, style }
     plan: null,
-    lessons: {}, // lessonId -> { exercises, flashcards, generatedAt }
+    lessons: {}, // lessonId -> { intro, exercises, flashcards, generatedAt }
     flashcards: [],
     weakSpots: [],
     stats: { xp: 0, streak: 0, lastActiveDay: null, history: [], daily: {} },
-    settings: { provider: 'claude', model: '', claudeBin: '', codexBin: '', sound: true, volume: 0.6, jsRuntime: 'browser' },
+    settings: { provider: 'claude', model: '', effort: '', prefs: {}, claudeBin: '', codexBin: '', sound: true, volume: 0.6, jsRuntime: 'browser', setupDone: false },
   }
 }
 
@@ -67,7 +67,24 @@ function refreshStatuses(plan) {
 }
 
 // Wersja struktury lekcji. Nieukończone lekcje w starszym formacie generują się od nowa.
-const LESSON_FORMAT = 2
+const LESSON_FORMAT = 3
+
+function validateLessonFlow(kind, intro, exercises) {
+  if (![intro?.outcome, intro?.relevance, intro?.focus].every((value) => typeof value === 'string' && value.trim())) {
+    throw new Error('Model nie przygotował pełnego wprowadzenia do lekcji.')
+  }
+  const stages = exercises.map(({ stage }) => stage).join(' ')
+  const validOrder = kind === 'test'
+    ? exercises.length > 0 && exercises.every(({ type, stage }) => type !== 'learn' && stage === 'check')
+    : /^(learn ){1,2}practice check( challenge)?$/.test(stages)
+      && exercises.every(({ type, stage, hint, explanation }) => {
+        if (stage === 'learn') return type === 'learn'
+        if (stage === 'practice') return type === 'choice' && hint?.trim() && explanation?.trim()
+        if (stage === 'challenge') return type === 'choice'
+        return type !== 'learn'
+      })
+  if (!validOrder) throw new Error('Model zwrócił niewłaściwą kolejność etapów lekcji.')
+}
 
 let saveTimer = null
 const inflight = new Map()
@@ -131,6 +148,8 @@ export const useApp = defineStore('app', {
           stats: { ...base.stats, ...(data.stats || {}) },
           settings: { ...base.settings, ...(data.settings || {}) },
         })
+        // Istniejące instalacje (z planem nauki) nie muszą przechodzić kreatora od nowa.
+        if (data.settings?.setupDone === undefined && data.plan) this.settings.setupDone = true
       } catch (err) {
         console.error('Nie udało się wczytać stanu', err)
       }
@@ -147,6 +166,16 @@ export const useApp = defineStore('app', {
     scheduleSave() {
       clearTimeout(saveTimer)
       saveTimer = setTimeout(() => putJSON('/api/state', this.persisted()).catch((e) => console.error(e)), 400)
+    },
+
+    /** Przełącza silnik AI, pamiętając wybrany model i effort osobno dla każdego dostawcy. */
+    switchProvider(id) {
+      const s = this.settings
+      if (s.provider === id) return
+      s.prefs = { ...(s.prefs || {}), [s.provider]: { model: s.model, effort: s.effort } }
+      s.provider = id
+      s.model = s.prefs[id]?.model || ''
+      s.effort = s.prefs[id]?.effort || ''
     },
 
     async refreshStatus() {
@@ -279,7 +308,8 @@ export const useApp = defineStore('app', {
                 : {}),
             }))
           if (!exercises.length) throw new Error('Model zwrócił pustą lekcję')
-          this.lessons[id] = { exercises, flashcards: data.flashcards || [], generatedAt: Date.now(), format: LESSON_FORMAT }
+          validateLessonFlow(l.kind, data.intro, exercises)
+          this.lessons[id] = { intro: data.intro, exercises, flashcards: data.flashcards || [], generatedAt: Date.now(), format: LESSON_FORMAT }
           return this.validateLesson(id)
         })
         .then(() => {

@@ -1,7 +1,7 @@
 // Piaskownica: prawdziwe środowiska uruchomieniowe w kontenerach Dockera.
 // Każde zadanie ma własny workspace (katalog na dysku podmontowany jako /workspace)
 // i własny kontener bez sieci, z limitami pamięci / CPU / procesów.
-import Docker from 'dockerode'
+import { initialDocker, findWorkingDocker } from './docker-connect.js'
 import tar from 'tar-stream'
 import fs from 'node:fs'
 import path from 'node:path'
@@ -10,11 +10,22 @@ import { StringDecoder } from 'node:string_decoder'
 import { fileURLToPath } from 'node:url'
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
-const DATA_DIR = process.env.DEVLINGO_DATA || path.join(ROOT, 'data')
-export const WS_ROOT = path.join(DATA_DIR, 'workspaces')
+const DATA_DIR = path.resolve(process.env.DEVLINGO_DATA || path.join(ROOT, 'data'))
+const WS_ROOT = path.join(DATA_DIR, 'workspaces')
 fs.mkdirSync(WS_ROOT, { recursive: true })
 
-const docker = new Docker()
+// `let`, bo po instalacji / uruchomieniu Dockera adres może się zmienić (reconnectDocker).
+export let { docker, endpoint: dockerEndpoint } = initialDocker()
+
+/** Szuka działającego Dockera wśród znanych gniazd i przełącza na niego połączenie. */
+export async function reconnectDocker() {
+  const found = await findWorkingDocker()
+  if (found) {
+    docker = found.docker
+    dockerEndpoint = found.endpoint
+  }
+  return found
+}
 const LABEL = 'devlingo'
 const IDLE_MS = 20 * 60_000
 
@@ -103,13 +114,22 @@ export function envFor(lang) {
 export async function dockerStatus() {
   try {
     const v = await docker.version()
-    return { available: true, version: v.Version }
+    return { available: true, version: v.Version, endpoint: dockerEndpoint?.label || null }
   } catch (err) {
-    return { available: false, error: err.code === 'ENOENT' ? 'Docker nie działa (uruchom Docker Desktop)' : err.message }
+    const found = await reconnectDocker()
+    if (found && !found.permission) {
+      const v = await docker.version().catch(() => null)
+      if (v) return { available: true, version: v.Version, endpoint: dockerEndpoint?.label || null }
+    }
+    return {
+      available: false,
+      code: found?.permission ? 'EACCES' : err.code,
+      error: found?.permission ? 'Brak uprawnień do Dockera (dodaj konto do grupy „docker”)' : err.code === 'ENOENT' ? 'Docker nie działa (uruchom Docker Desktop)' : err.message,
+    }
   }
 }
 
-async function imageExists(tag) {
+export async function imageExists(tag) {
   try {
     await docker.getImage(tag).inspect()
     return true
@@ -158,7 +178,7 @@ export function safeId(id) {
   return s
 }
 
-export function wsDir(wsId) {
+function wsDir(wsId) {
   return path.join(WS_ROOT, safeId(wsId))
 }
 
@@ -174,7 +194,7 @@ export function readMeta(wsId) {
   }
 }
 
-export function resolveInWs(wsId, rel) {
+function resolveInWs(wsId, rel) {
   const base = wsDir(wsId)
   const p = path.resolve(base, String(rel || '').replace(/^[/\\]+/, ''))
   if (p !== base && !p.startsWith(base + path.sep)) throw new Error('Ścieżka poza workspace')
@@ -282,7 +302,7 @@ export async function ensureContainer(wsId, lang, onProgress) {
     Labels: { [LABEL]: '1', 'devlingo.ws': wsId },
     Env: ['TERM=xterm-256color', 'HOME=/root'],
     HostConfig: {
-      Binds: [`${wsDir(wsId)}:/workspace`],
+      Mounts: [{ Type: 'bind', Source: wsDir(wsId), Target: '/workspace' }],
       NetworkMode: 'none',
       Memory: 1024 * 1024 * 1024,
       NanoCpus: 2_000_000_000,

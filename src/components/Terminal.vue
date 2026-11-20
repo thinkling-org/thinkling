@@ -6,8 +6,6 @@ import '@xterm/xterm/css/xterm.css'
 import { terminalUrl } from '../lib/sandbox.js'
 
 const props = defineProps({ wsId: { type: String, required: true }, active: { type: Boolean, default: true } })
-const emit = defineEmits(['exit'])
-
 const el = ref(null)
 const status = ref('connecting') // connecting | open | closed
 let term = null
@@ -30,7 +28,6 @@ function connect() {
   sock.onclose = () => {
     status.value = 'closed'
     term?.write('\r\n\x1b[90m[sesja zakończona — kliknij „Połącz ponownie”]\x1b[0m\r\n')
-    emit('exit')
   }
 }
 
@@ -101,7 +98,7 @@ onBeforeUnmount(() => {
   term?.dispose()
 })
 
-defineExpose({ run, reconnect: () => (term.clear(), connect()), focus: () => term?.focus() })
+defineExpose({ run })
 </script>
 
 <template>

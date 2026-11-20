@@ -9,7 +9,7 @@ const DB_FILE = path.join(DATA_DIR, 'db.json')
 
 fs.mkdirSync(DATA_DIR, { recursive: true })
 
-export const DEFAULT_SETTINGS = { provider: 'claude', model: '', claudeBin: '', codexBin: '' }
+const DEFAULT_SETTINGS = { provider: 'claude', model: '', effort: '', claudeBin: '', codexBin: '' }
 
 let cache = null
 

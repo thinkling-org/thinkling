@@ -1,5 +1,5 @@
 // Klient API piaskownicy (kontenery Docker na lokalnym serwerze).
-import { getJSON, readNdjson } from './api.js'
+import { getJSON, requestStream } from './api.js'
 
 async function post(url, body, method = 'POST') {
   const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body || {}) })
@@ -8,10 +8,8 @@ async function post(url, body, method = 'POST') {
   return data
 }
 
-async function ndjson(url, body, onProgress) {
-  const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body || {}) })
-  if (!res.ok || !res.body) throw new Error(`${res.status}`)
-  return readNdjson(res, (ev) => onProgress?.(ev.message))
+function ndjson(url, body, onProgress) {
+  return requestStream(url, body, { onProgress: (ev) => onProgress?.(ev.message) })
 }
 
 const enc = encodeURIComponent
@@ -22,7 +20,6 @@ export const sandbox = {
   files: (ws) => getJSON(`/api/sandbox/${ws}/files`),
   read: (ws, path) => getJSON(`/api/sandbox/${ws}/file?path=${enc(path)}`),
   write: (ws, path, content) => post(`/api/sandbox/${ws}/file`, { path, content }, 'PUT'),
-  remove: (ws, path) => fetch(`/api/sandbox/${ws}/file?path=${enc(path)}`, { method: 'DELETE' }),
   run: (ws, cmd, { parse = false } = {}) => post(`/api/sandbox/${ws}/run`, { cmd, parse }),
   verify: ({ language, files, testCommand }, onProgress) => ndjson('/api/sandbox/verify', { language, files, testCommand }, onProgress),
 }

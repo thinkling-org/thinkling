@@ -24,8 +24,17 @@ function ac() {
     comp.ratio.value = 4
     master.connect(comp).connect(ctx.destination)
   }
-  if (ctx.state === 'suspended') ctx.resume()
+  if (ctx.state === 'suspended' || ctx.state === 'interrupted') ctx.resume().catch(() => {})
   return ctx
+}
+
+export function prepareSfx() {
+  if (!enabled) return
+  try {
+    ac()
+  } catch {
+    /* audio nie jest krytyczne */
+  }
 }
 
 /** Pojedynczy ton z obwiednią i opcjonalnym glissando. */
@@ -146,5 +155,3 @@ export function play(name, ...args) {
 export function playStep(i) {
   play('pop', semis(PENTA[Math.min(i, PENTA.length - 1)]))
 }
-
-export const SFX_NAMES = Object.keys(SOUNDS)

@@ -18,7 +18,7 @@ const style = ref(app.profile?.style || 'code')
 const TEMPLATES = [
   {
     label: 'Przygotowanie do rozmowy',
-    text: 'Jestem senior developerem (frontend, React + TypeScript). Za kilka tygodni mam rozmowy rekrutacyjne i chcę odświeżyć fundamenty JS: event loop, closures, hoisting, prototypy, this, typowe pytania "co wypisze ten kod". Do tego zadania algorytmiczne na poziomie medium.',
+    text: 'Pracuję jako senior frontend developer z Reactem i TypeScriptem. Przed rozmowami chcę odświeżyć event loop, domknięcia, hoisting i this. Pokaż mi te mechanizmy na przykładach z pracy frontendowej, a po przećwiczeniu tematu daj mi pytanie w stylu rozmowy.',
   },
   {
     label: 'Nowy język: Go / Rust',
@@ -74,7 +74,7 @@ function start() {
           </div>
           <h1>Czego chcesz się nauczyć?</h1>
           <p class="lead">
-            Opisz swoją sytuację tak, jakbyś pisał do Claude'a: na jakim jesteś poziomie, czego ci brakuje, jaki masz cel i ile czasu dziennie.
+            Napisz, co chcesz umieć, z jakimi technologiami pracujesz i które pojęcia chcesz poznać lub odświeżyć.
           </p>
         </div>
 
@@ -131,7 +131,7 @@ function start() {
               Nie widzę CLI {{ app.settings.provider === 'codex' ? 'Codex' : 'Claude Code' }}.
               <RouterLink to="/settings">Skonfiguruj w Ustawieniach</RouterLink>.
             </template>
-            <template v-else>Claude przeanalizuje opis, oceni poziom i ułoży plan z pytaniami, fiszkami i zadaniami w edytorze.</template>
+            <template v-else>Na podstawie opisu powstanie plan z przykładami, ćwiczeniami i powtórkami.</template>
           </span>
           <button class="btn btn-primary btn-lg" :disabled="!ready || running" @click="start">
             <Icon name="sparkle" :size="20" :stroke="2.4" />

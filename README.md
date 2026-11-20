@@ -14,22 +14,90 @@ Lokalna aplikacja do szybkiej nauki programowania w stylu Duolingo. Działa na T
 
 ## Wymagania
 
-- Node 20+
+- Node 20.3+
 - Zalogowane **Claude Code** (`claude`) **lub** **Codex** (`codex`). Aplikacja sama szuka binarki w PATH,
   `~/.local/bin`, rozszerzeniach VS Code/Cursor i w instalacji Codex. Ścieżkę możesz też podać w Ustawieniach.
+- Opcjonalnie: **Docker** (piaskownica z terminalem i głos lektora) oraz **Python 3.10–3.13** (dyktowanie).
 
 ## Uruchomienie
 
 ```bash
 npm install
+npm start          # build + serwer → http://localhost:3141
+```
+
+albo w trybie deweloperskim:
+
+```bash
 npm run dev        # API na :3141 + Vite na http://localhost:5173
 ```
 
-albo w wersji produkcyjnej, na jednym porcie:
+### Kreator pierwszego uruchomienia
+
+Przy pierwszym otwarciu aplikacja prowadzi przez konfigurację (`/setup`, później dostępna w **Ustawienia → Kreator konfiguracji**):
+
+1. **Silnik AI**: wykrywa Claude Code i Codex, sprawdza zalogowanie (`claude auth status`, `codex login status`) i podaje
+   polecenia instalacji lub logowania. Tu wybierasz model i **effort** (wysiłek rozumowania).
+2. **Docker**: sprawdza, czy Docker jest zainstalowany, uruchomiony i dostępny bez sudo. Może go zainstalować
+   (Linux: `get.docker.com` przez `pkexec`, macOS: Homebrew, Windows: winget) albo uruchomić. Opcjonalnie od razu buduje
+   obrazy wybranych języków.
+3. **Głos lektora**: na żądanie pobiera wagi ZONOS3-Mini (ok. 1,7 GB) do `data/zonos/models`, buduje obraz
+   `devlingo/zonos:1` z [server/zonos/Dockerfile](server/zonos/Dockerfile) i uruchamia kontener `devlingo-zonos`
+   (restart razem z Dockerem, port `127.0.0.1:1919`).
+4. **Dyktowanie**: tworzy `data/whisper/venv`, instaluje Faster Whisper i pobiera model `small`.
+
+Instalacje działają w tle po stronie serwera, więc odświeżenie strony ich nie przerywa. Pominięte funkcje są ukryte
+w interfejsie (np. przycisk **Przeczytaj** pojawia się dopiero, gdy serwer głosu odpowiada).
+
+### Model i effort
+
+W **Ustawieniach** każdy dostawca ma własny wybór modelu i effortu (zapamiętywany przy przełączaniu Claude ↔ Codex):
+
+- **Claude Code**: aliasy `fable`, `opus`, `sonnet`, `haiku` (albo pełny identyfikator) i `--effort low…max`.
+- **Codex**: lista modeli pobierana z `codex debug models` wraz z obsługiwanymi poziomami, przekazywana jako
+  `-m <model> -c model_reasoning_effort=<poziom>`.
+
+## Czytanie kart wiedzy
+
+Przycisk **Przeczytaj** odtwarza po polsku tytuł i treść karty, wraz z pułapką
+i punktami do zapamiętania. Bloki kodu są pomijane, a nazwy w tekście, np.
+`console.log`, są odczytywane jako osobne słowa.
+Odtwarzacz umożliwia pauzę, przewijanie i powrót do początku. Ostatnie nagrania
+są dostępne ponownie w tej samej sesji aplikacji.
+Lokalny wariant `backbone-ptq-edit.gguf` obsługuje natywne tokeny pauzy, więc DevLingo
+może generować po kilka zdań naraz. Ze starszym wariantem aplikacja dokłada pauzy
+podczas składania nagrania.
+W **Ustawieniach → Projektowanie głosu** można wylosować syntetyczny głos,
+wyregulować jego cechy, odsłuchać własny tekst i zapisać projekt jako głos lekcji.
+Projektowanie używa lokalnego pakietu głosów Zyphry i profili z `steer.gguf`.
+
+DevLingo domyślnie łączy się z `http://127.0.0.1:1919` przez API `POST /v2/generate`.
+Lokalna konfiguracja Docker używa kontenera `devlingo-zonos` z automatycznym restartem.
+Wagi [Zyphra/ZONOS3-Mini](https://huggingface.co/Zyphra/ZONOS3-Mini) są w `data/zonos/models`.
+Na innym stanowisku serwer można uruchomić według [instrukcji Zyphry](https://github.com/Zyphra/ZONOS3-Mini#quick-start).
+Adres serwera można ustawić przez `ZONOS_URL`:
 
 ```bash
-npm start          # build + serwer → http://localhost:3141
+ZONOS_URL=http://127.0.0.1:1919 npm run dev
 ```
+
+Domyślnie wszystkie fragmenty używają jednego głosu utworzonego z polskiej próbki
+ZONOS3-Mini. Lokalna konfiguracja przechowuje go w `data/zonos/voices/pl.npy`
+i stosuje polski profil wymowy z `steer.gguf`. Głos można
+zmienić przez `ZONOS_EMBEDDING` (ścieżka do pliku `.npy`) albo `ZONOS_VOICE`
+(identyfikator z `GET /v2/speakers`).
+
+## Dyktowanie
+
+W aktywnym polu tekstowym kliknij mikrofon lub użyj **Alt+Shift+M**. Drugie
+kliknięcie kończy nagrywanie i wstawia rozpoznany polski tekst w miejscu kursora.
+DevLingo przetwarza nagranie lokalnie przez Faster Whisper (model `small`, CPU int8).
+
+Instalacja lokalna używa `data/whisper/venv/bin/python` i wag w `data/whisper/model`.
+Na innym komputerze zainstaluj pakiety z `server/whisper-requirements.txt`
+w środowisku wirtualnym, pobierz
+[model small](https://huggingface.co/Systran/faster-whisper-small) i ustaw
+`WHISPER_PYTHON` oraz `WHISPER_MODEL`, jeśli używasz innych ścieżek.
 
 ## Jak to działa
 
