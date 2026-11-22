@@ -1,141 +1,157 @@
 # Codenoms
 
-[codenoms.org](https://codenoms.org)
+[codenoms.org](https://codenoms.org) · **English** · [Polski](README.pl.md)
 
-Lokalna aplikacja do szybkiej nauki programowania krótkimi lekcjami z grywalizacją. Działa na Twojej
-**subskrypcji Claude (Claude Code CLI) albo ChatGPT (Codex CLI)**, więc nie płacisz za tokeny API.
+A local app for learning to code fast through short, gamified lessons. It runs on your existing
+**Claude (Claude Code CLI) or ChatGPT (Codex CLI) subscription**, so you don't need an API key.
 
-- Opisujesz swoją sytuację, a model układa plan: moduły, lekcje i ocenę poziomu (plan pojawia się na żywo w trakcie generowania).
-- Ścieżka nauki: kolejne lekcje, XP, seria dni, cel dzienny i wynik 0–1000.
-- Ćwiczenia:
-  - **pytania otwarte**: model ocenia odpowiedź (0–10) i wypisuje, co jest dobrze, a co źle,
-  - **„co wypisze ten kod?”**: quiz z wyjaśnieniem i przyciskiem „wyjaśnij krok po kroku”,
-  - **zadania w edytorze Monaco** (to samo co w VS Code): testy JS/TS uruchamiane w Web Workerze, a review modelu pojawia się jako komentarze przypięte do linii, z przyciskiem „Zastosuj poprawkę”.
-- **Fiszki** z powtórkami rozłożonymi w czasie. Twoje błędy automatycznie trafiają do talii.
-- „Dopytaj Claude”: czat w kontekście bieżącego ćwiczenia.
+> **Language note:** the app interface, lessons and voice features are currently in **Polish**.
 
-## Wymagania
+- Describe your situation and the model builds a plan: modules, lessons and a skill assessment (the plan streams in live as it is generated).
+- A learning path with lessons, XP, daily streaks, a daily goal and a 0–1000 score.
+- Exercises:
+  - **open questions**: the model grades your answer (0–10) and explains what was right and what was wrong,
+  - **"what does this code print?"**: a quiz with an explanation and a "walk me through it step by step" button,
+  - **coding tasks in the Monaco editor** (the editor behind VS Code): JS/TS tests run in a Web Worker, and the model's review shows up as comments pinned to lines, with an "apply fix" button.
+- **Flashcards** with spaced repetition. Your mistakes are added to the deck automatically.
+- "Ask Claude": a chat about the current exercise.
+
+## Requirements
 
 - Node 20.3+
-- Zalogowane **Claude Code** (`claude`) **lub** **Codex** (`codex`). Aplikacja sama szuka binarki w PATH,
-  `~/.local/bin`, rozszerzeniach VS Code/Cursor i w instalacji Codex. Ścieżkę możesz też podać w Ustawieniach.
-- Opcjonalnie: **Docker** (piaskownica z terminalem i głos lektora) oraz **Python 3.10–3.13** (dyktowanie).
+- **Claude Code** (`claude`) **or** **Codex** (`codex`), logged in. The app looks for the binary in `PATH`,
+  `~/.local/bin`, VS Code/Cursor extensions and the Codex install directory. You can also set the path in Settings.
+- Optional: **Docker** (sandbox with a terminal, and the voice reader) and **Python 3.10–3.13** (dictation).
 
-## Uruchomienie
+## Getting started
 
 ```bash
 npm install
-npm start          # build + serwer → http://localhost:3141
+npm start          # build + server → http://localhost:3141
 ```
 
-albo w trybie deweloperskim:
+or in development mode:
 
 ```bash
-npm run dev        # API na :3141 + Vite na http://localhost:5173
+npm run dev        # API on :3141 + Vite on http://localhost:5173
 ```
 
-### Kreator pierwszego uruchomienia
+### First-run wizard
 
-Przy pierwszym otwarciu aplikacja prowadzi przez konfigurację (`/setup`, później dostępna w **Ustawienia → Kreator konfiguracji**):
+On first launch the app walks you through setup (`/setup`, later available under **Settings → Setup wizard**):
 
-1. **Silnik AI**: wykrywa Claude Code i Codex, sprawdza zalogowanie (`claude auth status`, `codex login status`) i podaje
-   polecenia instalacji lub logowania. Tu wybierasz model i **effort** (wysiłek rozumowania).
-2. **Docker**: sprawdza, czy Docker jest zainstalowany, uruchomiony i dostępny bez sudo. Może go zainstalować
-   (Linux: `get.docker.com` przez `pkexec`, macOS: Homebrew, Windows: winget) albo uruchomić. Opcjonalnie od razu buduje
-   obrazy wybranych języków.
-3. **Głos lektora**: na żądanie pobiera wagi ZONOS3-Mini (ok. 1,7 GB) do `data/zonos/models`, buduje obraz
-   `codenoms/zonos:1` z [server/zonos/Dockerfile](server/zonos/Dockerfile) i uruchamia kontener `codenoms-zonos`
-   (restart razem z Dockerem, port `127.0.0.1:1919`).
-4. **Dyktowanie**: tworzy `data/whisper/venv`, instaluje Faster Whisper i pobiera model `small`.
+1. **AI engine**: detects Claude Code and Codex, checks that you are logged in (`claude auth status`, `codex login status`)
+   and shows install or login commands if needed. This is where you pick the model and **effort** (reasoning effort).
+2. **Docker**: checks that Docker is installed, running and usable without sudo. It can install Docker
+   (Linux: `get.docker.com` via `pkexec`, macOS: Homebrew, Windows: winget) or start it, and can prebuild images
+   for the languages you choose.
+3. **Voice reader**: on request, downloads the ZONOS3-Mini weights (about 1.7 GB) to `data/zonos/models`, builds the
+   `codenoms/zonos:1` image from [server/zonos/Dockerfile](server/zonos/Dockerfile) and starts the `codenoms-zonos`
+   container (restarts with Docker, port `127.0.0.1:1919`).
+4. **Dictation**: creates `data/whisper/venv`, installs Faster Whisper and downloads the `small` model.
 
-Instalacje działają w tle po stronie serwera, więc odświeżenie strony ich nie przerywa. Pominięte funkcje są ukryte
-w interfejsie (np. przycisk **Przeczytaj** pojawia się dopiero, gdy serwer głosu odpowiada).
+Installs run in the background on the server, so reloading the page doesn't interrupt them. Skipped features are
+hidden in the UI (for example, the **Read aloud** (*Przeczytaj*) button only appears once the voice server responds).
 
-### Model i effort
+### Model and effort
 
-W **Ustawieniach** każdy dostawca ma własny wybór modelu i effortu (zapamiętywany przy przełączaniu Claude ↔ Codex):
+In **Settings**, each provider has its own model and effort choice (remembered when you switch between Claude and Codex):
 
-- **Claude Code**: aliasy `fable`, `opus`, `sonnet`, `haiku` (albo pełny identyfikator) i `--effort low…max`.
-- **Codex**: lista modeli pobierana z `codex debug models` wraz z obsługiwanymi poziomami, przekazywana jako
-  `-m <model> -c model_reasoning_effort=<poziom>`.
+- **Claude Code**: the aliases `fable`, `opus`, `sonnet`, `haiku` (or a full model ID) and `--effort low…max`.
+- **Codex**: the model list comes from `codex debug models` together with the supported levels, and is passed as
+  `-m <model> -c model_reasoning_effort=<level>`.
 
-## Czytanie kart wiedzy
+## Reading lesson cards aloud
 
-Przycisk **Przeczytaj** odtwarza po polsku tytuł i treść karty, wraz z pułapką
-i punktami do zapamiętania. Bloki kodu są pomijane, a nazwy w tekście, np.
-`console.log`, są odczytywane jako osobne słowa.
-Odtwarzacz umożliwia pauzę, przewijanie i powrót do początku. Ostatnie nagrania
-są dostępne ponownie w tej samej sesji aplikacji.
-Lokalny wariant `backbone-ptq-edit.gguf` obsługuje natywne tokeny pauzy, więc Codenoms
-może generować po kilka zdań naraz. Ze starszym wariantem aplikacja dokłada pauzy
-podczas składania nagrania.
-W **Ustawieniach → Projektowanie głosu** można wylosować syntetyczny głos,
-wyregulować jego cechy, odsłuchać własny tekst i zapisać projekt jako głos lekcji.
-Projektowanie używa lokalnego pakietu głosów Zyphry i profili z `steer.gguf`.
+The **Read aloud** button reads the card's title and content in Polish, including the pitfall and the key
+takeaways. Code blocks are skipped, and identifiers in the text, such as `console.log`, are read as separate words.
+The player supports pause, seeking and restarting. Recent recordings can be replayed during the same app session.
 
-Codenoms domyślnie łączy się z `http://127.0.0.1:1919` przez API `POST /v2/generate`.
-Lokalna konfiguracja Docker używa kontenera `codenoms-zonos` z automatycznym restartem.
-Wagi [Zyphra/ZONOS3-Mini](https://huggingface.co/Zyphra/ZONOS3-Mini) są w `data/zonos/models`.
-Na innym stanowisku serwer można uruchomić według [instrukcji Zyphry](https://github.com/Zyphra/ZONOS3-Mini#quick-start).
-Adres serwera można ustawić przez `ZONOS_URL`:
+The local `backbone-ptq-edit.gguf` variant supports native pause tokens, so Codenoms can generate several sentences
+at once. With the older variant, the app inserts pauses when stitching the recording together.
+
+Under **Settings → Voice design** (*Ustawienia → Projektowanie głosu*) you can randomize a synthetic voice, adjust its traits, listen to your own sample
+text and save the design as the lesson voice. Voice design uses Zyphra's local voice pack and the profiles in
+`steer.gguf`.
+
+All voices are synthetic and generated from the ZONOS3-Mini voice pack that the wizard downloads. Without a saved
+design, lessons use the default voice design with a Polish accent. The repository contains no voice recordings or
+voice embeddings.
+
+By default Codenoms talks to `http://127.0.0.1:1919` using the `POST /v2/generate` API. The local Docker setup uses
+the `codenoms-zonos` container with automatic restart. The
+[Zyphra/ZONOS3-Mini](https://huggingface.co/Zyphra/ZONOS3-Mini) weights live in `data/zonos/models`.
+To run the server elsewhere, follow [Zyphra's instructions](https://github.com/Zyphra/ZONOS3-Mini#quick-start) and set
+the address with `ZONOS_URL`:
 
 ```bash
 ZONOS_URL=http://127.0.0.1:1919 npm run dev
 ```
 
-Wszystkie głosy są syntetyczne: powstają z pakietu głosów ZONOS3-Mini pobieranego przez kreator.
-Bez zapisanego projektu lekcje czyta domyślny projekt głosu z polskim akcentem. Repozytorium nie zawiera
-żadnych nagrań ani osadzeń głosu.
+## Dictation
 
-## Dyktowanie
+In any focused text field, click the microphone or press **Alt+Shift+M**. Click again to stop recording, and the
+recognized Polish text is inserted at the cursor. Codenoms transcribes locally with Faster Whisper
+(`small` model, CPU int8).
 
-W aktywnym polu tekstowym kliknij mikrofon lub użyj **Alt+Shift+M**. Drugie
-kliknięcie kończy nagrywanie i wstawia rozpoznany polski tekst w miejscu kursora.
-Codenoms przetwarza nagranie lokalnie przez Faster Whisper (model `small`, CPU int8).
+The local install uses `data/whisper/venv/bin/python` and the weights in `data/whisper/model`. On another machine,
+install the packages from `server/whisper-requirements.txt` into a virtual environment, download the
+[small model](https://huggingface.co/Systran/faster-whisper-small) and set `WHISPER_PYTHON` and `WHISPER_MODEL`
+if you use different paths.
 
-Instalacja lokalna używa `data/whisper/venv/bin/python` i wag w `data/whisper/model`.
-Na innym komputerze zainstaluj pakiety z `server/whisper-requirements.txt`
-w środowisku wirtualnym, pobierz
-[model small](https://huggingface.co/Systran/faster-whisper-small) i ustaw
-`WHISPER_PYTHON` oraz `WHISPER_MODEL`, jeśli używasz innych ścieżek.
-
-## Jak to działa
+## How it works
 
 ```
 Vue 3 (Vite, Pinia, Monaco)  ──fetch NDJSON──▶  Express :3141  ──spawn──▶  claude -p … --json-schema
                                                    │                       codex exec … --output-schema
-                                                   └── data/db.json (plan, postęp, fiszki, ustawienia)
+                                                   └── data/db.json (plan, progress, flashcards, settings)
 ```
 
-- Każde zapytanie to osobny proces CLI z wyłączonymi narzędziami (`--tools ""`), bez zapisywania sesji,
-  uruchamiany w katalogu tymczasowym. Wynik ma ustrukturyzowaną postać i jest walidowany schematem JSON.
-- Proces CLI dostaje środowisko bez `ANTHROPIC_API_KEY` i `OPENAI_API_KEY`, więc zawsze korzysta z logowania subskrypcją.
-- Prompty i schematy są w [server/prompts.js](server/prompts.js), a uruchamianie CLI w [server/providers.js](server/providers.js).
-- Testy zadań JS/TS działają w przeglądarce ([src/lib/runner.worker.js](src/lib/runner.worker.js)): `test`, `expect`, `mockFn`, `sleep`.
-  TypeScript jest transpilowany przez worker TS z Monaco. Rozwiązania w innych językach ocenia sam model, bez uruchamiania kodu.
+- Every request is a separate CLI process with tools disabled (`--tools ""`), no saved session, running in a
+  temporary directory. The output is structured and validated against a JSON schema.
+- The CLI process runs without `ANTHROPIC_API_KEY` and `OPENAI_API_KEY` in its environment, so it always uses your
+  subscription login.
+- Prompts and schemas live in [server/prompts.js](server/prompts.js), and CLI execution in [server/providers.js](server/providers.js).
+- JS/TS task tests run in the browser ([src/lib/runner.worker.js](src/lib/runner.worker.js)) with `test`, `expect`,
+  `mockFn` and `sleep`. TypeScript is transpiled by Monaco's TS worker. Solutions in other languages are graded by the
+  model alone, without running the code (unless Docker is available, see below).
 
-## Piaskownica (Docker): prawdziwy edytor i terminal
+## Sandbox (Docker): a real editor and terminal
 
-Gdy działa Docker, zadania w PHP, C++, Pythonie, Go, Ruście, Javie, C#, Ruby i SQL (a opcjonalnie też JS/TS) wykonują się w prawdziwych kontenerach. Kod jest w [server/sandbox.js](server/sandbox.js).
+When Docker is running, tasks in PHP, C++, Python, Go, Rust, Java, C#, Ruby and SQL (and optionally JS/TS) run in real
+containers. The code is in [server/sandbox.js](server/sandbox.js).
 
-- **Workspace:** każde zadanie ma własny katalog `data/workspaces/<id>`, podmontowany w kontenerze jako `/workspace`. Edytor Monaco z drzewem plików zapisuje zmiany prosto na dysk.
-- **Terminal:** prawdziwy `bash` w kontenerze (xterm.js połączony przez WebSocket).
-- **Izolacja i limity:** kontener nie ma sieci, ma limit 1 GB RAM, 2 CPU i 512 procesów, a bezczynny jest usuwany po 20 min. Obraz dla danego języka buduje się raz, przy pierwszym użyciu (`codenoms/<język>:1`).
-- **Testy:** to mały harness w danym języku. Wypisuje `PASS nazwa` albo `FAIL nazwa :: opis` i kończy się kodem wyjścia 1, gdy coś nie przeszło. Rozumiany jest też format `go test -v`.
-- **Weryfikacja zadań:** przy generowaniu lekcji wzorcowe rozwiązanie musi przejść wszystkie testy, a szablon startowy musi któryś oblać. Działa to w osobnym kontenerze weryfikacyjnym, a gdy coś się nie zgadza, model dostaje jedną prośbę o poprawkę.
-- **Piaskownica w menu** to wolny edytor z terminalem w wybranym języku, bez zadania.
+- **Workspace:** each task gets its own `data/workspaces/<id>` directory, mounted in the container as `/workspace`.
+  The Monaco editor with a file tree saves changes straight to disk.
+- **Terminal:** a real `bash` inside the container (xterm.js over WebSocket).
+- **Isolation and limits:** containers have no network, 1 GB of RAM, 2 CPUs and a 512-process limit, and idle ones
+  are removed after 20 minutes. Each language image is built once, on first use (`codenoms/<language>:1`).
+- **Tests:** a small harness per language prints `PASS name` or `FAIL name :: description` and exits with code 1 when
+  something fails. The `go test -v` format is understood too.
+- **Task verification:** when a lesson is generated, the reference solution must pass all tests and the starter
+  template must fail at least one. This runs in a separate verification container, and if something doesn't match,
+  the model gets one request to fix it.
+- **Sandbox in the menu** is a free-form editor with a terminal in the language of your choice, with no task.
 
-Bez Dockera zadania w tych językach ocenia tylko model, a JS/TS dalej działa w Web Workerze w przeglądarce.
+Without Docker, tasks in these languages are graded by the model only, while JS/TS still runs in a Web Worker in the
+browser.
 
-Skróty klawiszowe: `Enter` sprawdza odpowiedź albo przechodzi dalej, `1–4` wybiera odpowiedź, a `Ctrl+Enter` działa w polu tekstowym i w edytorze.
-W fiszkach `Spacja` odsłania odpowiedź, a `1–4` ją ocenia.
+Keyboard shortcuts: `Enter` checks the answer or moves on, `1–4` picks an answer, and `Ctrl+Enter` works in text fields
+and the editor. In flashcards, `Space` reveals the answer and `1–4` rates it.
 
-## Autor
+## Security
 
-Codenoms stworzył [Konrad Ciurkiewicz](https://github.com/konradciurkiewicz). Zgłoszenia błędów, pomysły i pull requesty są mile widziane.
+Codenoms is meant to run on your own machine only. The server listens on `127.0.0.1` and rejects requests from
+other origins. Don't expose it to a network (for example with `HOST=0.0.0.0`): anyone who can reach it gets a
+terminal in the sandbox and can change which binary the app runs.
 
-## Licencja
+## Author
 
-Codenoms jest darmowe i otwarte, na licencji [Apache License 2.0](LICENSE). Możesz go używać, zmieniać i rozpowszechniać,
-także komercyjnie, pod warunkiem zachowania informacji o prawach autorskich i licencji (zob. [NOTICE](NOTICE)).
-Licencja nie obejmuje praw do nazwy ani logo projektu.
+Codenoms was created by [Konrad Ciurkiewicz](https://github.com/konradciurkiewicz). Bug reports, ideas and pull
+requests are welcome.
+
+## License
+
+Codenoms is free and open source under the [Apache License 2.0](LICENSE). You may use, modify and distribute it,
+including commercially, as long as you keep the copyright and license notices (see [NOTICE](NOTICE)).
+The license does not grant rights to the project's name or logo.
