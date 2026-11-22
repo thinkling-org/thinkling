@@ -126,8 +126,9 @@ containers. The code is in [server/sandbox.js](server/sandbox.js).
 - **Workspace:** each task gets its own `data/workspaces/<id>` directory, mounted in the container as `/workspace`.
   The Monaco editor with a file tree saves changes straight to disk.
 - **Terminal:** a real `bash` inside the container (xterm.js over WebSocket).
-- **Isolation and limits:** containers have no network, 1 GB of RAM, 2 CPUs and a 512-process limit, and idle ones
-  are removed after 20 minutes. Each language image is built once, on first use (`codenoms/<language>:1`).
+- **Isolation and limits:** code runs as a non-root user (on Linux, with your own UID), with all Linux capabilities
+  dropped and `no-new-privileges` set. Containers have no network, 1 GB of RAM (no swap), 2 CPUs and a 512-process
+  limit, and idle ones are removed after 20 minutes. Each language image is built once, on first use (`codenoms/<language>:2`).
 - **Tests:** a small harness per language prints `PASS name` or `FAIL name :: description` and exits with code 1 when
   something fails. The `go test -v` format is understood too.
 - **Task verification:** when a lesson is generated, the reference solution must pass all tests and the starter

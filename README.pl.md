@@ -122,7 +122,7 @@ Gdy działa Docker, zadania w PHP, C++, Pythonie, Go, Ruście, Javie, C#, Ruby i
 
 - **Workspace:** każde zadanie ma własny katalog `data/workspaces/<id>`, podmontowany w kontenerze jako `/workspace`. Edytor Monaco z drzewem plików zapisuje zmiany prosto na dysk.
 - **Terminal:** prawdziwy `bash` w kontenerze (xterm.js połączony przez WebSocket).
-- **Izolacja i limity:** kontener nie ma sieci, ma limit 1 GB RAM, 2 CPU i 512 procesów, a bezczynny jest usuwany po 20 min. Obraz dla danego języka buduje się raz, przy pierwszym użyciu (`codenoms/<język>:1`).
+- **Izolacja i limity:** kod działa jako zwykły użytkownik, nie root (na Linuksie z Twoim UID), bez żadnych uprawnień jądra (capabilities) i z `no-new-privileges`. Kontener nie ma sieci, ma limit 1 GB RAM (bez swapu), 2 CPU i 512 procesów, a bezczynny jest usuwany po 20 min. Obraz dla danego języka buduje się raz, przy pierwszym użyciu (`codenoms/<język>:2`).
 - **Testy:** to mały harness w danym języku. Wypisuje `PASS nazwa` albo `FAIL nazwa :: opis` i kończy się kodem wyjścia 1, gdy coś nie przeszło. Rozumiany jest też format `go test -v`.
 - **Weryfikacja zadań:** przy generowaniu lekcji wzorcowe rozwiązanie musi przejść wszystkie testy, a szablon startowy musi któryś oblać. Działa to w osobnym kontenerze weryfikacyjnym, a gdy coś się nie zgadza, model dostaje jedną prośbę o poprawkę.
 - **Piaskownica w menu** to wolny edytor z terminalem w wybranym języku, bez zadania.

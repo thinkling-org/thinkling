@@ -29,7 +29,23 @@ export async function reconnectDocker() {
 const LABEL = 'codenoms'
 const IDLE_MS = 20 * 60_000
 
-const COMMON = `RUN mkdir -p /workspace
+// Kod w piaskownicy nie działa jako root. Na Linuksie kontener dostaje UID/GID użytkownika,
+// który uruchomił serwer, więc pliki w workspace mają właściwego właściciela na dysku.
+// Docker Desktop (Windows, macOS) sam mapuje uprawnienia podmontowanych katalogów.
+const hostUid = process.platform === 'linux' ? process.getuid?.() : undefined
+const SANDBOX_UID = hostUid || 1000
+const SANDBOX_GID = hostUid ? process.getgid() : 1000
+export const SANDBOX_USER = `${SANDBOX_UID}:${SANDBOX_GID}`
+// Katalog domowy w /tmp, który jest zapisywalny dla wszystkich.
+const SANDBOX_HOME = '/tmp'
+
+// Obrazy budują się lokalnie, więc od razu dostają wpis w /etc/passwd dla UID piaskownicy
+// (bez niego m.in. .NET nie tworzy nazwanych mutexów). Istniejący wpis (np. „node”) zostaje.
+const COMMON = `ARG SANDBOX_UID=1000
+ARG SANDBOX_GID=1000
+RUN grep -q "^[^:]*:[^:]*:\${SANDBOX_GID}:" /etc/group || echo "codenoms:x:\${SANDBOX_GID}:" >> /etc/group; \\
+    grep -q "^[^:]*:[^:]*:\${SANDBOX_UID}:" /etc/passwd || echo "codenoms:x:\${SANDBOX_UID}:\${SANDBOX_GID}::${SANDBOX_HOME}:/bin/bash" >> /etc/passwd
+RUN mkdir -p /workspace
 WORKDIR /workspace
 ENV TERM=xterm-256color LANG=C.UTF-8 PS1='\\[\\e[1;35m\\]codenoms\\[\\e[0m\\]:\\[\\e[1;34m\\]\\w\\[\\e[0m\\]$ '
 `
@@ -38,67 +54,69 @@ ENV TERM=xterm-256color LANG=C.UTF-8 PS1='\\[\\e[1;35m\\]codenoms\\[\\e[0m\\]:\\
 export const ENVS = {
   php: {
     label: 'PHP 8.3',
-    image: 'codenoms/php:1',
+    image: 'codenoms/php:2',
     dockerfile: `FROM php:8.3-cli-alpine\nRUN apk add --no-cache bash\nCOPY --from=composer:2 /usr/bin/composer /usr/bin/composer\n${COMMON}`,
     testExample: 'php tests/run.php',
   },
   cpp: {
     label: 'C++20 (g++)',
-    image: 'codenoms/cpp:1',
+    image: 'codenoms/cpp:2',
     dockerfile: `FROM alpine:3.20\nRUN apk add --no-cache bash g++ make cmake gdb\n${COMMON}`,
     testExample: 'g++ -std=c++20 -Wall -O0 -o /tmp/tests tests/tests.cpp && /tmp/tests',
   },
   python: {
     label: 'Python 3.12',
-    image: 'codenoms/python:1',
+    image: 'codenoms/python:2',
     dockerfile: `FROM python:3.12-alpine\nRUN apk add --no-cache bash\nENV PYTHONDONTWRITEBYTECODE=1\n${COMMON}`,
     testExample: 'python tests/run.py',
   },
   javascript: {
     label: 'Node 22',
-    image: 'codenoms/node:1',
+    image: 'codenoms/node:2',
     dockerfile: `FROM node:22-alpine\nRUN apk add --no-cache bash && npm i -g tsx typescript\n${COMMON}`,
     testExample: 'node tests/run.js',
   },
   typescript: {
     label: 'Node 22 + TypeScript',
-    image: 'codenoms/node:1',
+    image: 'codenoms/node:2',
     dockerfile: `FROM node:22-alpine\nRUN apk add --no-cache bash && npm i -g tsx typescript\n${COMMON}`,
     testExample: 'tsx tests/run.ts',
   },
   go: {
     label: 'Go 1.23',
-    image: 'codenoms/go:1',
+    image: 'codenoms/go:2',
     dockerfile: `FROM golang:1.23-alpine\nRUN apk add --no-cache bash\nENV GOCACHE=/tmp/gocache GOFLAGS=-mod=mod GOTOOLCHAIN=local\n${COMMON}`,
     testExample: 'go test -v ./...',
   },
   rust: {
     label: 'Rust',
-    image: 'codenoms/rust:1',
+    image: 'codenoms/rust:2',
     dockerfile: `FROM rust:1-alpine\nRUN apk add --no-cache bash musl-dev\n${COMMON}`,
     testExample: 'rustc --edition 2021 -o /tmp/tests tests/main.rs && /tmp/tests',
   },
   java: {
     label: 'Java 21',
-    image: 'codenoms/java:1',
+    image: 'codenoms/java:2',
     dockerfile: `FROM eclipse-temurin:21-jdk-alpine\nRUN apk add --no-cache bash\n${COMMON}`,
     testExample: "javac -d /tmp/out $(find . -name '*.java') && java -cp /tmp/out TestRunner",
   },
   csharp: {
     label: '.NET 8',
-    image: 'codenoms/dotnet:1',
-    dockerfile: `FROM mcr.microsoft.com/dotnet/sdk:8.0-alpine\nRUN apk add --no-cache bash\nENV DOTNET_CLI_TELEMETRY_OPTOUT=1 DOTNET_NOLOGO=1\n${COMMON}`,
+    image: 'codenoms/dotnet:2',
+    // bin/ i obj/ poza workspace: na Docker Desktop (Windows) użytkownik bez roota nie może mapować
+    // (mmap) plików w podmontowanym katalogu o długiej ścieżce, a build .NET tego wymaga.
+    dockerfile: `FROM mcr.microsoft.com/dotnet/sdk:8.0-alpine\nRUN apk add --no-cache bash\nENV DOTNET_CLI_TELEMETRY_OPTOUT=1 DOTNET_NOLOGO=1 UseArtifactsOutput=true ArtifactsPath=/tmp/dotnet-artifacts\n${COMMON}`,
     testExample: 'dotnet run --project tests',
   },
   ruby: {
     label: 'Ruby 3.3',
-    image: 'codenoms/ruby:1',
+    image: 'codenoms/ruby:2',
     dockerfile: `FROM ruby:3.3-alpine\nRUN apk add --no-cache bash\n${COMMON}`,
     testExample: 'ruby tests/run.rb',
   },
   sql: {
     label: 'SQLite',
-    image: 'codenoms/sqlite:1',
+    image: 'codenoms/sqlite:2',
     dockerfile: `FROM alpine:3.20\nRUN apk add --no-cache bash sqlite\n${COMMON}`,
     testExample: 'bash tests/run.sh',
   },
@@ -150,7 +168,11 @@ export function ensureImage(lang, onProgress) {
     const pack = tar.pack()
     pack.entry({ name: 'Dockerfile' }, env.dockerfile)
     pack.finalize()
-    const stream = await docker.buildImage(pack, { t: env.image, labels: { [LABEL]: '1' } })
+    const stream = await docker.buildImage(pack, {
+      t: env.image,
+      labels: { [LABEL]: '1' },
+      buildargs: { SANDBOX_UID: String(SANDBOX_UID), SANDBOX_GID: String(SANDBOX_GID) },
+    })
     await new Promise((resolve, reject) => {
       docker.modem.followProgress(
         stream,
@@ -283,7 +305,8 @@ export async function ensureContainer(wsId, lang, onProgress) {
   const existing = docker.getContainer(name)
   try {
     const info = await existing.inspect()
-    if (info.Config.Image !== env.image) {
+    // Kontenery sprzed utwardzenia (root, pełne uprawnienia) tworzymy od nowa.
+    if (info.Config.Image !== env.image || info.Config.Labels?.['codenoms.hardened'] !== '1') {
       await existing.remove({ force: true })
     } else {
       if (!info.State.Running) await existing.start()
@@ -299,14 +322,18 @@ export async function ensureContainer(wsId, lang, onProgress) {
     Cmd: ['sleep', 'infinity'],
     WorkingDir: '/workspace',
     Tty: false,
-    Labels: { [LABEL]: '1', 'codenoms.ws': wsId },
-    Env: ['TERM=xterm-256color', 'HOME=/root'],
+    Labels: { [LABEL]: '1', 'codenoms.ws': wsId, 'codenoms.hardened': '1' },
+    User: SANDBOX_USER,
+    Env: ['TERM=xterm-256color', `HOME=${SANDBOX_HOME}`],
     HostConfig: {
       Mounts: [{ Type: 'bind', Source: wsDir(wsId), Target: '/workspace' }],
       NetworkMode: 'none',
       Memory: 1024 * 1024 * 1024,
+      MemorySwap: 1024 * 1024 * 1024,
       NanoCpus: 2_000_000_000,
       PidsLimit: 512,
+      CapDrop: ['ALL'],
+      SecurityOpt: ['no-new-privileges:true'],
       AutoRemove: true,
     },
   })
@@ -449,7 +476,8 @@ export async function verifyRun({ language, files, testCommand, onProgress }) {
     fs.writeFileSync(p, f.content ?? '')
   }
   try {
-    const r = await execIn(verifyWs, lang, `cd /workspace/${sub} && ${testCommand}`, { timeoutSec: 90, onProgress })
+    // Osobny katalog artefaktów .NET na każde uruchomienie (kontener weryfikacji jest współdzielony).
+    const r = await execIn(verifyWs, lang, `cd /workspace/${sub} && export ArtifactsPath=/tmp/dotnet-artifacts/${sub} && ${testCommand}`, { timeoutSec: 90, onProgress })
     return parseTestOutput(r.output, r.exitCode)
   } finally {
     fs.rmSync(subDir, { recursive: true, force: true })

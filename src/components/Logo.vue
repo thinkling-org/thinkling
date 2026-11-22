@@ -21,7 +21,7 @@ const maskId = `logo-mask-${useId()}`
       </defs>
       <rect width="120" height="120" fill="#7C5CFF" :mask="`url(#${maskId})`" />
     </svg>
-    <span>codenoms</span>
+    <span class="wordmark"><span class="code">code</span><span class="noms">noms</span></span>
   </RouterLink>
 </template>
 
@@ -32,11 +32,22 @@ const maskId = `logo-mask-${useId()}`
   gap: 10px;
   color: var(--text);
   text-decoration: none;
-  font-weight: 900;
   font-size: 22px;
-  letter-spacing: -0.03em;
 }
 .logo:hover {
   color: var(--text);
+}
+/* „code” krojem kodu, „noms” w kolorze marki: zmiana kroju rozdziela słowo. */
+.wordmark {
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+}
+.code {
+  font-family: var(--mono);
+  font-weight: 500;
+}
+.noms {
+  font-weight: 900;
+  color: #a08bff;
 }
 </style>
