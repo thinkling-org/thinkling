@@ -1,3 +1,5 @@
+<p align="center"><img src="public/logo.svg" width="112" alt="" /></p>
+
 # Codenoms
 
 [codenoms.org](https://codenoms.org) · **English** · [Polski](README.pl.md)

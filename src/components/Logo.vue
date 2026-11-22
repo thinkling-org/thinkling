@@ -1,8 +1,25 @@
+<script setup>
+import { useId } from 'vue'
+
+// Każda instancja potrzebuje własnego id maski (logo bywa na stronie kilka razy).
+const maskId = `logo-mask-${useId()}`
+</script>
+
 <template>
   <RouterLink to="/" class="logo" aria-label="Codenoms — strona główna">
-    <svg aria-hidden="true" width="32" height="32" viewBox="0 0 48 48">
-      <polygon points="24,3 42,13.5 42,34.5 24,45 6,34.5 6,13.5" fill="#7C5CFF" />
-      <path d="M19 19l-5 5 5 5M29 19l5 5-5 5" stroke="#fff" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+    <!-- Znak „Nadgryziony”: heks z ugryzieniem w rogu, oczy jako wycięcia. -->
+    <svg aria-hidden="true" width="36" height="36" viewBox="0 0 120 120">
+      <defs>
+        <mask :id="maskId" maskUnits="userSpaceOnUse" x="0" y="0" width="120" height="120">
+          <rect width="120" height="120" fill="#000" />
+          <polygon points="60,14 100,37 100,83 60,106 20,83 20,37" fill="#fff" stroke="#fff" stroke-width="14" stroke-linejoin="round" />
+          <circle cx="107" cy="44" r="13" fill="#000" />
+          <circle cx="99" cy="25" r="10" fill="#000" />
+          <rect x="38" y="50" width="13" height="22" rx="6.5" fill="#000" />
+          <rect x="63" y="50" width="13" height="22" rx="6.5" fill="#000" />
+        </mask>
+      </defs>
+      <rect width="120" height="120" fill="#7C5CFF" :mask="`url(#${maskId})`" />
     </svg>
     <span>codenoms</span>
   </RouterLink>
@@ -17,7 +34,7 @@
   text-decoration: none;
   font-weight: 900;
   font-size: 22px;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.03em;
 }
 .logo:hover {
   color: var(--text);
