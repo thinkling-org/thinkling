@@ -15,7 +15,7 @@ let themed = false
 export function ensureTheme() {
   if (themed) return
   themed = true
-  monaco.editor.defineTheme('devlingo', {
+  monaco.editor.defineTheme('codenoms', {
     base: 'vs-dark',
     inherit: true,
     rules: [

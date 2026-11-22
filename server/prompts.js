@@ -21,16 +21,16 @@ const LANGUAGES = [
 ]
 const LESSON_KINDS = ['theory', 'output', 'code', 'mixed', 'test']
 
-export const SYSTEM_JSON = `Jesteś DevLingo — konkretnym tutorem programowania. Dopasowujesz poziom wyjaśnień do konkretnego ucznia i pojęcia.
+export const SYSTEM_JSON = `Jesteś Codenoms — konkretnym tutorem programowania. Dopasowujesz poziom wyjaśnień do konkretnego ucznia i pojęcia.
 Tworzysz materiały po polsku (terminy techniczne mogą zostać po angielsku). Piszesz zwięźle, technicznie, bez lania wody i bez emoji.
 Treści tekstowe formatujesz w Markdown (inline \`kod\`, bloki \`\`\`lang). Nie używasz narzędzi.
 Zwracasz wyłącznie dane zgodne z podanym schematem JSON.`
 
-export const SYSTEM_CHAT = `Jesteś DevLingo — tutorem programowania. Dopasowujesz wyjaśnienia do wiedzy ucznia o omawianym pojęciu.
+export const SYSTEM_CHAT = `Jesteś Codenoms — tutorem programowania. Dopasowujesz wyjaśnienia do wiedzy ucznia o omawianym pojęciu.
 Odpowiadasz po polsku, zwięźle i technicznie, w Markdown (bloki kodu z językiem). Bez emoji, bez wstępów typu "Świetne pytanie".
 Nie używasz narzędzi.`
 
-export const SYSTEM_GRADE = `Jesteś DevLingo — tutorem programowania. Oceniasz zrozumienie po lekcji i pomagasz uczniowi zrobić kolejny krok.
+export const SYSTEM_GRADE = `Jesteś Codenoms — tutorem programowania. Oceniasz zrozumienie po lekcji i pomagasz uczniowi zrobić kolejny krok.
 Odpowiadasz po polsku, zwięźle, w Markdown. Komentarze opierasz na tym, co uczeń rzeczywiście napisał.
 Nie używasz narzędzi. Zwracasz wyłącznie dane zgodne z podanym schematem JSON.`
 
@@ -91,7 +91,7 @@ function planRules() {
 export function planTask({ description, minutesPerDay, style }) {
   return {
     schema: planSchema,
-    prompt: `Ułóż spersonalizowany plan treningowy nauki programowania w stylu Duolingo (krótkie lekcje, ścieżka modułów).
+    prompt: `Ułóż spersonalizowany plan treningowy nauki programowania w formie krótkich lekcji ułożonych w ścieżkę modułów.
 
 ## Opis ucznia (jego własnymi słowami)
 ${description}
@@ -299,7 +299,7 @@ export function lessonTask({ profile, plan, moduleIndex, lessonIndex, weakSpots,
 4. Opcjonalnie jedno "choice" ze stage "challenge" na samym końcu, jeśli pasuje do celu ucznia. Może być pytaniem rekrutacyjnym, ale ma opierać się na wyjaśnionych mechanizmach.`
   return {
     schema: lessonSchema,
-    prompt: `Przygotuj jedną lekcję w stylu Duolingo.
+    prompt: `Przygotuj jedną krótką lekcję.
 
 ## Uczeń
 ${profile.description}
@@ -644,7 +644,7 @@ ${options}## Zasady
 }
 
 export function chatTask({ context, history, question }) {
-  const conv = (history || []).map((m) => `**${m.role === 'user' ? 'Uczeń' : 'DevLingo'}:** ${m.content}`).join('\n\n')
+  const conv = (history || []).map((m) => `**${m.role === 'user' ? 'Uczeń' : 'Codenoms'}:** ${m.content}`).join('\n\n')
   return {
     prompt: `Uczeń jest w trakcie ćwiczenia i dopytuje. Odpowiedz na jego pytanie w kontekście ćwiczenia.
 

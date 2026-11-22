@@ -1,4 +1,4 @@
-// DevLingo — lokalny serwer: API + (w trybie produkcyjnym) zbudowany frontend.
+// Codenoms — lokalny serwer: API + (w trybie produkcyjnym) zbudowany frontend.
 import './check-node.js'
 import express from 'express'
 import fs from 'node:fs'
@@ -203,7 +203,7 @@ if (fs.existsSync(DIST)) {
 }
 
 const server = app.listen(PORT, HOST, () => {
-  console.log(`\n  DevLingo API → http://localhost:${PORT}`)
+  console.log(`\n  Codenoms API → http://localhost:${PORT}`)
   console.log(`  Dane: ${DB_PATH}`)
   if (fs.existsSync(DIST)) console.log(`  Aplikacja → http://localhost:${PORT}\n`)
 })

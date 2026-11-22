@@ -1,10 +1,12 @@
-# DevLingo
+# Codenoms
 
-Lokalna aplikacja do szybkiej nauki programowania w stylu Duolingo. Działa na Twojej
+[codenoms.org](https://codenoms.org)
+
+Lokalna aplikacja do szybkiej nauki programowania krótkimi lekcjami z grywalizacją. Działa na Twojej
 **subskrypcji Claude (Claude Code CLI) albo ChatGPT (Codex CLI)**, więc nie płacisz za tokeny API.
 
 - Opisujesz swoją sytuację, a model układa plan: moduły, lekcje i ocenę poziomu (plan pojawia się na żywo w trakcie generowania).
-- Ścieżka nauki jak w Duolingo: kolejne lekcje, XP, seria dni, cel dzienny i wynik 0–1000.
+- Ścieżka nauki: kolejne lekcje, XP, seria dni, cel dzienny i wynik 0–1000.
 - Ćwiczenia:
   - **pytania otwarte**: model ocenia odpowiedź (0–10) i wypisuje, co jest dobrze, a co źle,
   - **„co wypisze ten kod?”**: quiz z wyjaśnieniem i przyciskiem „wyjaśnij krok po kroku”,
@@ -42,7 +44,7 @@ Przy pierwszym otwarciu aplikacja prowadzi przez konfigurację (`/setup`, późn
    (Linux: `get.docker.com` przez `pkexec`, macOS: Homebrew, Windows: winget) albo uruchomić. Opcjonalnie od razu buduje
    obrazy wybranych języków.
 3. **Głos lektora**: na żądanie pobiera wagi ZONOS3-Mini (ok. 1,7 GB) do `data/zonos/models`, buduje obraz
-   `devlingo/zonos:1` z [server/zonos/Dockerfile](server/zonos/Dockerfile) i uruchamia kontener `devlingo-zonos`
+   `codenoms/zonos:1` z [server/zonos/Dockerfile](server/zonos/Dockerfile) i uruchamia kontener `codenoms-zonos`
    (restart razem z Dockerem, port `127.0.0.1:1919`).
 4. **Dyktowanie**: tworzy `data/whisper/venv`, instaluje Faster Whisper i pobiera model `small`.
 
@@ -64,15 +66,15 @@ i punktami do zapamiętania. Bloki kodu są pomijane, a nazwy w tekście, np.
 `console.log`, są odczytywane jako osobne słowa.
 Odtwarzacz umożliwia pauzę, przewijanie i powrót do początku. Ostatnie nagrania
 są dostępne ponownie w tej samej sesji aplikacji.
-Lokalny wariant `backbone-ptq-edit.gguf` obsługuje natywne tokeny pauzy, więc DevLingo
+Lokalny wariant `backbone-ptq-edit.gguf` obsługuje natywne tokeny pauzy, więc Codenoms
 może generować po kilka zdań naraz. Ze starszym wariantem aplikacja dokłada pauzy
 podczas składania nagrania.
 W **Ustawieniach → Projektowanie głosu** można wylosować syntetyczny głos,
 wyregulować jego cechy, odsłuchać własny tekst i zapisać projekt jako głos lekcji.
 Projektowanie używa lokalnego pakietu głosów Zyphry i profili z `steer.gguf`.
 
-DevLingo domyślnie łączy się z `http://127.0.0.1:1919` przez API `POST /v2/generate`.
-Lokalna konfiguracja Docker używa kontenera `devlingo-zonos` z automatycznym restartem.
+Codenoms domyślnie łączy się z `http://127.0.0.1:1919` przez API `POST /v2/generate`.
+Lokalna konfiguracja Docker używa kontenera `codenoms-zonos` z automatycznym restartem.
 Wagi [Zyphra/ZONOS3-Mini](https://huggingface.co/Zyphra/ZONOS3-Mini) są w `data/zonos/models`.
 Na innym stanowisku serwer można uruchomić według [instrukcji Zyphry](https://github.com/Zyphra/ZONOS3-Mini#quick-start).
 Adres serwera można ustawić przez `ZONOS_URL`:
@@ -81,17 +83,15 @@ Adres serwera można ustawić przez `ZONOS_URL`:
 ZONOS_URL=http://127.0.0.1:1919 npm run dev
 ```
 
-Domyślnie wszystkie fragmenty używają jednego głosu utworzonego z polskiej próbki
-ZONOS3-Mini. Lokalna konfiguracja przechowuje go w `data/zonos/voices/pl.npy`
-i stosuje polski profil wymowy z `steer.gguf`. Głos można
-zmienić przez `ZONOS_EMBEDDING` (ścieżka do pliku `.npy`) albo `ZONOS_VOICE`
-(identyfikator z `GET /v2/speakers`).
+Wszystkie głosy są syntetyczne: powstają z pakietu głosów ZONOS3-Mini pobieranego przez kreator.
+Bez zapisanego projektu lekcje czyta domyślny projekt głosu z polskim akcentem. Repozytorium nie zawiera
+żadnych nagrań ani osadzeń głosu.
 
 ## Dyktowanie
 
 W aktywnym polu tekstowym kliknij mikrofon lub użyj **Alt+Shift+M**. Drugie
 kliknięcie kończy nagrywanie i wstawia rozpoznany polski tekst w miejscu kursora.
-DevLingo przetwarza nagranie lokalnie przez Faster Whisper (model `small`, CPU int8).
+Codenoms przetwarza nagranie lokalnie przez Faster Whisper (model `small`, CPU int8).
 
 Instalacja lokalna używa `data/whisper/venv/bin/python` i wag w `data/whisper/model`.
 Na innym komputerze zainstaluj pakiety z `server/whisper-requirements.txt`
@@ -120,7 +120,7 @@ Gdy działa Docker, zadania w PHP, C++, Pythonie, Go, Ruście, Javie, C#, Ruby i
 
 - **Workspace:** każde zadanie ma własny katalog `data/workspaces/<id>`, podmontowany w kontenerze jako `/workspace`. Edytor Monaco z drzewem plików zapisuje zmiany prosto na dysk.
 - **Terminal:** prawdziwy `bash` w kontenerze (xterm.js połączony przez WebSocket).
-- **Izolacja i limity:** kontener nie ma sieci, ma limit 1 GB RAM, 2 CPU i 512 procesów, a bezczynny jest usuwany po 20 min. Obraz dla danego języka buduje się raz, przy pierwszym użyciu (`devlingo/<język>:1`).
+- **Izolacja i limity:** kontener nie ma sieci, ma limit 1 GB RAM, 2 CPU i 512 procesów, a bezczynny jest usuwany po 20 min. Obraz dla danego języka buduje się raz, przy pierwszym użyciu (`codenoms/<język>:1`).
 - **Testy:** to mały harness w danym języku. Wypisuje `PASS nazwa` albo `FAIL nazwa :: opis` i kończy się kodem wyjścia 1, gdy coś nie przeszło. Rozumiany jest też format `go test -v`.
 - **Weryfikacja zadań:** przy generowaniu lekcji wzorcowe rozwiązanie musi przejść wszystkie testy, a szablon startowy musi któryś oblać. Działa to w osobnym kontenerze weryfikacyjnym, a gdy coś się nie zgadza, model dostaje jedną prośbę o poprawkę.
 - **Piaskownica w menu** to wolny edytor z terminalem w wybranym języku, bez zadania.
@@ -129,3 +129,13 @@ Bez Dockera zadania w tych językach ocenia tylko model, a JS/TS dalej działa w
 
 Skróty klawiszowe: `Enter` sprawdza odpowiedź albo przechodzi dalej, `1–4` wybiera odpowiedź, a `Ctrl+Enter` działa w polu tekstowym i w edytorze.
 W fiszkach `Spacja` odsłania odpowiedź, a `1–4` ją ocenia.
+
+## Autor
+
+Codenoms stworzył [Konrad Ciurkiewicz](https://github.com/konradciurkiewicz). Zgłoszenia błędów, pomysły i pull requesty są mile widziane.
+
+## Licencja
+
+Codenoms jest darmowe i otwarte, na licencji [Apache License 2.0](LICENSE). Możesz go używać, zmieniać i rozpowszechniać,
+także komercyjnie, pod warunkiem zachowania informacji o prawach autorskich i licencji (zob. [NOTICE](NOTICE)).
+Licencja nie obejmuje praw do nazwy ani logo projektu.

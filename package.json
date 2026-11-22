@@ -1,9 +1,11 @@
 {
-  "name": "devlingo",
+  "name": "codenoms",
   "version": "0.1.0",
   "private": true,
+  "license": "Apache-2.0",
+  "homepage": "https://codenoms.org",
   "type": "module",
-  "description": "Lokalna nauka programowania w stylu Duolingo, napędzana Twoją subskrypcją Claude Code albo Codex.",
+  "description": "Lokalna nauka programowania krótkimi lekcjami z grywalizacją, napędzana Twoją subskrypcją Claude Code albo Codex.",
   "scripts": {
     "dev": "concurrently -k -n api,web -c magenta,cyan \"node --watch-path=server server/index.js\" \"vite\"",
     "build": "vite build",

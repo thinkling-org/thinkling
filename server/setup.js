@@ -17,13 +17,13 @@ const isWin = process.platform === 'win32'
 const isMac = process.platform === 'darwin'
 
 export const ZONOS_URL = process.env.ZONOS_URL || 'http://127.0.0.1:1919'
-const ZONOS_IMAGE = 'devlingo/zonos:1'
-const ZONOS_CONTAINER = 'devlingo-zonos'
+const ZONOS_IMAGE = 'codenoms/zonos:1'
+const ZONOS_CONTAINER = 'codenoms-zonos'
 const ZONOS_FILES = ['gguf/backbone-ptq-edit.gguf', 'gguf/zac-keep2.gguf', 'gguf/steer.gguf']
 const WHISPER_FILES = ['config.json', 'model.bin', 'tokenizer.json', 'vocabulary.txt']
 
 export function paths(root) {
-  const data = path.resolve(process.env.DEVLINGO_DATA || path.join(root, 'data'))
+  const data = path.resolve(process.env.CODENOMS_DATA || path.join(root, 'data'))
   const venv = path.join(data, 'whisper', 'venv')
   return {
     data,
@@ -223,7 +223,7 @@ function dockerHelp(probe) {
       ? ['sudo pacman -S docker', `sudo usermod -aG docker ${user}`, 'sudo systemctl enable --now docker']
       : ['curl -fsSL https://get.docker.com | sudo sh', `sudo usermod -aG docker ${user}`, 'sudo systemctl enable --now docker'],
     start: hasDesktopLinux() ? ['systemctl --user start docker-desktop'] : ['sudo systemctl start docker'],
-    permission: [`sudo usermod -aG docker ${user}`, 'Wyloguj się i zaloguj ponownie (albo uruchom ponownie komputer), potem uruchom DevLingo jeszcze raz.'],
+    permission: [`sudo usermod -aG docker ${user}`, 'Wyloguj się i zaloguj ponownie (albo uruchom ponownie komputer), potem uruchom Codenoms jeszcze raz.'],
     link: 'https://docs.docker.com/engine/install/',
     problem: probe.problem,
   }
@@ -234,7 +234,7 @@ async function waitForDocker(job, seconds = 120) {
     const p = await dockerProbe()
     if (p.running) return p
     if (p.problem === 'permission') {
-      throw new Error('Docker działa, ale Twoje konto nie ma do niego dostępu. Wyloguj się i zaloguj ponownie (grupa „docker”), potem uruchom DevLingo jeszcze raz.')
+      throw new Error('Docker działa, ale Twoje konto nie ma do niego dostępu. Wyloguj się i zaloguj ponownie (grupa „docker”), potem uruchom Codenoms jeszcze raz.')
     }
     if (i % 5 === 0) job.log('Czekam, aż Docker wystartuje…')
     await new Promise((r) => setTimeout(r, 2000))
@@ -264,7 +264,7 @@ async function installDocker(job) {
   job.log(`Dodano użytkownika ${user} do grupy „docker”.`)
   const p = await dockerProbe()
   if (p.problem === 'permission') {
-    throw new Error('Docker jest zainstalowany. Żeby działał bez sudo, wyloguj się i zaloguj ponownie, a potem uruchom DevLingo jeszcze raz.')
+    throw new Error('Docker jest zainstalowany. Żeby działał bez sudo, wyloguj się i zaloguj ponownie, a potem uruchom Codenoms jeszcze raz.')
   }
   await waitForDocker(job)
 }
@@ -331,7 +331,7 @@ async function buildZonosImage(P, job) {
   const pack = tar.pack()
   pack.entry({ name: 'Dockerfile' }, fs.readFileSync(path.join(P.zonosContext, 'Dockerfile'), 'utf8'))
   pack.finalize()
-  const stream = await SB.docker.buildImage(pack, { t: ZONOS_IMAGE, labels: { 'devlingo.voice': '1' } })
+  const stream = await SB.docker.buildImage(pack, { t: ZONOS_IMAGE, labels: { 'codenoms.voice': '1' } })
   await new Promise((resolve, reject) => {
     SB.docker.modem.followProgress(
       stream,
@@ -369,7 +369,7 @@ async function ensureZonosContainer(P, job) {
   }
   const port = new URL(ZONOS_URL).port || '1919'
   if (!info?.State?.Running && !(await portFree(Number(port)))) {
-    throw new Error(`Port ${port} jest zajęty przez inny program, więc serwer głosu nie może wystartować. Zamknij ten program albo uruchom DevLingo z innym adresem, np. ZONOS_URL=http://127.0.0.1:1920 npm start.`)
+    throw new Error(`Port ${port} jest zajęty przez inny program, więc serwer głosu nie może wystartować. Zamknij ten program albo uruchom Codenoms z innym adresem, np. ZONOS_URL=http://127.0.0.1:1920 npm start.`)
   }
   if (!info) {
     job.step('Tworzę kontener serwera głosu')
@@ -380,7 +380,7 @@ async function ensureZonosContainer(P, job) {
       Cmd: ['/models/backbone-ptq-edit.gguf', '--cpu', '--host', '0.0.0.0', '--port', '1919', '--batch', '1', '--zac-threads', '1'],
       Env: [`OMP_NUM_THREADS=${threads}`],
       ExposedPorts: { '1919/tcp': {} },
-      Labels: { 'devlingo.voice': '1' },
+      Labels: { 'codenoms.voice': '1' },
       HostConfig: {
         Mounts: [{ Type: 'bind', Source: P.zonosModels, Target: '/models', ReadOnly: true }],
         PortBindings: { '1919/tcp': [{ HostIp: '127.0.0.1', HostPort: port }] },
@@ -422,7 +422,7 @@ async function installVoice(P, job) {
   job.step('Czekam, aż model głosu się załaduje')
   for (let i = 0; i < 90; i++) {
     if (await voiceServerUp(true)) break
-    if (i === 89) throw new Error('Serwer głosu nie odpowiada. Sprawdź: docker logs devlingo-zonos')
+    if (i === 89) throw new Error('Serwer głosu nie odpowiada. Sprawdź: docker logs codenoms-zonos')
     await new Promise((r) => setTimeout(r, 2000))
   }
   job.log(`Serwer głosu działa na ${ZONOS_URL}. Uruchamia się sam razem z Dockerem.`)
@@ -433,7 +433,7 @@ async function removeVoiceContainer(job) {
   const c = SB.docker.getContainer(ZONOS_CONTAINER)
   const info = await c.inspect().catch(() => null)
   if (!info) return job.log('Kontener nie istnieje.')
-  if (info.Config?.Image !== ZONOS_IMAGE) throw new Error('Ten kontener nie został utworzony przez DevLingo — zatrzymaj go ręcznie.')
+  if (info.Config?.Image !== ZONOS_IMAGE) throw new Error('Ten kontener nie został utworzony przez Codenoms — zatrzymaj go ręcznie.')
   await c.remove({ force: true })
   voiceCache.at = 0
   job.log('Kontener usunięty. Pobrane modele zostały w data/zonos/models.')

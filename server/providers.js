@@ -12,7 +12,7 @@ const EXT_DIRS = ['.vscode', '.vscode-insiders', '.cursor', '.windsurf', '.vscod
   path.join(home, d, 'extensions'),
 )
 
-const WORK_DIR = path.join(os.tmpdir(), 'devlingo-work')
+const WORK_DIR = path.join(os.tmpdir(), 'codenoms-work')
 fs.mkdirSync(WORK_DIR, { recursive: true })
 
 function exists(p) {

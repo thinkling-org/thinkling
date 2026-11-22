@@ -10,7 +10,7 @@ import { StringDecoder } from 'node:string_decoder'
 import { fileURLToPath } from 'node:url'
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
-const DATA_DIR = path.resolve(process.env.DEVLINGO_DATA || path.join(ROOT, 'data'))
+const DATA_DIR = path.resolve(process.env.CODENOMS_DATA || path.join(ROOT, 'data'))
 const WS_ROOT = path.join(DATA_DIR, 'workspaces')
 fs.mkdirSync(WS_ROOT, { recursive: true })
 
@@ -26,79 +26,79 @@ export async function reconnectDocker() {
   }
   return found
 }
-const LABEL = 'devlingo'
+const LABEL = 'codenoms'
 const IDLE_MS = 20 * 60_000
 
 const COMMON = `RUN mkdir -p /workspace
 WORKDIR /workspace
-ENV TERM=xterm-256color LANG=C.UTF-8 PS1='\\[\\e[1;35m\\]devlingo\\[\\e[0m\\]:\\[\\e[1;34m\\]\\w\\[\\e[0m\\]$ '
+ENV TERM=xterm-256color LANG=C.UTF-8 PS1='\\[\\e[1;35m\\]codenoms\\[\\e[0m\\]:\\[\\e[1;34m\\]\\w\\[\\e[0m\\]$ '
 `
 
 /** Środowiska per język. Obrazy budowane lokalnie przy pierwszym użyciu. */
 export const ENVS = {
   php: {
     label: 'PHP 8.3',
-    image: 'devlingo/php:1',
+    image: 'codenoms/php:1',
     dockerfile: `FROM php:8.3-cli-alpine\nRUN apk add --no-cache bash\nCOPY --from=composer:2 /usr/bin/composer /usr/bin/composer\n${COMMON}`,
     testExample: 'php tests/run.php',
   },
   cpp: {
     label: 'C++20 (g++)',
-    image: 'devlingo/cpp:1',
+    image: 'codenoms/cpp:1',
     dockerfile: `FROM alpine:3.20\nRUN apk add --no-cache bash g++ make cmake gdb\n${COMMON}`,
     testExample: 'g++ -std=c++20 -Wall -O0 -o /tmp/tests tests/tests.cpp && /tmp/tests',
   },
   python: {
     label: 'Python 3.12',
-    image: 'devlingo/python:1',
+    image: 'codenoms/python:1',
     dockerfile: `FROM python:3.12-alpine\nRUN apk add --no-cache bash\nENV PYTHONDONTWRITEBYTECODE=1\n${COMMON}`,
     testExample: 'python tests/run.py',
   },
   javascript: {
     label: 'Node 22',
-    image: 'devlingo/node:1',
+    image: 'codenoms/node:1',
     dockerfile: `FROM node:22-alpine\nRUN apk add --no-cache bash && npm i -g tsx typescript\n${COMMON}`,
     testExample: 'node tests/run.js',
   },
   typescript: {
     label: 'Node 22 + TypeScript',
-    image: 'devlingo/node:1',
+    image: 'codenoms/node:1',
     dockerfile: `FROM node:22-alpine\nRUN apk add --no-cache bash && npm i -g tsx typescript\n${COMMON}`,
     testExample: 'tsx tests/run.ts',
   },
   go: {
     label: 'Go 1.23',
-    image: 'devlingo/go:1',
+    image: 'codenoms/go:1',
     dockerfile: `FROM golang:1.23-alpine\nRUN apk add --no-cache bash\nENV GOCACHE=/tmp/gocache GOFLAGS=-mod=mod GOTOOLCHAIN=local\n${COMMON}`,
     testExample: 'go test -v ./...',
   },
   rust: {
     label: 'Rust',
-    image: 'devlingo/rust:1',
+    image: 'codenoms/rust:1',
     dockerfile: `FROM rust:1-alpine\nRUN apk add --no-cache bash musl-dev\n${COMMON}`,
     testExample: 'rustc --edition 2021 -o /tmp/tests tests/main.rs && /tmp/tests',
   },
   java: {
     label: 'Java 21',
-    image: 'devlingo/java:1',
+    image: 'codenoms/java:1',
     dockerfile: `FROM eclipse-temurin:21-jdk-alpine\nRUN apk add --no-cache bash\n${COMMON}`,
     testExample: "javac -d /tmp/out $(find . -name '*.java') && java -cp /tmp/out TestRunner",
   },
   csharp: {
     label: '.NET 8',
-    image: 'devlingo/dotnet:1',
+    image: 'codenoms/dotnet:1',
     dockerfile: `FROM mcr.microsoft.com/dotnet/sdk:8.0-alpine\nRUN apk add --no-cache bash\nENV DOTNET_CLI_TELEMETRY_OPTOUT=1 DOTNET_NOLOGO=1\n${COMMON}`,
     testExample: 'dotnet run --project tests',
   },
   ruby: {
     label: 'Ruby 3.3',
-    image: 'devlingo/ruby:1',
+    image: 'codenoms/ruby:1',
     dockerfile: `FROM ruby:3.3-alpine\nRUN apk add --no-cache bash\n${COMMON}`,
     testExample: 'ruby tests/run.rb',
   },
   sql: {
     label: 'SQLite',
-    image: 'devlingo/sqlite:1',
+    image: 'codenoms/sqlite:1',
     dockerfile: `FROM alpine:3.20\nRUN apk add --no-cache bash sqlite\n${COMMON}`,
     testExample: 'bash tests/run.sh',
   },
@@ -273,7 +273,7 @@ export function deletePath(wsId, rel) {
 const lastUsed = new Map()
 
 function containerName(wsId) {
-  return `devlingo-${safeId(wsId)}`
+  return `codenoms-${safeId(wsId)}`
 }
 
 export async function ensureContainer(wsId, lang, onProgress) {
@@ -299,7 +299,7 @@ export async function ensureContainer(wsId, lang, onProgress) {
     Cmd: ['sleep', 'infinity'],
     WorkingDir: '/workspace',
     Tty: false,
-    Labels: { [LABEL]: '1', 'devlingo.ws': wsId },
+    Labels: { [LABEL]: '1', 'codenoms.ws': wsId },
     Env: ['TERM=xterm-256color', 'HOME=/root'],
     HostConfig: {
       Mounts: [{ Type: 'bind', Source: wsDir(wsId), Target: '/workspace' }],
@@ -389,7 +389,7 @@ export async function stopWorkspace(wsId) {
   } catch {}
 }
 
-/** Usuwa wszystkie kontenery DevLingo (start/stop serwera). */
+/** Usuwa wszystkie kontenery Codenoms (start/stop serwera). */
 export async function cleanupAll() {
   try {
     const list = await docker.listContainers({ all: true, filters: { label: [`${LABEL}=1`] } })

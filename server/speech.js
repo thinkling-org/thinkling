@@ -1,7 +1,6 @@
 import { existsSync } from 'node:fs'
-import { readFile } from 'node:fs/promises'
 import path from 'node:path'
-import { normalizeVoiceDesign } from '../src/lib/voice-design.js'
+import { DEFAULT_VOICE_DESIGN, normalizeVoiceDesign } from '../src/lib/voice-design.js'
 import { readState } from './store.js'
 import { designedSpeaker } from './voice-design.js'
 
@@ -9,14 +8,11 @@ const PAUSE_MARKER = '\uE003'
 
 export function registerSpeech(app, root) {
   const zonosUrl = process.env.ZONOS_URL || 'http://127.0.0.1:1919'
-  const data = process.env.DEVLINGO_DATA || path.join(root, 'data')
+  const data = process.env.CODENOMS_DATA || path.join(root, 'data')
   // Kreator instalacji kopiuje osadzenia do data/zonos/default_voices; starsze ręczne instalacje
   // trzymały je w checkoutcie ZONOS3-Mini.
   const voicesDirectory = [path.join(data, 'zonos/default_voices'), path.join(data, 'zonos/source/assets/default_voices')]
     .find((dir) => existsSync(dir)) || path.join(data, 'zonos/default_voices')
-  // Polski głos lektora jest dołączony do repozytorium (server/zonos/voice-pl.npy).
-  const defaultEmbedding = [path.join(data, 'zonos/voices/pl.npy'), path.join(root, 'server/zonos/voice-pl.npy')]
-    .find((file) => existsSync(file))
 
   app.get('/api/speech/capabilities', async (_req, res) => {
     let pauseMarker = null
@@ -40,35 +36,21 @@ export function registerSpeech(app, root) {
       return res.status(400).json({ error: 'Tekst do odczytania musi mieć od 1 do 450 znaków.' })
     }
 
+    // Wszystkie głosy są generowane z pakietu głosów ZONOS3-Mini (projektowanie w Ustawieniach).
+    // Bez zapisanego projektu używany jest domyślny projekt.
     const requestedDesign = req.body.design === undefined ? readState().settings.voiceDesign : req.body.design
     let design
     try {
-      if (requestedDesign != null) design = normalizeVoiceDesign(requestedDesign)
+      design = normalizeVoiceDesign(requestedDesign ?? DEFAULT_VOICE_DESIGN)
     } catch (err) {
       return res.status(400).json({ error: err.message })
     }
 
-    const voice = process.env.ZONOS_VOICE
-    const customEmbedding = process.env.ZONOS_EMBEDDING
     let speaker
-    if (design) {
-      try {
-        speaker = designedSpeaker(design, voicesDirectory)
-      } catch {
-        return res.status(503).json({ error: 'Brakuje pakietu głosów do projektowania ZONOS3-Mini.' })
-      }
-    } else if (voice) {
-      speaker = { speaker_mode: 'embedding', speaker_embedding_id: voice }
-    } else {
-      const embeddingPath = customEmbedding || defaultEmbedding
-      const embedding = embeddingPath ? await readFile(embeddingPath).catch(() => null) : null
-      if (!embedding) return res.status(503).json({ error: 'Brak pliku głosu ZONOS3-Mini.' })
-      speaker = {
-        speaker_mode: 'embedding',
-        speaker_embedding_name: 'voice.npy',
-        speaker_embedding_base64: embedding.toString('base64'),
-        ...(!customEmbedding && { controls: { 'accents_l1.pol': 1.5 } }),
-      }
+    try {
+      speaker = designedSpeaker(design, voicesDirectory)
+    } catch {
+      return res.status(503).json({ error: 'Brakuje pakietu głosów do projektowania ZONOS3-Mini. Uruchom krok „Głos lektora” w kreatorze konfiguracji.' })
     }
 
     const disconnected = new AbortController()

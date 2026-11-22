@@ -197,9 +197,9 @@ onBeforeUnmount(() => clearInterval(poll))
 
         <!-- ------------------------------------------------------- powitanie -->
         <section v-else-if="current === 'welcome'" class="card box">
-          <h1>Cześć! Przygotujmy DevLingo</h1>
+          <h1>Cześć! Przygotujmy Codenoms</h1>
           <p class="lead">
-            DevLingo działa w całości na Twoim komputerze. Zanim zaczniesz, kreator sprawdzi kilka rzeczy i pomoże doinstalować brakujące elementy:
+            Codenoms działa w całości na Twoim komputerze. Zanim zaczniesz, kreator sprawdzi kilka rzeczy i pomoże doinstalować brakujące elementy:
           </p>
           <ul class="list">
             <li><strong>Silnik AI</strong>: Claude Code albo Codex, zalogowany Twoją subskrypcją (wymagany).</li>
@@ -213,7 +213,7 @@ onBeforeUnmount(() => clearInterval(poll))
         <!-- ------------------------------------------------------- silnik AI -->
         <section v-else-if="current === 'ai'" class="card box">
           <h1>Silnik AI</h1>
-          <p class="lead">Wybierz, z którego CLI ma korzystać DevLingo. Używana jest Twoja subskrypcja, więc nie płacisz za tokeny API.</p>
+          <p class="lead">Wybierz, z którego CLI ma korzystać Codenoms. Używana jest Twoja subskrypcja, więc nie płacisz za tokeny API.</p>
           <div class="providers">
             <button
               v-for="id in ['claude', 'codex']"
@@ -279,7 +279,7 @@ onBeforeUnmount(() => clearInterval(poll))
             <div v-else-if="!docker.installed" class="hint">
               <strong>Zainstaluj Dockera.</strong>
               <template v-if="docker.help.autoInstall">
-                DevLingo może zrobić to za Ciebie. System poprosi o hasło administratora.
+                Codenoms może zrobić to za Ciebie. System poprosi o hasło administratora.
                 <button class="btn btn-primary btn-sm self" :disabled="anyRunning" @click="startJob('docker-install')">Zainstaluj Dockera</button>
                 <span class="muted small">Albo ręcznie, w terminalu:</span>
               </template>
@@ -406,7 +406,7 @@ onBeforeUnmount(() => clearInterval(poll))
             </li>
           </ul>
           <div v-if="anyRunning" class="hint">Instalacja wciąż trwa w tle. Możesz już zacząć naukę, a funkcja włączy się, gdy instalacja się skończy.</div>
-          <div v-if="!providerReady" class="hint warn">Bez działającego silnika AI DevLingo nie ułoży planu ani lekcji. Wróć do kroku „Silnik AI”.</div>
+          <div v-if="!providerReady" class="hint warn">Bez działającego silnika AI Codenoms nie ułoży planu ani lekcji. Wróć do kroku „Silnik AI”.</div>
         </section>
 
         <p v-if="startError" class="tr bad">{{ startError }}</p>

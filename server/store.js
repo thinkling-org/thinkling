@@ -4,7 +4,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
-const DATA_DIR = process.env.DEVLINGO_DATA || path.join(ROOT, 'data')
+const DATA_DIR = process.env.CODENOMS_DATA || path.join(ROOT, 'data')
 const DB_FILE = path.join(DATA_DIR, 'db.json')
 
 fs.mkdirSync(DATA_DIR, { recursive: true })

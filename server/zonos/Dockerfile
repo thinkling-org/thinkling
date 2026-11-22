@@ -1,5 +1,5 @@
-# Serwer ZONOS3-Mini (ggml, CPU) dla funkcji „Przeczytaj” w DevLingo.
-# Budowany lokalnie przez kreator konfiguracji: docker build -t devlingo/zonos:1 server/zonos
+# Serwer ZONOS3-Mini (ggml, CPU) dla funkcji „Przeczytaj” w Codenoms.
+# Budowany lokalnie przez kreator konfiguracji: docker build -t codenoms/zonos:1 server/zonos
 # Wagi modelu NIE są w obrazie — kreator pobiera je do data/zonos/models i montuje jako /models.
 FROM rust:1-trixie AS build
 RUN apt-get update && apt-get install -y --no-install-recommends cmake git && rm -rf /var/lib/apt/lists/*

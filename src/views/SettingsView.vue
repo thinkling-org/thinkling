@@ -90,7 +90,7 @@ function resetAll() {
 
       <section class="sec">
         <h2>Silnik AI</h2>
-        <p class="muted">DevLingo nie wysyła nic do chmury samodzielnie — uruchamia lokalne CLI, które korzysta z twojej subskrypcji. Zero płacenia za tokeny API.</p>
+        <p class="muted">Codenoms nie wysyła nic do chmury samodzielnie — uruchamia lokalne CLI, które korzysta z twojej subskrypcji. Zero płacenia za tokeny API.</p>
         <div class="providers">
           <button
             v-for="p in PROVIDERS"
