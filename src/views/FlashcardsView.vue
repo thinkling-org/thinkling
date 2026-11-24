@@ -1,4 +1,5 @@
 <script setup>
+import { t } from '../lib/i18n.js'
 import { computed, ref } from 'vue'
 import { useApp } from '../stores/app.js'
 import { formatDelay } from '../lib/srs.js'
@@ -26,10 +27,10 @@ const cards = computed(() => {
 const learned = computed(() => app.flashcards.filter((c) => c.interval >= 4).length)
 function dueText(c) {
   const d = c.due - Date.now()
-  return d <= 0 ? 'teraz' : `za ${formatDelay(d)}`
+  return d <= 0 ? t('teraz') : t('za {0}', [formatDelay(d)])
 }
 function firstLine(md) {
-  return md.replace(/```[\s\S]*?```/g, '[kod]').split('\n').find((l) => l.trim()) || ''
+  return md.replace(/```[\s\S]*?```/g, t('[kod]')).split('\n').find((l) => l.trim()) || ''
 }
 </script>
 
@@ -39,33 +40,33 @@ function firstLine(md) {
       <section class="hero card">
         <Gem :index="3" :size="64" />
         <div class="ht">
-          <h1>Fiszki</h1>
-          <p>Powtórki rozłożone w czasie: pojęcia z lekcji i twoje błędy wracają, zanim zdążysz je zapomnieć.</p>
+          <h1>{{ t('Fiszki') }}</h1>
+          <p>{{ t('Powtórki rozłożone w czasie: pojęcia z lekcji i twoje błędy wracają, zanim zdążysz je zapomnieć.') }}</p>
         </div>
         <div class="kpis">
-          <div><div class="k" style="color: var(--red-light)">{{ app.dueCards.length }}</div><div class="label">Do powtórki</div></div>
-          <div><div class="k">{{ app.flashcards.length }}</div><div class="label">W talii</div></div>
-          <div><div class="k" style="color: var(--green)">{{ learned }}</div><div class="label">Utrwalone</div></div>
+          <div><div class="k" style="color: var(--red-light)">{{ app.dueCards.length }}</div><div class="label">{{ t('Do powtórki') }}</div></div>
+          <div><div class="k">{{ app.flashcards.length }}</div><div class="label">{{ t('W talii') }}</div></div>
+          <div><div class="k" style="color: var(--green)">{{ learned }}</div><div class="label">{{ t('Utrwalone') }}</div></div>
         </div>
         <div class="acts">
           <RouterLink to="/review" class="btn btn-primary btn-lg" :class="{ disabled: !app.dueCards.length }">
-            {{ app.dueCards.length ? `Powtórz ${app.dueCards.length}` : 'Nic do powtórki' }}
+            {{ app.dueCards.length ? t('Powtórz {0}', [app.dueCards.length]) : t('Nic do powtórki') }}
           </RouterLink>
-          <RouterLink v-if="app.flashcards.length" :to="{ path: '/review', query: { all: 1 } }" class="btn">Ćwicz wszystkie</RouterLink>
+          <RouterLink v-if="app.flashcards.length" :to="{ path: '/review', query: { all: 1 } }" class="btn">{{ t('Ćwicz wszystkie') }}</RouterLink>
         </div>
       </section>
 
       <div class="toolbar">
-        <div class="seg" role="group" aria-label="Filtr">
-          <button class="chip" :aria-pressed="filter === 'all'" @click="filter = 'all'">Wszystkie</button>
-          <button class="chip" :aria-pressed="filter === 'due'" @click="filter = 'due'">Do powtórki</button>
-          <button class="chip" :aria-pressed="filter === 'hard'" @click="filter = 'hard'">Trudne</button>
+        <div class="seg" role="group" :aria-label="t('Filtr')">
+          <button class="chip" :aria-pressed="filter === 'all'" @click="filter = 'all'">{{ t('Wszystkie') }}</button>
+          <button class="chip" :aria-pressed="filter === 'due'" @click="filter = 'due'">{{ t('Do powtórki') }}</button>
+          <button class="chip" :aria-pressed="filter === 'hard'" @click="filter = 'hard'">{{ t('Trudne') }}</button>
         </div>
-        <input v-model="q" class="input search" placeholder="Szukaj…" aria-label="Szukaj fiszek" />
+        <input v-model="q" class="input search" :placeholder="t('Szukaj…')" :aria-label="t('Szukaj fiszek')" />
       </div>
 
       <div v-if="!cards.length" class="empty card-dashed">
-        {{ app.flashcards.length ? 'Brak fiszek dla tego filtra.' : 'Talia jest pusta — fiszki pojawią się po pierwszej lekcji.' }}
+        {{ app.flashcards.length ? t('Brak fiszek dla tego filtra.') : t('Talia jest pusta — fiszki pojawią się po pierwszej lekcji.') }}
       </div>
 
       <div class="list">
@@ -80,8 +81,8 @@ function firstLine(md) {
             <div class="sep" />
             <Markdown :src="c.back" class="back" />
             <div class="ifoot">
-              <span class="muted small">{{ c.source }} · powtórki: {{ c.reps }} · pomyłki: {{ c.lapses }}</span>
-              <button class="btn btn-sm btn-ghost-red" @click="app.deleteCard(c.id)"><Icon name="trash" :size="16" />Usuń</button>
+              <span class="muted small">{{ c.source }} {{ t('· powtórki:') }} {{ c.reps }} {{ t('· pomyłki:') }} {{ c.lapses }}</span>
+              <button class="btn btn-sm btn-ghost-red" @click="app.deleteCard(c.id)"><Icon name="trash" :size="16" />{{ t('Usuń') }}</button>
             </div>
           </div>
         </div>

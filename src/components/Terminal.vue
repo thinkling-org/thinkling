@@ -1,4 +1,5 @@
 <script setup>
+import { t } from '../lib/i18n.js'
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
@@ -27,7 +28,7 @@ function connect() {
   sock.onmessage = (e) => term.write(typeof e.data === 'string' ? e.data : '')
   sock.onclose = () => {
     status.value = 'closed'
-    term?.write('\r\n\x1b[90m[sesja zakończona — kliknij „Połącz ponownie”]\x1b[0m\r\n')
+    term?.write(t('\r\n[90m[sesja zakończona — kliknij „Połącz ponownie”][0m\r\n'))
   }
 }
 
@@ -104,7 +105,7 @@ defineExpose({ run })
 <template>
   <div class="term-wrap">
     <div ref="el" class="term" />
-    <button v-if="status === 'closed'" class="btn btn-sm reconnect" @click="term.clear(); connect()">Połącz ponownie</button>
+    <button v-if="status === 'closed'" class="btn btn-sm reconnect" @click="term.clear(); connect()">{{ t('Połącz ponownie') }}</button>
   </div>
 </template>
 

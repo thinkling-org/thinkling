@@ -1,4 +1,5 @@
 <script setup>
+import { t } from '../lib/i18n.js'
 import { computed } from 'vue'
 import { useApp } from '../stores/app.js'
 
@@ -8,10 +9,10 @@ const app = useApp()
 const state = computed(() => {
   const p = app.activeProvider
   const name = app.settings.provider === 'codex' ? 'Codex' : 'Claude'
-  if (!app.status) return { color: 'var(--muted)', text: `Łączę z ${name}…`, sub: '' }
-  if (props.busy) return { color: 'var(--yellow)', text: props.label || `${name} generuje…`, sub: '' }
-  if (!p?.available) return { color: 'var(--red)', text: `${name} niedostępny`, sub: 'sprawdź Ustawienia' }
-  return { color: 'var(--green)', text: `${name} połączony`, sub: app.settings.model || p.version?.split(' ')[0] || '' }
+  if (!app.status) return { color: 'var(--muted)', text: t('Łączę z {0}…', [name]), sub: '' }
+  if (props.busy) return { color: 'var(--yellow)', text: props.label || t('{0} generuje…', [name]), sub: '' }
+  if (!p?.available) return { color: 'var(--red)', text: t('{0} niedostępny', [name]), sub: t('sprawdź Ustawienia') }
+  return { color: 'var(--green)', text: t('{0} połączony', [name]), sub: app.settings.model || p.version?.split(' ')[0] || '' }
 })
 </script>
 

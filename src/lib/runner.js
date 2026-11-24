@@ -1,3 +1,4 @@
+import { t } from './i18n.js'
 export const RUNNABLE = ['javascript', 'typescript']
 
 export function allTestsPassed(run) {
@@ -21,7 +22,7 @@ export async function runTests({ code, tests, language }) {
     const worker = new Worker(new URL('./runner.worker.js', import.meta.url), { type: 'module' })
     const timer = setTimeout(() => {
       worker.terminate()
-      resolve({ results: [], logs: [], compileError: 'Przekroczono limit 10 s — nieskończona pętla?', timedOut: true })
+      resolve({ results: [], logs: [], compileError: t('Przekroczono limit 10 s — nieskończona pętla?'), timedOut: true })
     }, 10_000)
     worker.onmessage = (e) => {
       clearTimeout(timer)
@@ -31,7 +32,7 @@ export async function runTests({ code, tests, language }) {
     worker.onerror = (e) => {
       clearTimeout(timer)
       worker.terminate()
-      resolve({ results: [], logs: [], compileError: e.message || 'Błąd workera' })
+      resolve({ results: [], logs: [], compileError: e.message || t('Błąd workera') })
     }
     worker.postMessage({ code: js, tests })
   })

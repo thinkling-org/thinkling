@@ -1,4 +1,5 @@
 <script setup>
+import { t, uiLocale } from '../lib/i18n.js'
 import { computed } from 'vue'
 import { useApp } from '../stores/app.js'
 import Icon from './Icon.vue'
@@ -6,20 +7,20 @@ import Logo from './Logo.vue'
 
 const app = useApp()
 const nav = computed(() => [
-  { to: '/path', label: 'Ścieżka', icon: 'home' },
-  { to: '/flashcards', label: 'Fiszki', icon: 'cards', badge: app.dueCards.length || null },
+  { to: '/path', label: t('Ścieżka'), icon: 'home' },
+  { to: '/flashcards', label: t('Fiszki'), icon: 'cards', badge: app.dueCards.length || null },
   { to: '/plan', label: 'Plan', icon: 'list' },
-  { to: '/sandbox', label: 'Piaskownica', icon: 'terminal' },
-  { to: '/settings', label: 'Ustawienia', icon: 'settings' },
+  { to: '/sandbox', label: t('Piaskownica'), icon: 'terminal' },
+  { to: '/settings', label: t('Ustawienia'), icon: 'settings' },
 ])
 const provider = computed(() => app.activeProvider)
 const providerName = computed(() => (app.settings.provider === 'codex' ? 'Codex' : 'Claude'))
-const fmt = (n) => n.toLocaleString('pl-PL')
+const fmt = (n) => n.toLocaleString(uiLocale())
 </script>
 
 <template>
   <div class="shell">
-    <nav class="side" aria-label="Główna nawigacja">
+    <nav class="side" :aria-label="t('Główna nawigacja')">
       <div class="brand"><Logo /></div>
       <RouterLink v-for="n in nav" :key="n.to" :to="n.to" class="item" active-class="active">
         <Icon :name="n.icon" />
@@ -29,9 +30,9 @@ const fmt = (n) => n.toLocaleString('pl-PL')
       <RouterLink to="/settings" class="conn card">
         <div class="row">
           <span class="dot" :class="{ off: !provider?.available }" />
-          {{ providerName }} {{ provider?.available ? 'połączony' : 'niedostępny' }}
+          {{ providerName }} {{ provider?.available ? t('połączony') : t('niedostępny') }}
         </div>
-        <span class="meta">localhost:{{ app.status?.port || 3141 }} · {{ app.settings.model || 'domyślny model' }}{{ app.settings.effort ? ` · ${app.settings.effort}` : '' }}</span>
+        <span class="meta">localhost:{{ app.status?.port || 3141 }} · {{ app.settings.model || t('domyślny model') }}{{ app.settings.effort ? ` · ${app.settings.effort}` : '' }}</span>
       </RouterLink>
     </nav>
 
@@ -39,14 +40,14 @@ const fmt = (n) => n.toLocaleString('pl-PL')
       <header class="top">
         <slot name="top-left" />
         <div class="stats">
-          <span class="stat" :class="{ dim: !app.streakAlive }" :title="app.streakAlive ? 'Seria dni nauki' : 'Seria przerwana — zrób dziś lekcję'">
-            <Icon name="flame" :size="22" style="color: var(--flame)" />{{ app.streakAlive ? app.stats.streak : 0 }} {{ (app.streakAlive ? app.stats.streak : 0) === 1 ? 'dzień' : 'dni' }}
+          <span class="stat" :class="{ dim: !app.streakAlive }" :title="app.streakAlive ? t('Seria dni nauki') : t('Seria przerwana — zrób dziś lekcję')">
+            <Icon name="flame" :size="22" style="color: var(--flame)" />{{ app.streakAlive ? app.stats.streak : 0 }} {{ (app.streakAlive ? app.stats.streak : 0) === 1 ? t('dzień') : t('dni') }}
           </span>
-          <span class="stat xp" title="Punkty doświadczenia">
+          <span class="stat xp" :title="t('Punkty doświadczenia')">
             <svg aria-hidden="true" width="20" height="20" viewBox="0 0 48 48"><polygon points="24,3 42,13.5 42,34.5 24,45 6,34.5 6,13.5" fill="#3B82F6" /><polygon points="24,12 33,17 33,31 24,36 15,31 15,17" fill="#93C5FD" /></svg>
             {{ fmt(app.stats.xp) }} XP
           </span>
-          <RouterLink to="/review" class="stat cards" title="Fiszki do powtórki">
+          <RouterLink to="/review" class="stat cards" :title="t('Fiszki do powtórki')">
             <Icon name="cards" :size="20" />{{ app.dueCards.length }}
           </RouterLink>
         </div>

@@ -7,13 +7,14 @@ from faster_whisper import WhisperModel
 
 
 def main():
+    language = sys.argv[2] if len(sys.argv) > 2 and sys.argv[2] in ("pl", "en") else None
     model = WhisperModel(
         sys.argv[1], device="cpu", compute_type="int8", cpu_threads=4,
         local_files_only=True,
     )
     segments, _ = model.transcribe(
         io.BytesIO(sys.stdin.buffer.read()),
-        language="pl",
+        language=language,
         beam_size=3,
         vad_filter=True,
         vad_parameters={"min_silence_duration_ms": 500},

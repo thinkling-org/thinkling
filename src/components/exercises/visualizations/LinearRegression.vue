@@ -1,4 +1,5 @@
 <script setup>
+import { numberFormatter, t, uiLocale } from '../../../lib/i18n.js'
 import { computed, onBeforeUnmount, onMounted, ref, watch, watchPostEffect } from 'vue'
 import { evaluateRegression } from '../../../lib/linear-regression.js'
 import Markdown from '../../Markdown.vue'
@@ -8,8 +9,8 @@ const canvas = ref(null)
 const size = ref({ width: 0, height: 0 })
 const parameters = ref({ ...props.config.model.initial })
 const result = computed(() => evaluateRegression(props.config.model, parameters.value))
-const tickFormat = new Intl.NumberFormat('pl-PL', { notation: 'compact', maximumSignificantDigits: 4 })
-const numberFormat = new Intl.NumberFormat('pl-PL', { maximumSignificantDigits: 6 })
+const tickFormat = numberFormatter({ notation: 'compact', maximumSignificantDigits: 4 })
+const numberFormat = numberFormatter({ maximumSignificantDigits: 6 })
 const sliderSteps = 1000
 let resizeObserver
 let animation
@@ -17,8 +18,8 @@ let animation
 function formatNumber(value, formatter = numberFormat) {
   const magnitude = Math.abs(value)
   return magnitude && (magnitude < 0.001 || magnitude >= 1e9)
-    ? value.toExponential(2).replace('.', ',')
-    : formatter.format(value)
+    ? value.toExponential(2).replace('.', uiLocale() === 'pl' ? ',' : '.')
+    : formatter(value)
 }
 
 function sliderPosition(value, [min, max]) {
@@ -163,21 +164,21 @@ const slope = computed(() => parameters.value.rise / props.config.model.xSpan)
 </script>
 
 <template>
-  <section class="card viz regression" aria-label="Dopasowanie prostej do danych">
+  <section class="card viz regression" :aria-label="t('Dopasowanie prostej do danych')">
     <Markdown class="instruction" :src="config.instruction" />
     <div>
       <div class="axis-label">{{ config.yLabel }}</div>
-      <canvas ref="canvas" class="plot" role="img" :aria-label="`Wykres dopasowania. Oś pozioma: ${config.xLabel}. Oś pionowa: ${config.yLabel}.`" />
+      <canvas ref="canvas" class="plot" role="img" :aria-label="t('Wykres dopasowania. Oś pozioma: {0}. Oś pionowa: {1}.', [config.xLabel, config.yLabel])" />
       <div class="axis-label x-label">{{ config.xLabel }}</div>
     </div>
-    <ul class="legend" aria-label="Legenda">
-      <li><span class="key point" aria-hidden="true"></span>Obserwacja</li>
-      <li><span class="key fit" aria-hidden="true"></span>Prosta</li>
-      <li><span class="key residual" aria-hidden="true"></span>Błąd prognozy</li>
+    <ul class="legend" :aria-label="t('Legenda')">
+      <li><span class="key point" aria-hidden="true"></span>{{ t('Obserwacja') }}</li>
+      <li><span class="key fit" aria-hidden="true"></span>{{ t('Prosta') }}</li>
+      <li><span class="key residual" aria-hidden="true"></span>{{ t('Błąd prognozy') }}</li>
     </ul>
     <div class="controls">
       <label>
-        <span>Nachylenie <strong>{{ formatNumber(slope) }}</strong></span>
+        <span>{{ t('Nachylenie') }} <strong>{{ formatNumber(slope) }}</strong></span>
         <input
           type="range"
           min="0"
@@ -188,27 +189,27 @@ const slope = computed(() => parameters.value.rise / props.config.model.xSpan)
         />
       </label>
       <label>
-        <span>Wysokość przy x = {{ formatNumber(config.model.xMin) }} <strong>{{ formatNumber(parameters.start) }}</strong></span>
+        <span>{{ t('Wysokość przy x =') }} {{ formatNumber(config.model.xMin) }} <strong>{{ formatNumber(parameters.start) }}</strong></span>
         <input
           type="range"
           min="0"
           :max="sliderSteps"
           :value="sliderPosition(parameters.start, config.model.startRange)"
-          :aria-valuetext="`${formatNumber(parameters.start)} przy x równym ${formatNumber(config.model.xMin)}`"
+          :aria-valuetext="t('{0} przy x równym {1}', [formatNumber(parameters.start), formatNumber(config.model.xMin)])"
           @input="updateParameter('start', config.model.startRange, $event.target.value)"
         />
       </label>
     </div>
     <div class="actions">
-      <button type="button" class="btn btn-primary btn-sm" @click="showBestFit">Pokaż najlepsze dopasowanie</button>
-      <div class="error">Średni kwadrat błędu <output>{{ formatNumber(result.mse) }}</output></div>
+      <button type="button" class="btn btn-primary btn-sm" @click="showBestFit">{{ t('Pokaż najlepsze dopasowanie') }}</button>
+      <div class="error">{{ t('Średni kwadrat błędu') }} <output>{{ formatNumber(result.mse) }}</output></div>
     </div>
     <details class="values">
-      <summary>Pokaż dane i prognozy</summary>
+      <summary>{{ t('Pokaż dane i prognozy') }}</summary>
       <div class="table-scroll">
         <table>
           <thead>
-            <tr><th scope="col">{{ config.xLabel }}</th><th scope="col">{{ config.yLabel }}</th><th scope="col">Prognoza</th><th scope="col">Różnica</th></tr>
+            <tr><th scope="col">{{ config.xLabel }}</th><th scope="col">{{ config.yLabel }}</th><th scope="col">{{ t('Prognoza') }}</th><th scope="col">{{ t('Różnica') }}</th></tr>
           </thead>
           <tbody>
             <tr v-for="(row, index) in result.rows" :key="index">

@@ -1,3 +1,4 @@
+import { t } from './i18n.js'
 // Symulacja architektury systemu dla ćwiczeń z system designu.
 //
 // Model LLM opisuje tylko scenariusz (ruch, węzły, awarie, przełączniki, cele).
@@ -80,27 +81,27 @@ function readParamValue(param, raw, storeIds) {
  * a ustawienie startowe (pierwsze opcje) ich nie spełnia.
  */
 export function checkScenario(raw) {
-  if (!hasText(raw?.instruction)) return { error: 'brak instrukcji' }
+  if (!hasText(raw?.instruction)) return { error: t('brak instrukcji') }
   const duration = clamp(Math.round(finite(raw.duration, 600)), 30, 1800)
 
   const sources = list(raw.sources).map(readSource).filter(Boolean).slice(0, 5)
-  if (!sources.length) return { error: 'brak źródeł ruchu' }
-  if (new Set(sources.map((s) => s.id)).size !== sources.length) return { error: 'powtórzone id źródła' }
+  if (!sources.length) return { error: t('brak źródeł ruchu') }
+  if (new Set(sources.map((s) => s.id)).size !== sources.length) return { error: t('powtórzone id źródła') }
 
   const nodes = list(raw.nodes).map(readNode).filter(Boolean).slice(0, 8)
   const byId = new Map(nodes.map((n) => [n.id, n]))
-  if (byId.size !== nodes.length) return { error: 'powtórzone id węzła' }
+  if (byId.size !== nodes.length) return { error: t('powtórzone id węzła') }
   const storeIds = new Set(nodes.filter((n) => n.kind === 'store').map((n) => n.id))
   for (const node of nodes) {
-    if (node.kind === 'limiter' && node.store && !storeIds.has(node.store)) return { error: `nieznany magazyn ${node.store}` }
+    if (node.kind === 'limiter' && node.store && !storeIds.has(node.store)) return { error: t('nieznany magazyn {0}', [node.store]) }
   }
 
   const path = list(raw.path).filter((id) => byId.has(id) && byId.get(id).kind !== 'store')
-  if (!path.length || new Set(path).size !== path.length) return { error: 'pusta albo powtórzona ścieżka' }
+  if (!path.length || new Set(path).size !== path.length) return { error: t('pusta albo powtórzona ścieżka') }
 
   const failures = list(raw.failures)
     .filter((f) => byId.has(f?.node) && Number.isFinite(f.from) && Number.isFinite(f.to) && f.to > f.from)
-    .map((f) => ({ node: f.node, from: Math.max(0, Math.round(f.from)), to: Math.min(duration, Math.round(f.to)), label: hasText(f.label) ? f.label.trim() : `${byId.get(f.node).label} nie działa` }))
+    .map((f) => ({ node: f.node, from: Math.max(0, Math.round(f.from)), to: Math.min(duration, Math.round(f.to)), label: hasText(f.label) ? f.label.trim() : t('{0} nie działa', [byId.get(f.node).label]) }))
     .slice(0, 4)
 
   const controls = []
@@ -112,16 +113,16 @@ export function checkScenario(raw) {
       const set = []
       for (const change of list(option.set)) {
         const node = byId.get(change?.node)
-        if (!node || !PARAMS.includes(change.param)) return { error: `zła zmiana w opcji "${option.label}"` }
+        if (!node || !PARAMS.includes(change.param)) return { error: t('zła zmiana w opcji "{0}"', [option.label]) }
         const value = readParamValue(change.param, change.value, storeIds)
-        if (value === undefined) return { error: `zła wartość ${change.param}="${change.value}" w opcji "${option.label}"` }
+        if (value === undefined) return { error: t('zła wartość {0}="{1}" w opcji "{2}"', [change.param, change.value, option.label]) }
         set.push({ node: node.id, param: change.param, value })
       }
       options.push({ label: option.label.trim(), detail: hasText(option.detail) ? option.detail.trim() : '', cost: Math.max(0, finite(option.cost)), set })
     }
     if (options.length >= 2) controls.push({ label: control.label.trim(), options })
   }
-  if (!controls.length) return { error: 'brak przełączników' }
+  if (!controls.length) return { error: t('brak przełączników') }
 
   const targets = new Set([...sources.map((s) => s.id), ...nodes.map((n) => n.id)])
   const goals = list(raw.goals).filter((goal) => {
@@ -138,7 +139,7 @@ export function checkScenario(raw) {
     window: Math.max(1, Math.round(finite(goal.window, 60))),
     hint: hasText(goal.hint) ? goal.hint.trim() : '',
   })).slice(0, 5)
-  if (!goals.length) return { error: 'brak celów' }
+  if (!goals.length) return { error: t('brak celów') }
 
   const scenario = {
     type: 'system-sim',
@@ -149,11 +150,11 @@ export function checkScenario(raw) {
   }
 
   const combinations = controls.reduce((total, c) => total * c.options.length, 1)
-  if (combinations > MAX_COMBINATIONS) return { error: 'za dużo kombinacji przełączników' }
+  if (combinations > MAX_COMBINATIONS) return { error: t('za dużo kombinacji przełączników') }
   const start = controls.map(() => 0)
-  if (passes(scenario, start)) return { error: 'ustawienie startowe już spełnia cele' }
+  if (passes(scenario, start)) return { error: t('ustawienie startowe już spełnia cele') }
   const solutions = allPicks(controls).filter((picks) => passes(scenario, picks))
-  if (!solutions.length) return { error: 'żadne ustawienie nie spełnia celów' }
+  if (!solutions.length) return { error: t('żadne ustawienie nie spełnia celów') }
   return { scenario: { ...scenario, solutions } }
 }
 

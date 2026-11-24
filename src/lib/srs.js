@@ -1,3 +1,4 @@
+import { t } from './i18n.js'
 // Uproszczone powtórki rozłożone w czasie (w duchu SM-2).
 
 const MIN = 60_000
@@ -47,8 +48,8 @@ export function schedule(card, rating, now = Date.now()) {
 
 export function formatDelay(ms) {
   if (ms < 60 * MIN) return `${Math.max(1, Math.round(ms / MIN))} min`
-  if (ms < DAY) return `${Math.round(ms / (60 * MIN))} godz.`
+  if (ms < DAY) return t('{0} godz.', [Math.round(ms / (60 * MIN))])
   const d = Math.round(ms / DAY)
-  if (d < 31) return d === 1 ? '1 dzień' : `${d} dni`
-  return `${Math.round(d / 30)} mies.`
+  if (d < 31) return d === 1 ? t('1 dzień') : t('{0} dni', [d])
+  return t('{0} mies.', [Math.round(d / 30)])
 }

@@ -1,4 +1,5 @@
 <script setup>
+import { t } from '../lib/i18n.js'
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useApp } from '../stores/app.js'
@@ -17,31 +18,31 @@ const style = ref(app.profile?.style || 'code')
 
 const TEMPLATES = [
   {
-    label: 'Przygotowanie do rozmowy',
-    text: 'Pracuję jako senior frontend developer z Reactem i TypeScriptem. Przed rozmowami chcę odświeżyć event loop, domknięcia, hoisting i this. Pokaż mi te mechanizmy na przykładach z pracy frontendowej, a po przećwiczeniu tematu daj mi pytanie w stylu rozmowy.',
+    label: t('Przygotowanie do rozmowy'),
+    text: t('Pracuję jako senior frontend developer z Reactem i TypeScriptem. Przed rozmowami chcę odświeżyć event loop, domknięcia, hoisting i this. Pokaż mi te mechanizmy na przykładach z pracy frontendowej, a po przećwiczeniu tematu daj mi pytanie w stylu rozmowy.'),
   },
   {
-    label: 'Nowy język: Go / Rust',
-    text: 'Znam dobrze JavaScript/TypeScript i backend w Node. Chcę szybko wejść w Go (albo Rust): składnia, typy, obsługa błędów, współbieżność, idiomy. Wolę uczyć się przez porównania do JS i krótkie zadania.',
+    label: t('Nowy język: Go / Rust'),
+    text: t('Znam dobrze JavaScript/TypeScript i backend w Node. Chcę szybko wejść w Go (albo Rust): składnia, typy, obsługa błędów, współbieżność, idiomy. Wolę uczyć się przez porównania do JS i krótkie zadania.'),
   },
   {
-    label: 'Algorytmy i struktury danych',
-    text: 'Pracuję komercyjnie kilka lat, ale algorytmy mam zardzewiałe. Chcę odświeżyć: złożoność, tablice/hash mapy, dwa wskaźniki, sliding window, rekurencję, drzewa, grafy (BFS/DFS), DP. Zadania w JavaScript.',
+    label: t('Algorytmy i struktury danych'),
+    text: t('Pracuję komercyjnie kilka lat, ale algorytmy mam zardzewiałe. Chcę odświeżyć: złożoność, tablice/hash mapy, dwa wskaźniki, sliding window, rekurencję, drzewa, grafy (BFS/DFS), DP. Zadania w JavaScript.'),
   },
   {
     label: 'System design',
-    text: 'Jestem mid/senior backend developerem. Chcę podciągnąć system design: skalowanie, cache, kolejki, bazy SQL vs NoSQL, spójność, rate limiting, projektowanie API. Pytania otwarte + krótkie zadania z kodem tam, gdzie ma to sens (TypeScript).',
+    text: t('Jestem mid/senior backend developerem. Chcę podciągnąć system design: skalowanie, cache, kolejki, bazy SQL vs NoSQL, spójność, rate limiting, projektowanie API. Pytania otwarte + krótkie zadania z kodem tam, gdzie ma to sens (TypeScript).'),
   },
   {
-    label: 'TypeScript zaawansowany',
-    text: 'Używam TypeScriptu na co dzień, ale głównie podstaw. Chcę opanować: generyki, conditional types, mapped types, infer, template literal types, narrowing, typy narzędziowe, projektowanie typów bibliotek.',
+    label: t('TypeScript zaawansowany'),
+    text: t('Używam TypeScriptu na co dzień, ale głównie podstaw. Chcę opanować: generyki, conditional types, mapped types, infer, template literal types, narrowing, typy narzędziowe, projektowanie typów bibliotek.'),
   },
 ]
 const MINUTES = [15, 30, 45, 60]
 const STYLES = [
-  { id: 'code', label: 'Więcej kodu' },
-  { id: 'balanced', label: 'Balans' },
-  { id: 'theory', label: 'Teoria' },
+  { id: 'code', label: t('Więcej kodu') },
+  { id: 'balanced', label: t('Balans') },
+  { id: 'theory', label: t('Teoria') },
 ]
 
 const ready = computed(() => description.value.trim().length >= 20)
@@ -70,39 +71,39 @@ function start() {
         <div class="intro">
           <div class="steps">
             <div class="bar"><div style="width: 50%" /></div>
-            <span class="label">Krok 1 / 2</span>
+            <span class="label">{{ t('Krok 1 / 2') }}</span>
           </div>
-          <h1>Czego chcesz się nauczyć?</h1>
+          <h1>{{ t('Czego chcesz się nauczyć?') }}</h1>
           <p class="lead">
-            Napisz, co chcesz umieć, z jakimi technologiami pracujesz i które pojęcia chcesz poznać lub odświeżyć.
+            {{ t('Napisz, co chcesz umieć, z jakimi technologiami pracujesz i które pojęcia chcesz poznać lub odświeżyć.') }}
           </p>
         </div>
 
         <div v-if="app.plan" class="warn">
-          Masz już plan „{{ app.plan.title }}”. Nowy plan go zastąpi — XP, seria i fiszki zostają.
-          <RouterLink to="/path">Wróć do ścieżki</RouterLink>
+          {{ t('Masz już plan „') }}{{ app.plan.title }}{{ t('”. Nowy plan go zastąpi — XP, seria i fiszki zostają.') }}
+          <RouterLink to="/path">{{ t('Wróć do ścieżki') }}</RouterLink>
         </div>
 
         <div class="group">
-          <label for="goal" class="label">Twoja sytuacja</label>
+          <label for="goal" class="label">{{ t('Twoja sytuacja') }}</label>
           <div class="box">
             <textarea
               id="goal"
               v-model="description"
               rows="7"
               :maxlength="MAX"
-              placeholder="np. Jestem senior frontend devem (8 lat, React + TS). Przed rozmowami chcę odświeżyć fundamenty JS: event loop, closures, hoisting… Mam 30–45 min dziennie i wolę krótkie zadania z kodem."
+              :placeholder="t('np. Jestem senior frontend devem (8 lat, React + TS). Przed rozmowami chcę odświeżyć fundamenty JS: event loop, closures, hoisting… Mam 30–45 min dziennie i wolę krótkie zadania z kodem.')"
               @keydown.ctrl.enter="start"
             />
             <div class="box-foot">
-              <span>Im więcej szczegółów, tym lepszy plan</span>
+              <span>{{ t('Im więcej szczegółów, tym lepszy plan') }}</span>
               <span>{{ description.length }} / {{ MAX }}</span>
             </div>
           </div>
         </div>
 
         <div class="group">
-          <span class="label">Albo zacznij od szablonu</span>
+          <span class="label">{{ t('Albo zacznij od szablonu') }}</span>
           <div class="chips">
             <button v-for="t in TEMPLATES" :key="t.label" class="chip tpl" @click="description = t.text">{{ t.label }}</button>
           </div>
@@ -110,7 +111,7 @@ function start() {
 
         <div class="grid2">
           <div class="group">
-            <span class="label" id="lbl-min">Czas dziennie</span>
+            <span class="label" id="lbl-min">{{ t('Czas dziennie') }}</span>
             <div class="seg" role="group" aria-labelledby="lbl-min">
               <button v-for="m in MINUTES" :key="m" class="chip" :aria-pressed="minutes === m" @click="minutes = m">
                 {{ m === 60 ? '60+' : m }} min
@@ -118,7 +119,7 @@ function start() {
             </div>
           </div>
           <div class="group">
-            <span class="label" id="lbl-style">Styl nauki</span>
+            <span class="label" id="lbl-style">{{ t('Styl nauki') }}</span>
             <div class="seg" role="group" aria-labelledby="lbl-style">
               <button v-for="s in STYLES" :key="s.id" class="chip" :aria-pressed="style === s.id" @click="style = s.id">{{ s.label }}</button>
             </div>
@@ -128,14 +129,14 @@ function start() {
         <div class="cta">
           <span class="hint">
             <template v-if="available === false">
-              Nie widzę CLI {{ app.settings.provider === 'codex' ? 'Codex' : 'Claude Code' }}.
-              <RouterLink to="/settings">Skonfiguruj w Ustawieniach</RouterLink>.
+              {{ t('Nie widzę CLI') }} {{ app.settings.provider === 'codex' ? 'Codex' : 'Claude Code' }}.
+              <RouterLink to="/settings">{{ t('Skonfiguruj w Ustawieniach') }}</RouterLink>.
             </template>
-            <template v-else>Na podstawie opisu powstanie plan z przykładami, ćwiczeniami i powtórkami.</template>
+            <template v-else>{{ t('Na podstawie opisu powstanie plan z przykładami, ćwiczeniami i powtórkami.') }}</template>
           </span>
           <button class="btn btn-primary btn-lg" :disabled="!ready || running" @click="start">
             <Icon name="sparkle" :size="20" :stroke="2.4" />
-            Wygeneruj plan
+            {{ t('Wygeneruj plan') }}
           </button>
         </div>
       </div>

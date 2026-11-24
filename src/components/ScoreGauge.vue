@@ -1,4 +1,5 @@
 <script setup>
+import { t } from '../lib/i18n.js'
 import { computed } from 'vue'
 
 const props = defineProps({ score: { type: Number, default: 0 }, delta: { type: Number, default: 0 } })
@@ -6,17 +7,17 @@ const LEN = Math.PI * 80 // długość łuku r=80
 const dash = computed(() => `${(Math.min(1000, Math.max(0, props.score)) / 1000) * LEN} ${LEN}`)
 const label = computed(() => {
   const s = props.score
-  if (!s) return 'Zrób pierwszą lekcję'
-  if (s < 400) return 'Rozgrzewka'
-  if (s < 600) return 'Dobrze idzie'
-  if (s < 800) return 'Świetnie ci idzie!'
-  return 'Mistrzowsko!'
+  if (!s) return t('Zrób pierwszą lekcję')
+  if (s < 400) return t('Rozgrzewka')
+  if (s < 600) return t('Dobrze idzie')
+  if (s < 800) return t('Świetnie ci idzie!')
+  return t('Mistrzowsko!')
 })
 </script>
 
 <template>
   <div class="gauge">
-    <svg role="img" :aria-label="`Wynik ${score} na 1000`" width="240" height="130" viewBox="0 0 200 110">
+    <svg role="img" :aria-label="t('Wynik {0} na 1000', [score])" width="240" height="130" viewBox="0 0 200 110">
       <path d="M20 100 A80 80 0 0 1 180 100" fill="none" stroke="#2C3237" stroke-width="14" stroke-linecap="round" />
       <path
         v-if="score > 0"

@@ -1,4 +1,5 @@
 <script setup>
+import { t } from '../lib/i18n.js'
 import { computed, ref, watch } from 'vue'
 import { useApp } from '../stores/app.js'
 import { getJSON, putJSON } from '../lib/api.js'
@@ -11,26 +12,33 @@ const customModel = ref('')
 
 const provider = computed(() => app.settings.provider)
 
-async function load() {
+async function load([id, locale], _old, onCleanup) {
+  let active = true
+  onCleanup(() => { active = false })
   loading.value = true
   error.value = ''
   try {
-    catalog.value = await getJSON(`/api/providers/${provider.value}/models`)
+    await app.flushSave().catch(() => {})
+    if (!active || locale !== app.settings.locale) return
+    const nextCatalog = await getJSON(`/api/providers/${id}/models`)
+    if (active) catalog.value = nextCatalog
   } catch (err) {
+    if (!active) return
     catalog.value = null
-    error.value = 'Nie udało się pobrać listy modeli.'
+    error.value = t('Nie udało się pobrać listy modeli.')
   } finally {
-    loading.value = false
+    if (active) loading.value = false
   }
+  if (!active) return
   const known = catalog.value?.models?.some((m) => m.id === app.settings.model)
   customModel.value = app.settings.model && !known ? app.settings.model : ''
 }
-watch(provider, load, { immediate: true })
+watch([provider, () => app.settings.locale], load, { immediate: true })
 
 const models = computed(() => catalog.value?.models || [])
 const selected = computed(() => models.value.find((m) => m.id === app.settings.model) || null)
 const efforts = computed(() => (selected.value ? selected.value.efforts : catalog.value?.efforts) || [])
-const placeholder = computed(() => (provider.value === 'claude' ? 'np. claude-opus-5-5' : 'np. gpt-6.2-sol'))
+const placeholder = computed(() => (provider.value === 'claude' ? t('np. claude-opus-5-5') : t('np. gpt-6.2-sol')))
 
 async function save() {
   await putJSON('/api/state', app.persisted())
@@ -57,9 +65,9 @@ async function applyCustom() {
 <template>
   <div class="picker">
     <span class="label">Model</span>
-    <div v-if="loading && !catalog" class="muted small">Pobieram listę modeli…</div>
+    <div v-if="loading && !catalog" class="muted small">{{ t('Pobieram listę modeli…') }}</div>
     <div v-else class="seg">
-      <button class="chip" :aria-pressed="!app.settings.model" @click="setModel('')">{{ catalog?.defaultLabel || 'Domyślny z CLI' }}</button>
+      <button class="chip" :aria-pressed="!app.settings.model" @click="setModel('')">{{ catalog?.defaultLabel || t('Domyślny z CLI') }}</button>
       <button
         v-for="m in models"
         :key="m.id"
@@ -73,22 +81,22 @@ async function applyCustom() {
     <span v-if="error" class="muted small">{{ error }}</span>
 
     <details class="custom" :open="!!customModel">
-      <summary class="small">Inny identyfikator modelu</summary>
+      <summary class="small">{{ t('Inny identyfikator modelu') }}</summary>
       <div class="row">
-        <input v-model="customModel" class="input mono" :placeholder="placeholder" aria-label="Własny identyfikator modelu" @keydown.enter="applyCustom" />
-        <button class="btn btn-sm" :disabled="!customModel.trim()" @click="applyCustom">Ustaw</button>
+        <input v-model="customModel" class="input mono" :placeholder="placeholder" :aria-label="t('Własny identyfikator modelu')" @keydown.enter="applyCustom" />
+        <button class="btn btn-sm" :disabled="!customModel.trim()" @click="applyCustom">{{ t('Ustaw') }}</button>
       </div>
     </details>
 
     <template v-if="efforts.length">
-      <span class="label">Wysiłek rozumowania (effort)</span>
+      <span class="label">{{ t('Wysiłek rozumowania (effort)') }}</span>
       <div class="seg">
         <button class="chip" :aria-pressed="!app.settings.effort" @click="setEffort('')">
-          Domyślny{{ selected?.defaultEffort ? ` (${efforts.find((e) => e.id === selected.defaultEffort)?.label?.toLowerCase() || selected.defaultEffort})` : '' }}
+          {{ t('Domyślny') }}{{ selected?.defaultEffort ? ` (${efforts.find((e) => e.id === selected.defaultEffort)?.label?.toLowerCase() || selected.defaultEffort})` : '' }}
         </button>
         <button v-for="e in efforts" :key="e.id" class="chip" :aria-pressed="app.settings.effort === e.id" @click="setEffort(e.id)">{{ e.label }}</button>
       </div>
-      <span class="muted small">Wyższy effort daje dokładniejsze lekcje i oceny, ale odpowiedzi trwają dłużej i szybciej zużywają limit subskrypcji.</span>
+      <span class="muted small">{{ t('Wyższy effort daje dokładniejsze lekcje i oceny, ale odpowiedzi trwają dłużej i szybciej zużywają limit subskrypcji.') }}</span>
     </template>
   </div>
 </template>

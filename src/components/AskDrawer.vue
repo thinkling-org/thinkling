@@ -1,4 +1,5 @@
 <script setup>
+import { t } from '../lib/i18n.js'
 import { nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { ai } from '../lib/api.js'
 import { play } from '../lib/sfx.js'
@@ -45,7 +46,7 @@ async function run(task, payload, userText) {
     play('blip')
   } catch (err) {
     if (ctrl === request && err.name !== 'AbortError') {
-      messages.value.push({ role: 'assistant', content: `**Błąd:** ${err.message}`, error: true })
+      messages.value.push({ role: 'assistant', content: t('**Błąd:** {0}', [err.message]), error: true })
     }
   } finally {
     if (ctrl === request) {
@@ -67,7 +68,7 @@ function ask(question) {
   run('chat', { context: props.context, history, question: q }, q)
 }
 
-function explain(payload, label = 'Wyjaśnij krok po kroku') {
+function explain(payload, label = t('Wyjaśnij krok po kroku')) {
   run('explain', payload, label)
 }
 
@@ -88,19 +89,19 @@ watch(
 onBeforeUnmount(reset)
 defineExpose({ explain, reset })
 
-const SUGGESTIONS = ['Daj prostszy przykład', 'Gdzie to się przydaje w praktyce?', 'Jakie są typowe pułapki?']
+const SUGGESTIONS = [t('Daj prostszy przykład'), t('Gdzie to się przydaje w praktyce?'), t('Jakie są typowe pułapki?')]
 </script>
 
 <template>
   <Transition name="drawer">
-    <aside v-if="open" class="drawer" aria-label="Rozmowa z modelem">
+    <aside v-if="open" class="drawer" :aria-label="t('Rozmowa z modelem')">
       <header class="dh">
-        <span class="dt"><Icon name="chat" :size="20" />Dopytaj {{ app.settings.provider === 'codex' ? 'Codex' : 'Claude' }}</span>
-        <button class="close" aria-label="Zamknij" @click="emit('close')"><Icon name="x" :size="20" :stroke="2.6" /></button>
+        <span class="dt"><Icon name="chat" :size="20" />{{ t('Dopytaj') }} {{ app.settings.provider === 'codex' ? 'Codex' : 'Claude' }}</span>
+        <button class="close" :aria-label="t('Zamknij')" @click="emit('close')"><Icon name="x" :size="20" :stroke="2.6" /></button>
       </header>
       <div ref="list" class="msgs">
         <div v-if="!messages.length && !busy" class="empty">
-          <p>Zapytaj o cokolwiek związanego z tym ćwiczeniem.</p>
+          <p>{{ t('Zapytaj o cokolwiek związanego z tym ćwiczeniem.') }}</p>
           <button v-for="s in SUGGESTIONS" :key="s" class="chip" @click="ask(s)">{{ s }}</button>
         </div>
         <div v-for="(m, i) in messages" :key="i" class="msg" :class="m.role">
@@ -109,7 +110,7 @@ const SUGGESTIONS = ['Daj prostszy przykład', 'Gdzie to się przydaje w praktyc
         </div>
         <div v-if="busy" class="msg assistant thinking">
           <span class="spinner" />
-          Myślę… <span class="muted mono">{{ progress }} zn</span>
+          {{ t('Myślę…') }} <span class="muted mono">{{ progress }} {{ t('zn') }}</span>
         </div>
       </div>
       <form class="ask" @submit.prevent="ask()">
@@ -117,8 +118,8 @@ const SUGGESTIONS = ['Daj prostszy przykład', 'Gdzie to się przydaje w praktyc
           ref="inputEl"
           v-model="input"
           rows="2"
-          placeholder="Twoje pytanie…"
-          aria-label="Twoje pytanie"
+          :placeholder="t('Twoje pytanie…')"
+          :aria-label="t('Twoje pytanie')"
           data-dictation-dock
           :disabled="busy"
           @keydown.enter.exact.prevent="ask()"
@@ -126,7 +127,7 @@ const SUGGESTIONS = ['Daj prostszy przykład', 'Gdzie to się przydaje w praktyc
         <div class="ask-actions">
           <div class="mic-slot" data-dictation-slot />
           <button class="btn btn-primary btn-sm send" type="submit" :disabled="busy || !input.trim()">
-            <Icon name="send" :size="17" :stroke="2.6" />Wyślij
+            <Icon name="send" :size="17" :stroke="2.6" />{{ t('Wyślij') }}
           </button>
         </div>
       </form>

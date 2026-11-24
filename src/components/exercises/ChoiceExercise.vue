@@ -1,4 +1,5 @@
 <script setup>
+import { t } from '../../lib/i18n.js'
 import { computed } from 'vue'
 import Markdown from '../Markdown.vue'
 import CodeBlock from '../CodeBlock.vue'
@@ -25,18 +26,18 @@ function state(i) {
 
 <template>
   <div class="ex">
-    <span v-if="exercise.warmup" class="kind label warm">Rozgrzewka · zgaduj śmiało, błąd się nie liczy</span>
-    <span v-else-if="isPractice" class="kind label">Próba bez oceny</span>
-    <span v-else-if="exercise.stage === 'challenge'" class="kind label warm">Opcjonalne wyzwanie</span>
-    <span v-else class="kind label">{{ isOutput ? 'Co wypisze ten kod?' : 'Quiz' }}</span>
+    <span v-if="exercise.warmup" class="kind label warm">{{ t('Rozgrzewka · zgaduj śmiało, błąd się nie liczy') }}</span>
+    <span v-else-if="isPractice" class="kind label">{{ t('Próba bez oceny') }}</span>
+    <span v-else-if="exercise.stage === 'challenge'" class="kind label warm">{{ t('Opcjonalne wyzwanie') }}</span>
+    <span v-else class="kind label">{{ isOutput ? t('Co wypisze ten kod?') : 'Quiz' }}</span>
     <Markdown tag="h1" fit-heading class="q" :src="exercise.prompt" />
     <CodeBlock v-if="exercise.code" :code="exercise.code" :language="exercise.codeLanguage" />
     <details v-if="isPractice && exercise.hint && !result" class="card hint">
-      <summary>Pokaż podpowiedź</summary>
+      <summary>{{ t('Pokaż podpowiedź') }}</summary>
       <Markdown :src="exercise.hint" />
     </details>
 
-    <div role="radiogroup" aria-label="Odpowiedzi" class="opts" :class="{ grid: short }">
+    <div role="radiogroup" :aria-label="t('Odpowiedzi')" class="opts" :class="{ grid: short }">
       <button
         v-for="(o, i) in exercise.options"
         :key="i"
@@ -55,11 +56,11 @@ function state(i) {
     </div>
 
     <div v-if="result && exercise.warmup" class="card explain warmup">
-      <span class="label">{{ result.status === 'correct' ? 'Dobra intuicja!' : 'Dobra próba' }}</span>
-      <span>Za chwilę karta wiedzy wyjaśni, dlaczego jest właśnie tak.</span>
+      <span class="label">{{ result.status === 'correct' ? t('Dobra intuicja!') : t('Dobra próba') }}</span>
+      <span>{{ t('Za chwilę karta wiedzy wyjaśni, dlaczego jest właśnie tak.') }}</span>
     </div>
     <div v-else-if="result && exercise.explanation" class="card explain" :class="result.status">
-      <span class="label">{{ isPractice ? 'Jak rozwiązać to ćwiczenie' : 'Wyjaśnienie' }}</span>
+      <span class="label">{{ isPractice ? t('Jak rozwiązać to ćwiczenie') : t('Wyjaśnienie') }}</span>
       <Markdown :src="exercise.explanation" />
     </div>
   </div>

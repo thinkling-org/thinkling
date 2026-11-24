@@ -1,4 +1,5 @@
 <script setup>
+import { t } from '../../lib/i18n.js'
 import { computed } from 'vue'
 import { diagnoseRun, visible } from '../../lib/test-diagnosis.js'
 
@@ -23,8 +24,8 @@ const rows = computed(() => {
   if (!d) return []
   const { start, missing, extra } = d.diff
   return [
-    { label: 'Oczekiwano', kind: 'want', ...window(d.expected, start, missing.length) },
-    { label: 'Twój wynik', kind: 'got', ...window(d.got, start, extra.length) },
+    { label: t('Oczekiwano'), kind: 'want', ...window(d.expected, start, missing.length) },
+    { label: t('Twój wynik'), kind: 'got', ...window(d.got, start, extra.length) },
   ]
 })
 </script>
@@ -41,13 +42,13 @@ const rows = computed(() => {
     <dl class="diff">
       <div v-for="row in rows" :key="row.kind" :class="row.kind">
         <dt>{{ row.label }}</dt>
-        <dd><code>{{ row.before }}<mark v-if="row.mark">{{ row.mark }}</mark><mark v-else class="gap" aria-label="tu nic nie ma">‸</mark>{{ row.after }}</code></dd>
+        <dd><code>{{ row.before }}<mark v-if="row.mark">{{ row.mark }}</mark><mark v-else class="gap" :aria-label="t('tu nic nie ma')">‸</mark>{{ row.after }}</code></dd>
       </div>
     </dl>
     <p v-if="diagnosis.location" class="where">
-      Najpewniej linia {{ diagnosis.location.line }}: <code>{{ diagnosis.location.text }}</code>
+      {{ t('Najpewniej linia') }} {{ diagnosis.location.line }}: <code>{{ diagnosis.location.text }}</code>
     </p>
-    <p class="test-name">Test: {{ diagnosis.name }} · ↵ oznacza znak nowej linii</p>
+    <p class="test-name">{{ t('Test:') }} {{ diagnosis.name }} {{ t('· ↵ oznacza znak nowej linii') }}</p>
   </div>
 </template>
 

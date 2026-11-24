@@ -1,4 +1,5 @@
 <script setup>
+import { t } from '../lib/i18n.js'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useApp } from '../stores/app.js'
@@ -74,51 +75,51 @@ onBeforeUnmount(() => {
 <template>
   <div class="review">
     <header class="rh">
-      <button class="x" aria-label="Zamknij" @click="router.back()"><Icon name="x" :size="26" :stroke="2.8" /></button>
+      <button class="x" :aria-label="t('Zamknij')" @click="router.back()"><Icon name="x" :size="26" :stroke="2.8" /></button>
       <div class="bar"><div :style="{ width: `${total ? (doneCount / total) * 100 : 100}%` }" /></div>
       <span class="count">{{ doneCount }} / {{ total }}</span>
     </header>
 
     <main v-if="!total" class="center">
       <Gem :index="3" :size="96" glow />
-      <h1>Brak fiszek do powtórki</h1>
-      <p class="sub">Fiszki dodają się po lekcjach i z twoich błędów. Wróć później!</p>
+      <h1>{{ t('Brak fiszek do powtórki') }}</h1>
+      <p class="sub">{{ t('Fiszki dodają się po lekcjach i z twoich błędów. Wróć później!') }}</p>
       <div class="row">
-        <RouterLink to="/path" class="btn">Do ścieżki</RouterLink>
-        <RouterLink v-if="app.flashcards.length" :to="{ path: '/review', query: { all: 1 } }" class="btn btn-primary">Ćwicz całą talię</RouterLink>
+        <RouterLink to="/path" class="btn">{{ t('Do ścieżki') }}</RouterLink>
+        <RouterLink v-if="app.flashcards.length" :to="{ path: '/review', query: { all: 1 } }" class="btn btn-primary">{{ t('Ćwicz całą talię') }}</RouterLink>
       </div>
     </main>
 
     <main v-else-if="finished" class="center">
       <Gem :index="2" :size="110" glow class="pop" />
-      <h1 class="done">Powtórka zrobiona!</h1>
+      <h1 class="done">{{ t('Powtórka zrobiona!') }}</h1>
       <div class="sum">
-        <span class="tag tag-red">Znowu: {{ stats.again }}</span>
-        <span class="tag tag-yellow">Trudne: {{ stats.hard }}</span>
-        <span class="tag tag-green">Dobrze: {{ stats.good }}</span>
-        <span class="tag tag-purple">Łatwe: {{ stats.easy }}</span>
+        <span class="tag tag-red">{{ t('Znowu:') }} {{ stats.again }}</span>
+        <span class="tag tag-yellow">{{ t('Trudne:') }} {{ stats.hard }}</span>
+        <span class="tag tag-green">{{ t('Dobrze:') }} {{ stats.good }}</span>
+        <span class="tag tag-purple">{{ t('Łatwe:') }} {{ stats.easy }}</span>
       </div>
-      <RouterLink to="/path" class="btn btn-primary btn-lg" style="margin-top: 16px">Dalej</RouterLink>
+      <RouterLink to="/path" class="btn btn-primary btn-lg" style="margin-top: 16px">{{ t('Dalej') }}</RouterLink>
     </main>
 
     <main v-else-if="card" class="stage">
       <div class="inner">
         <div class="meta">
           <span v-if="card.source" class="tag" :class="/bł[ąę]d/.test(card.source) ? 'tag-red' : 'tag-purple'">{{ card.source }}</span>
-          <span v-if="card.lapses" class="muted small">pomyłki: {{ card.lapses }}</span>
+          <span v-if="card.lapses" class="muted small">{{ t('pomyłki:') }} {{ card.lapses }}</span>
         </div>
         <div class="stack">
           <div aria-hidden="true" class="ghost g2" />
           <div aria-hidden="true" class="ghost g1" />
           <article class="fc card" :key="card.id">
             <div class="side">
-              <span class="label">Pytanie</span>
+              <span class="label">{{ t('Pytanie') }}</span>
               <Markdown class="front" :src="card.front" />
             </div>
             <template v-if="revealed">
               <div class="sep" />
               <div class="side">
-                <span class="label" style="color: var(--green)">Odpowiedź</span>
+                <span class="label" style="color: var(--green)">{{ t('Odpowiedź') }}</span>
                 <Markdown class="back" :src="card.back" />
               </div>
             </template>
@@ -126,14 +127,14 @@ onBeforeUnmount(() => {
         </div>
 
         <div v-if="!revealed" class="reveal">
-          <button class="btn btn-primary btn-lg btn-block" @click="revealed = true">Pokaż odpowiedź</button>
-          <span class="muted small">Spacja</span>
+          <button class="btn btn-primary btn-lg btn-block" @click="revealed = true">{{ t('Pokaż odpowiedź') }}</button>
+          <span class="muted small">{{ t('Spacja') }}</span>
         </div>
         <div v-else class="rate">
-          <span class="rq">Jak dobrze to pamiętałeś?</span>
+          <span class="rq">{{ t('Jak dobrze to pamiętałeś?') }}</span>
           <div class="rgrid">
             <button v-for="(r, i) in RATINGS" :key="r.id" class="rbtn" :class="r.tone" @click="rate(r.id)">
-              <span class="rl">{{ r.label }}</span>
+              <span class="rl">{{ t(r.label) }}</span>
               <span class="rt">{{ previews[r.id] }} · {{ i + 1 }}</span>
             </button>
           </div>

@@ -1,4 +1,5 @@
 <script setup>
+import { t } from '../lib/i18n.js'
 import { computed, nextTick, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useApp } from '../stores/app.js'
@@ -12,7 +13,7 @@ const app = useApp()
 const router = useRouter()
 
 const KIND_ICON = { theory: 'question', output: 'terminal', code: 'code', mixed: 'mixed', design: 'design', test: 'trophy' }
-const KIND_LABEL = { theory: 'Pytania otwarte', output: 'Co wypisze kod?', code: 'Zadania w edytorze', mixed: 'Mieszanka', design: 'Decyzje projektowe', test: 'Sprawdzian modułu' }
+const KIND_LABEL = { theory: t('Pytania otwarte'), output: t('Co wypisze kod?'), code: t('Zadania w edytorze'), mixed: t('Mieszanka'), design: t('Decyzje projektowe'), test: t('Sprawdzian modułu') }
 
 const current = computed(() => app.currentLesson)
 const currentModuleIndex = computed(() => current.value?.moduleIndex ?? app.plan.modules.length - 1)
@@ -53,7 +54,7 @@ onMounted(async () => {
           <div class="banner" :class="moduleState(mi)">
             <div class="b-t">
               <span class="b-l">
-                Moduł {{ mi + 1 }} · {{ moduleState(mi) === 'done' ? 'ukończony' : `lekcja ${Math.min(m.lessons.filter((l) => l.status === 'done').length + 1, m.lessons.length)} z ${m.lessons.length}` }}
+                {{ t('Moduł') }} {{ mi + 1 }} · {{ moduleState(mi) === 'done' ? t('ukończony') : t('lekcja {0} z {1}', [Math.min(m.lessons.filter((l) => l.status === 'done').length + 1, m.lessons.length), m.lessons.length]) }}
               </span>
               <span class="b-title">{{ m.title }}</span>
             </div>
@@ -68,23 +69,23 @@ onMounted(async () => {
               :class="{ open: openId === l.id }"
               :style="{ transform: `translateX(${offset(li + mi * 3)}px)` }"
             >
-              <span v-if="l.status === 'current'" class="bubble">{{ !app.lessonReady(l.id) && app.lessonGen[l.id] ? 'PRZYGOTOWUJĘ…' : 'START' }}</span>
+              <span v-if="l.status === 'current'" class="bubble">{{ !app.lessonReady(l.id) && app.lessonGen[l.id] ? t('PRZYGOTOWUJĘ…') : 'START' }}</span>
               <button
                 class="node"
                 :class="[l.status, l.kind === 'test' ? 'test' : '']"
-                :aria-label="`Lekcja ${li + 1}: ${l.title}, ${l.status === 'done' ? 'ukończona' : l.status === 'current' ? 'aktualna' : 'zablokowana'}`"
+                :aria-label="t('Lekcja {0}: {1}, {2}', [li + 1, l.title, l.status === 'done' ? t('ukończona') : l.status === 'current' ? t('aktualna') : t('zablokowana')])"
                 :aria-expanded="openId === l.id"
                 @click="toggle(l.id)"
               >
                 <Icon :name="l.status === 'done' && l.kind !== 'test' ? 'check' : KIND_ICON[l.kind] || 'mixed'" :size="l.status === 'current' ? 40 : 32" :stroke="l.status === 'done' ? 3.2 : 2.8" />
               </button>
               <div v-if="openId === l.id" class="pop" :class="l.status" role="dialog" :aria-label="l.title">
-                <span class="pop-k">{{ KIND_LABEL[l.kind] || 'Lekcja' }}</span>
+                <span class="pop-k">{{ KIND_LABEL[l.kind] || t('Lekcja') }}</span>
                 <strong>{{ l.title }}</strong>
                 <span class="pop-f">{{ l.focus }}</span>
-                <button v-if="l.status === 'current'" class="btn btn-block" style="color: var(--purple)" @click="start(l)">Zacznij +20 XP</button>
-                <button v-else-if="l.status === 'done'" class="btn btn-block" @click="start(l)">Powtórz +5 XP</button>
-                <span v-else class="pop-lock"><Icon name="lock" :size="16" />Ukończ poprzednie lekcje</span>
+                <button v-if="l.status === 'current'" class="btn btn-block" style="color: var(--purple)" @click="start(l)">{{ t('Zacznij +20 XP') }}</button>
+                <button v-else-if="l.status === 'done'" class="btn btn-block" @click="start(l)">{{ t('Powtórz +5 XP') }}</button>
+                <span v-else class="pop-lock"><Icon name="lock" :size="16" />{{ t('Ukończ poprzednie lekcje') }}</span>
               </div>
             </div>
           </div>
@@ -92,58 +93,58 @@ onMounted(async () => {
 
         <div v-if="allDone" class="card finished">
           <Gem :index="2" :size="64" glow />
-          <h2>Plan ukończony!</h2>
-          <p>Możesz poprosić o rozszerzenie planu albo ułożyć nowy.</p>
+          <h2>{{ t('Plan ukończony!') }}</h2>
+          <p>{{ t('Możesz poprosić o rozszerzenie planu albo ułożyć nowy.') }}</p>
           <div class="row">
-            <RouterLink to="/plan" class="btn">Rozszerz plan</RouterLink>
-            <RouterLink to="/start" class="btn btn-primary">Nowy plan</RouterLink>
+            <RouterLink to="/plan" class="btn">{{ t('Rozszerz plan') }}</RouterLink>
+            <RouterLink to="/start" class="btn btn-primary">{{ t('Nowy plan') }}</RouterLink>
           </div>
         </div>
       </section>
 
       <aside class="aside">
         <div class="card score">
-          <span class="h">Twój wynik</span>
+          <span class="h">{{ t('Twój wynik') }}</span>
           <ScoreGauge :score="app.score" :delta="app.scoreDelta" />
         </div>
         <div class="tiles">
           <div class="card tile">
             <Icon name="flame" :size="24" style="color: var(--flame)" />
-            <span class="tv">{{ app.streakAlive ? app.stats.streak : 0 }} dni</span>
-            <span class="tl">seria</span>
+            <span class="tv">{{ app.streakAlive ? app.stats.streak : 0 }} {{ t('dni') }}</span>
+            <span class="tl">{{ t('seria') }}</span>
           </div>
           <div class="card tile">
             <Gem :index="currentModuleIndex" :size="24" />
-            <span class="tv">Moduł {{ currentModuleIndex + 1 }}</span>
-            <span class="tl">z {{ app.plan.modules.length }} w planie</span>
+            <span class="tv">{{ t('Moduł') }} {{ currentModuleIndex + 1 }}</span>
+            <span class="tl">{{ t('z') }} {{ app.plan.modules.length }} {{ t('w planie') }}</span>
           </div>
           <div class="card tile">
             <Icon name="check" :size="24" :stroke="3" style="color: var(--green)" />
             <span class="tv">{{ app.doneCount }} / {{ app.allLessons.length }}</span>
-            <span class="tl">lekcji</span>
+            <span class="tl">{{ t('lekcji') }}</span>
           </div>
           <div class="card tile">
             <Icon name="cards" :size="24" style="color: var(--blue)" />
             <span class="tv">{{ app.flashcards.length }}</span>
-            <span class="tl">fiszek w talii</span>
+            <span class="tl">{{ t('fiszek w talii') }}</span>
           </div>
         </div>
         <div class="card goal">
-          <div class="goal-h"><span>Cel dzienny</span><span style="color: var(--yellow)">{{ app.todayMinutes }} / {{ dailyGoal }} min</span></div>
+          <div class="goal-h"><span>{{ t('Cel dzienny') }}</span><span style="color: var(--yellow)">{{ app.todayMinutes }} / {{ dailyGoal }} min</span></div>
           <div class="bar" style="height: 14px"><div :style="{ width: `${dailyPct}%` }" /></div>
         </div>
         <div class="card weak">
-          <span class="h2">Słabe punkty wg {{ app.settings.provider === 'codex' ? 'Codex' : 'Claude' }}</span>
+          <span class="h2">{{ t('Słabe punkty wg') }} {{ app.settings.provider === 'codex' ? 'Codex' : 'Claude' }}</span>
           <div class="tags">
             <span v-for="(w, i) in app.weakSpots" :key="w" class="tag" :class="i < 3 ? 'tag-red' : 'tag-yellow'">
               {{ w }}
-              <button class="x" :aria-label="`Usuń ${w}`" @click="app.removeWeakSpot(w)"><Icon name="x" :size="12" :stroke="3" /></button>
+              <button class="x" :aria-label="t('Usuń {0}', [w])" @click="app.removeWeakSpot(w)"><Icon name="x" :size="12" :stroke="3" /></button>
             </span>
-            <span v-if="!app.weakSpots.length" class="muted">Na razie brak.</span>
+            <span v-if="!app.weakSpots.length" class="muted">{{ t('Na razie brak.') }}</span>
           </div>
         </div>
         <RouterLink to="/review" class="btn btn-block" :class="{ 'btn-primary': app.dueCards.length }">
-          {{ app.dueCards.length ? `Powtórz ${app.dueCards.length} fiszek` : 'Brak fiszek do powtórki' }}
+          {{ app.dueCards.length ? t('Powtórz {0} fiszek', [app.dueCards.length]) : t('Brak fiszek do powtórki') }}
         </RouterLink>
       </aside>
     </div>

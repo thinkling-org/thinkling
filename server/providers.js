@@ -1,3 +1,4 @@
+import { t } from './locale.js'
 // Wykrywanie i uruchamianie lokalnych CLI (Claude Code / Codex).
 // Oba działają w ramach Twojej subskrypcji — nie potrzebujemy kluczy API.
 import { spawn, execFileSync } from 'node:child_process'
@@ -116,7 +117,7 @@ const resolveCache = new Map()
 
 function resolveProvider(id, overridePath) {
   const def = PROVIDERS[id]
-  if (!def) throw new Error(`Nieznany dostawca: ${id}`)
+  if (!def) throw new Error(t('Nieznany dostawca: {0}', [id]))
   const key = `${id}|${overridePath || ''}`
   const cached = resolveCache.get(key)
   if (cached && Date.now() - cached.at < 60_000 && (!cached.cmd || exists(cached.cmd.path))) return cached.cmd
@@ -224,22 +225,22 @@ export function clearProviderCaches() {
 }
 
 const CLAUDE_MODELS = [
-  { id: 'fable', label: 'Fable', description: 'Najmocniejszy model, najlepsza jakość lekcji i ocen.' },
-  { id: 'opus', label: 'Opus', description: 'Bardzo dobra jakość, szybszy od Fable.' },
-  { id: 'sonnet', label: 'Sonnet', description: 'Balans jakości i szybkości.' },
-  { id: 'haiku', label: 'Haiku', description: 'Najszybszy i najtańszy w limitach subskrypcji.' },
+  { id: 'fable', label: 'Fable', description: t('Najmocniejszy model, najlepsza jakość lekcji i ocen.') },
+  { id: 'opus', label: 'Opus', description: t('Bardzo dobra jakość, szybszy od Fable.') },
+  { id: 'sonnet', label: 'Sonnet', description: t('Balans jakości i szybkości.') },
+  { id: 'haiku', label: 'Haiku', description: t('Najszybszy i najtańszy w limitach subskrypcji.') },
 ].map((m) => ({ ...m, efforts: EFFORTS }))
 
 const modelsCache = new Map()
 
 /** Lista modeli i poziomów effortu, które obsługuje dane CLI. */
 export async function providerModels(id, overridePath) {
-  const effortList = (list) => list.filter((e) => EFFORTS.includes(e)).map((e) => ({ id: e, label: EFFORT_LABELS[e] }))
+  const effortList = (list) => list.filter((e) => EFFORTS.includes(e)).map((e) => ({ id: e, label: t(EFFORT_LABELS[e]) }))
   if (id === 'claude') {
     return {
       models: CLAUDE_MODELS.map((m) => ({ ...m, efforts: effortList(m.efforts) })),
       efforts: effortList(EFFORTS),
-      defaultLabel: 'Domyślny z CLI',
+      defaultLabel: t('Domyślny z CLI'),
     }
   }
   const cmd = resolveProvider(id, overridePath)
@@ -269,7 +270,7 @@ export async function providerModels(id, overridePath) {
       defaultEffort: m.default_reasoning_level || '',
       efforts: effortList((m.supported_reasoning_levels || []).map((l) => l.effort)),
     }))
-  const value = { models, efforts: effortList(EFFORTS), defaultLabel: 'Domyślny z ~/.codex/config.toml' }
+  const value = { models, efforts: effortList(EFFORTS), defaultLabel: t('Domyślny z ~/.codex/config.toml') }
   if (models.length) modelsCache.set(key, { at: Date.now(), value })
   return value
 }
@@ -284,8 +285,8 @@ export function runAI({ provider = 'claude', model, effort, binPath, system, pro
     return Promise.reject(
       new Error(
         provider === 'claude'
-          ? 'Nie znaleziono Claude Code CLI. Zainstaluj go (https://claude.com/claude-code) albo podaj ścieżkę w Ustawieniach.'
-          : 'Nie znaleziono Codex CLI. Zainstaluj go (npm i -g @openai/codex) albo podaj ścieżkę w Ustawieniach.',
+          ? t('Nie znaleziono Claude Code CLI. Zainstaluj go (https://claude.com/claude-code) albo podaj ścieżkę w Ustawieniach.')
+          : t('Nie znaleziono Codex CLI. Zainstaluj go (npm i -g @openai/codex) albo podaj ścieżkę w Ustawieniach.'),
       ),
     )
   }
@@ -407,17 +408,17 @@ function runClaude({ cmd, model, effort, system, prompt, schema, onProgress, sig
     child.stderr.on('data', (d) => (stderr += d))
     child.on('error', (err) => reject(err))
     child.on('close', (code) => {
-      if (signal?.aborted) return reject(new Error('Przerwano'))
-      if (timedOut) return reject(new Error('Przekroczono limit czasu odpowiedzi modelu'))
+      if (signal?.aborted) return reject(new Error(t('Przerwano')))
+      if (timedOut) return reject(new Error(t('Przekroczono limit czasu odpowiedzi modelu')))
       if (!final) {
-        return reject(new Error(`Claude CLI zakończył się bez wyniku (kod ${code}). ${stderr.slice(-800)}`.trim()))
+        return reject(new Error(t('Claude CLI zakończył się bez wyniku (kod {0}). {1}', [code, stderr.slice(-800)]).trim()))
       }
       if (final.is_error) {
-        return reject(new Error(String(final.result || final.subtype || 'Błąd Claude CLI')))
+        return reject(new Error(String(final.result || final.subtype || t('Błąd Claude CLI'))))
       }
       const resultText = typeof final.result === 'string' ? final.result : text
       const data = schema ? final.structured_output ?? tryParseJson(resultText) : resultText
-      if (schema && !data) return reject(new Error('Model nie zwrócił poprawnego JSON-a'))
+      if (schema && !data) return reject(new Error(t('Model nie zwrócił poprawnego JSON-a')))
       resolve({ data, text: resultText })
     })
     child.stdin.end(prompt)
@@ -471,16 +472,16 @@ function runCodex({ cmd, model, effort, system, prompt, schema, onProgress, sign
         out = fs.readFileSync(outFile, 'utf8')
       } catch {}
       cleanup()
-      if (signal?.aborted) return reject(new Error('Przerwano'))
-      if (timedOut) return reject(new Error('Przekroczono limit czasu odpowiedzi modelu'))
-      if (!out.trim()) return reject(new Error(`Codex CLI nie zwrócił odpowiedzi (kod ${code}). ${stderr.slice(-800)}`.trim()))
+      if (signal?.aborted) return reject(new Error(t('Przerwano')))
+      if (timedOut) return reject(new Error(t('Przekroczono limit czasu odpowiedzi modelu')))
+      if (!out.trim()) return reject(new Error(t('Codex CLI nie zwrócił odpowiedzi (kod {0}). {1}', [code, stderr.slice(-800)]).trim()))
       const data = schema ? tryParseJson(out) : out.trim()
-      if (schema && !data) return reject(new Error('Model nie zwrócił poprawnego JSON-a'))
+      if (schema && !data) return reject(new Error(t('Model nie zwrócił poprawnego JSON-a')))
       resolve({ data, text: out })
     })
     const full = [
-      system ? `# Instrukcje systemowe\n${system}\n` : '',
-      'Nie uruchamiaj żadnych komend ani narzędzi — odpowiedz bezpośrednio.\n',
+      system ? `# System instructions\n${system}\n` : '',
+      'Answer directly. Do not run commands or use tools.\n',
       prompt,
     ].join('\n')
     child.stdin.end(full)

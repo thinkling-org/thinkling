@@ -1,4 +1,5 @@
 <script setup>
+import { t } from '../../../lib/i18n.js'
 import { computed, ref, watch } from 'vue'
 import Markdown from '../../Markdown.vue'
 import CodeBlock from '../../CodeBlock.vue'
@@ -26,20 +27,20 @@ const selected = computed(() => {
   return step.value.items[position] ? position : null
 })
 const detail = computed(() => (selected.value === null ? null : step.value.items[selected.value]))
-const hint = { stack: 'góra = aktywne', queue: 'pierwszy wychodzi', list: '' }
+const hint = { stack: t('góra = aktywne'), queue: t('pierwszy wychodzi'), list: '' }
 </script>
 
 <template>
-  <section class="card viz inspector" aria-label="Podgląd stanu">
+  <section class="card viz inspector" :aria-label="t('Podgląd stanu')">
     <Markdown v-if="config.instruction" class="instruction" :src="config.instruction" />
     <div class="layout" :class="{ solo: !config.code }">
-      <CodeBlock v-if="config.code" :code="config.code" :language="codeLanguage" file-name="przykład" :active-line="step.line" />
+      <CodeBlock v-if="config.code" :code="config.code" :language="codeLanguage" :file-name="t('przykład')" :active-line="step.line" />
       <div class="panel">
         <div class="panel-head label">
           <span>{{ config.label }}</span><span v-if="hint[config.layout]" class="hint">{{ hint[config.layout] }}</span>
         </div>
         <div class="items" :class="config.layout" role="group" :aria-label="config.label">
-          <p v-if="!items.length" class="empty">Pusto</p>
+          <p v-if="!items.length" class="empty">{{ t('Pusto') }}</p>
           <button
             v-for="item in items"
             :key="`${index}-${item.position}`"

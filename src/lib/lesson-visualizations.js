@@ -1,3 +1,4 @@
+import { t } from './i18n.js'
 import { buildRegressionModel } from './linear-regression.js'
 import { compileLogic } from './logic-expression.js'
 import { checkScenario } from './system-sim.js'
@@ -77,7 +78,7 @@ const readers = {
       type: 'state-inspector',
       instruction: instruction || '',
       code: count ? code : '',
-      label: hasText(label) ? label : 'Stan',
+      label: hasText(label) ? label : t('Stan'),
       layout: ['stack', 'queue', 'list'].includes(layout) ? layout : 'list',
       steps: valid,
     }
@@ -176,33 +177,33 @@ export function describeVisualization(visualization) {
       return visualization.variants.map((variant) => `${variant.label}\n${variant.code}\n${variant.outcome}`).join('\n\n')
     case 'linear-regression': {
       const points = visualization.model.data.map(({ x, y }) => [x, y])
-      return `Pokaz regresji liniowej. Oś X: ${visualization.xLabel}. Oś Y: ${visualization.yLabel}.\n${visualization.instruction}\nPary [x, y]: ${JSON.stringify(points)}`
+      return `Linear regression example. X axis: ${visualization.xLabel}. Y axis: ${visualization.yLabel}.\n${visualization.instruction}\n[x, y] pairs: ${JSON.stringify(points)}`
     }
     case 'code-definitions':
-      return `Definicje w kodzie:\n${visualization.code}\n${visualization.terms.map((t) => `- ${t.token}: ${t.definition}`).join('\n')}`
+      return `Definitions in code:\n${visualization.code}\n${visualization.terms.map((t) => `- ${t.token}: ${t.definition}`).join('\n')}`
     case 'step-trace':
-      return `Przebieg krok po kroku:\n${visualization.code}\n${steps(visualization.steps, (s) => `linia ${s.line}: ${s.say}${s.variables.length ? ` (${vars(s.variables)})` : ''}`)}`
+      return `Step-by-step trace:\n${visualization.code}\n${steps(visualization.steps, (s) => `line ${s.line}: ${s.say}${s.variables.length ? ` (${vars(s.variables)})` : ''}`)}`
     case 'state-inspector':
-      return `Podgląd stanu (${visualization.label}):\n${visualization.code}\n${steps(visualization.steps, (s) => `${s.say} [${s.items.map((item) => item.label).join(', ')}]`)}`
+      return `State inspector (${visualization.label}):\n${visualization.code}\n${steps(visualization.steps, (s) => `${s.say} [${s.items.map((item) => item.label).join(', ')}]`)}`
     case 'value-chart':
-      return `Wykres ${visualization.yLabel} od ${visualization.xLabel}. x: ${visualization.xs.join(', ')}\n${visualization.series.map((s) => `${s.label}: ${s.values.join(', ')}`).join('\n')}`
+      return `Chart of ${visualization.yLabel} versus ${visualization.xLabel}. x: ${visualization.xs.join(', ')}\n${visualization.series.map((s) => `${s.label}: ${s.values.join(', ')}`).join('\n')}`
     case 'logic-circuit':
-      return `Schemat logiczny. Wejścia: ${visualization.inputs.map((i) => i.id).join(', ')}.\n${visualization.outputs.map((o) => `${o.label} = ${o.expression}`).join('\n')}`
+      return `Logic circuit. Inputs: ${visualization.inputs.map((i) => i.id).join(', ')}.\n${visualization.outputs.map((o) => `${o.label} = ${o.expression}`).join('\n')}`
     case 'step-ordering':
-      return `Układanie kroków (poprawna kolejność):\n${steps(visualization.steps, (s) => s.text)}`
+      return `Step ordering (correct order):\n${steps(visualization.steps, (s) => s.text)}`
     case 'diagnosis':
-      return `Diagnoza: ${visualization.symptom}\nPomiary:\n${visualization.checks.map((c) => `- ${c.name} (${c.action}): ${c.result}`).join('\n')}\nOdpowiedzi: ${visualization.options.map((o) => `${o.text}${o.correct ? ' (poprawna)' : ''}`).join(' | ')}`
+      return `Diagnosis: ${visualization.symptom}\nChecks:\n${visualization.checks.map((c) => `- ${c.name} (${c.action}): ${c.result}`).join('\n')}\nOptions: ${visualization.options.map((o) => `${o.text}${o.correct ? ' (correct)' : ''}`).join(' | ')}`
     case 'system-sim': {
       const { sources, nodes, path, failures, controls, goals, solutions } = visualization
       const option = (control, k) => control.options[k].label
       return [
-        `Symulacja systemu: ${visualization.instruction}`,
-        `Ruch: ${sources.map((s) => `${s.label} ${s.rate}/s${s.burstEvery ? ` + ${s.burstSize}/s co ${s.burstEvery} s` : ''}`).join('; ')}`,
-        `Ścieżka: ${path.map((id) => nodes.find((n) => n.id === id).label).join(' → ')}`,
-        failures.length ? `Awarie: ${failures.map((f) => `${f.label} (${f.from}–${f.to} s)`).join('; ')}` : '',
-        `Przełączniki:\n${controls.map((c) => `- ${c.label}: ${c.options.map((o) => o.label).join(' | ')}`).join('\n')}`,
-        `Cele:\n${goals.map((g) => `- ${g.label}`).join('\n')}`,
-        `Ustawienia spełniające cele (nie zdradzaj ich wprost, naprowadzaj):\n${solutions.map((picks) => `- ${controls.map((c, i) => option(c, picks[i])).join(', ')}`).join('\n')}`,
+        `System simulation: ${visualization.instruction}`,
+        `Traffic: ${sources.map((s) => `${s.label} ${s.rate}/s${s.burstEvery ? ` + ${s.burstSize}/s every ${s.burstEvery} s` : ''}`).join('; ')}`,
+        `Path: ${path.map((id) => nodes.find((n) => n.id === id).label).join(' → ')}`,
+        failures.length ? `Outages: ${failures.map((f) => `${f.label} (${f.from}–${f.to} s)`).join('; ')}` : '',
+        `Controls:\n${controls.map((c) => `- ${c.label}: ${c.options.map((o) => o.label).join(' | ')}`).join('\n')}`,
+        `Goals:\n${goals.map((g) => `- ${g.label}`).join('\n')}`,
+        `Configurations that meet the goals (guide the learner without revealing them):\n${solutions.map((picks) => `- ${controls.map((c, i) => option(c, picks[i])).join(', ')}`).join('\n')}`,
       ].filter(Boolean).join('\n')
     }
     default:

@@ -25,10 +25,11 @@ export function readState() {
 }
 
 export function writeState(next) {
-  cache = { ...next, settings: { ...DEFAULT_SETTINGS, ...(next.settings || {}) } }
+  const state = { ...next, settings: { ...DEFAULT_SETTINGS, ...(next.settings || {}) } }
   const tmp = `${DB_FILE}.tmp`
-  fs.writeFileSync(tmp, JSON.stringify(cache, null, 1))
+  fs.writeFileSync(tmp, JSON.stringify(state, null, 1))
   fs.renameSync(tmp, DB_FILE)
+  cache = state
   return cache
 }
 

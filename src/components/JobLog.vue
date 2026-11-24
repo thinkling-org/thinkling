@@ -1,4 +1,5 @@
 <script setup>
+import { t } from '../lib/i18n.js'
 import { nextTick, ref, watch } from 'vue'
 
 /** Podgląd zadania instalacji: bieżący krok, pasek postępu i ostatnie linie logu. */
@@ -14,7 +15,7 @@ watch(
   <div v-if="job" class="job" :class="job.status">
     <div class="job-head">
       <span v-if="job.status === 'running'" class="spinner sm" />
-      <strong>{{ job.status === 'done' ? 'Zakończono' : job.status === 'error' ? 'Błąd' : job.step || 'Pracuję…' }}</strong>
+      <strong>{{ job.status === 'done' ? t('Zakończono') : job.status === 'error' ? t('Błąd') : job.step || t('Pracuję…') }}</strong>
       <span v-if="job.progress?.label" class="muted">{{ job.progress.label }}</span>
     </div>
     <div v-if="job.status === 'running' && job.progress?.pct != null" class="bar"><div :style="{ width: `${job.progress.pct}%` }" /></div>

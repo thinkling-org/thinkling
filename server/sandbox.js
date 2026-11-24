@@ -1,3 +1,4 @@
+import { t } from './locale.js'
 // Piaskownica: prawdziwe środowiska uruchomieniowe w kontenerach Dockera.
 // Każde zadanie ma własny workspace (katalog na dysku podmontowany jako /workspace)
 // i własny kontener bez sieci, z limitami pamięci / CPU / procesów.
@@ -147,7 +148,7 @@ export async function dockerStatus() {
     return {
       available: false,
       code: found?.permission ? 'EACCES' : err.code,
-      error: found?.permission ? 'Brak uprawnień do Dockera (dodaj konto do grupy „docker”)' : err.code === 'ENOENT' ? 'Docker nie działa (uruchom Docker Desktop)' : err.message,
+      error: found?.permission ? t('Brak uprawnień do Dockera (dodaj konto do grupy „docker”)') : err.code === 'ENOENT' ? t('Docker nie działa (uruchom Docker Desktop)') : err.message,
     }
   }
 }
@@ -165,11 +166,11 @@ const building = new Map()
 
 export function ensureImage(lang, onProgress) {
   const env = envFor(lang)
-  if (!env) return Promise.reject(new Error(`Brak środowiska dla języka: ${lang}`))
+  if (!env) return Promise.reject(new Error(t('Brak środowiska dla języka: {0}', [lang])))
   if (building.has(env.image)) return building.get(env.image)
   const p = (async () => {
     if (await imageExists(env.image)) return env
-    onProgress?.(`Buduję środowisko ${env.label} (jednorazowo)…`)
+    onProgress?.(t('Buduję środowisko {0} (jednorazowo)…', [env.label]))
     const pack = tar.pack()
     pack.entry({ name: 'Dockerfile' }, env.dockerfile)
     pack.finalize()
@@ -201,7 +202,7 @@ export function ensureImage(lang, onProgress) {
 
 export function safeId(id) {
   const s = String(id || '')
-  if (!/^[A-Za-z0-9_-]{1,80}$/.test(s)) throw new Error('Nieprawidłowy identyfikator workspace')
+  if (!/^[A-Za-z0-9_-]{1,80}$/.test(s)) throw new Error(t('Nieprawidłowy identyfikator workspace'))
   return s
 }
 
@@ -224,7 +225,7 @@ export function readMeta(wsId) {
 function resolveInWs(wsId, rel) {
   const base = wsDir(wsId)
   const p = path.resolve(base, String(rel || '').replace(/^[/\\]+/, ''))
-  if (p !== base && !p.startsWith(base + path.sep)) throw new Error('Ścieżka poza workspace')
+  if (p !== base && !p.startsWith(base + path.sep)) throw new Error(t('Ścieżka poza workspace'))
   return p
 }
 
@@ -278,7 +279,7 @@ export function listFiles(wsId) {
 export function readFile(wsId, rel) {
   const p = resolveInWs(wsId, rel)
   const st = fs.statSync(p)
-  if (st.size > 1_000_000) throw new Error('Plik za duży do edycji (>1 MB)')
+  if (st.size > 1_000_000) throw new Error(t('Plik za duży do edycji (>1 MB)'))
   return { content: fs.readFileSync(p, 'utf8'), mtime: st.mtimeMs }
 }
 
@@ -291,7 +292,7 @@ export function writeFile(wsId, rel, content) {
 
 export function deletePath(wsId, rel) {
   const p = resolveInWs(wsId, rel)
-  if (p === wsDir(wsId)) throw new Error('Nie można usunąć katalogu głównego')
+  if (p === wsDir(wsId)) throw new Error(t('Nie można usunąć katalogu głównego'))
   fs.rmSync(p, { recursive: true, force: true })
 }
 
@@ -380,7 +381,7 @@ export async function execIn(wsId, lang, cmd, { timeoutSec = 60, onProgress } = 
 /** Interaktywna powłoka (TTY) podpięta do WebSocketu. */
 export async function attachShell(wsId, ws) {
   const meta = readMeta(wsId)
-  if (!meta?.lang) throw new Error('Workspace nie istnieje')
+  if (!meta?.lang) throw new Error(t('Workspace nie istnieje'))
   const c = await ensureContainer(wsId, meta.lang)
   const exec = await c.exec({
     Cmd: ['bash', '-i'],
@@ -453,16 +454,16 @@ export function parseTestOutput(output, exitCode) {
     const line = raw.replace(/\x1b\[[0-9;]*m/g, '').trim()
     let m = line.match(/^(PASS|FAIL)\s+(.+?)(?:\s+::\s+(.*))?$/)
     if (m) {
-      results.push({ name: m[2], ok: m[1] === 'PASS', error: m[3] || (m[1] === 'FAIL' ? 'test nie przeszedł' : undefined) })
+      results.push({ name: m[2], ok: m[1] === 'PASS', error: m[3] || (m[1] === 'FAIL' ? t('test nie przeszedł') : undefined) })
       continue
     }
     m = line.match(/^---\s+(PASS|FAIL):\s+(\S+)/)
-    if (m) results.push({ name: m[2], ok: m[1] === 'PASS', error: m[1] === 'FAIL' ? 'test nie przeszedł' : undefined })
+    if (m) results.push({ name: m[2], ok: m[1] === 'PASS', error: m[1] === 'FAIL' ? t('test nie przeszedł') : undefined })
   }
   const tail = String(output).split(/\r?\n/).slice(-40).join('\n').trim()
-  const compileError = !results.length && exitCode !== 0 ? tail || `kod wyjścia ${exitCode}` : undefined
+  const compileError = !results.length && exitCode !== 0 ? tail || t('kod wyjścia {0}', [exitCode]) : undefined
   if (results.length && exitCode !== 0 && results.every((r) => r.ok)) {
-    results.push({ name: '(proces)', ok: false, error: `zakończył się kodem ${exitCode}` })
+    results.push({ name: t('(proces)'), ok: false, error: t('zakończył się kodem {0}', [exitCode]) })
   }
   return { results, compileError, logs: [{ level: 'log', text: output }], exitCode }
 }

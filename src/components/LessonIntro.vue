@@ -1,4 +1,5 @@
 <script setup>
+import { t } from '../lib/i18n.js'
 import { computed } from 'vue'
 import Markdown from './Markdown.vue'
 import Icon from './Icon.vue'
@@ -11,7 +12,7 @@ const props = defineProps({
 const level = defineModel('level', { type: Number, default: 0 })
 
 const isTest = computed(() => props.meta.kind === 'test')
-const lessonNo = computed(() => `Lekcja ${props.meta.lessonIndex + 1} z ${props.meta.module?.lessons?.length || 1}`)
+const lessonNo = computed(() => t('Lekcja {0} z {1}', [props.meta.lessonIndex + 1, props.meta.module?.lessons?.length || 1]))
 const summary = computed(() => props.intro?.summary || (props.intro?.outcome ? '' : props.meta.focus) || '')
 // Starsze lekcje mają tylko jedno zdanie "outcome" zamiast listy umiejętności.
 const outcomes = computed(() => {
@@ -40,13 +41,13 @@ const current = computed(() => props.levels[level.value] || props.levels[0])
     </div>
 
     <div class="head">
-      <span class="label kicker">{{ isTest ? 'Sprawdzian modułu' : lessonNo }}</span>
+      <span class="label kicker">{{ isTest ? t('Sprawdzian modułu') : lessonNo }}</span>
       <Markdown tag="h1" fit-heading inline class="title" :src="meta.title" />
       <Markdown v-if="summary" class="summary" glossary :src="summary" />
     </div>
 
     <div v-if="outcomes.length" class="outcomes" :class="`n${outcomes.length}`">
-      <h2 class="sr-only">{{ isTest ? 'Co przećwiczysz' : 'Czego się nauczysz' }}</h2>
+      <h2 class="sr-only">{{ isTest ? t('Co przećwiczysz') : t('Czego się nauczysz') }}</h2>
       <div v-for="(item, k) in outcomes" :key="k" class="outcome">
         <Icon name="check" :size="26" :stroke="2.8" class="tick" />
         <Markdown tag="span" inline glossary :src="item" />
@@ -55,15 +56,15 @@ const current = computed(() => props.levels[level.value] || props.levels[0])
 
     <div v-if="intro?.relevance" class="banner goal">
       <Icon name="target" :size="26" :stroke="2.4" />
-      <p><strong>Krok w stronę twojego celu:</strong> <Markdown tag="span" inline glossary :src="intro.relevance" /></p>
+      <p><strong>{{ t('Krok w stronę twojego celu:') }}</strong> <Markdown tag="span" inline glossary :src="intro.relevance" /></p>
     </div>
     <div v-if="intro?.focus" class="banner focus">
       <Icon name="bulb" :size="24" :stroke="2.4" />
-      <p><strong>Na co patrzeć:</strong> <Markdown tag="span" inline glossary :src="intro.focus" /></p>
+      <p><strong>{{ t('Na co patrzeć:') }}</strong> <Markdown tag="span" inline glossary :src="intro.focus" /></p>
     </div>
 
     <div v-if="levels.length > 1" class="levels">
-      <span id="level-question" class="question">Ile już o tym wiesz?</span>
+      <span id="level-question" class="question">{{ t('Ile już o tym wiesz?') }}</span>
       <div class="options" role="radiogroup" aria-labelledby="level-question">
         <button
           v-for="(item, k) in levels"

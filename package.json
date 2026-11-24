@@ -48,6 +48,9 @@
     "files": [
       "electron/**",
       "server/**",
+      "src/lib/languages.js",
+      "src/lib/translation.js",
+      "src/locales/en.js",
       "src/lib/voice-design.js",
       "dist/**",
       "LICENSE",

@@ -68,6 +68,7 @@ async function start() {
     host: HOST,
     port: 0,
     resourceRoot,
+    systemLanguages: app.getPreferredSystemLanguages(),
     authorize: (req) => req.headers[AUTH_HEADER] === secret
       && (!req.headers.origin || req.headers.origin === `http://${HOST}:${req.socket.localPort}`),
   })

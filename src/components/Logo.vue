@@ -1,4 +1,5 @@
 <script setup>
+import { t } from '../lib/i18n.js'
 import { useId } from 'vue'
 
 // Każda instancja potrzebuje własnego id maski (logo bywa na stronie kilka razy).
@@ -6,7 +7,7 @@ const maskId = `logo-mask-${useId()}`
 </script>
 
 <template>
-  <RouterLink to="/" class="logo" aria-label="Codenoms — strona główna">
+  <RouterLink to="/" class="logo" :aria-label="t('Codenoms — strona główna')">
     <!-- Znak „Nadgryziony”: heks z ugryzieniem w rogu, oczy jako wycięcia. -->
     <svg aria-hidden="true" width="36" height="36" viewBox="0 0 120 120">
       <defs>

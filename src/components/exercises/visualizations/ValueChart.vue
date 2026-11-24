@@ -1,4 +1,5 @@
 <script setup>
+import { numberFormatter, t } from '../../../lib/i18n.js'
 import { computed, ref, useId, watch } from 'vue'
 import Markdown from '../../Markdown.vue'
 
@@ -9,8 +10,8 @@ const clipId = useId()
 const W = 560
 const H = 300
 const PAD = { left: 52, right: 14, top: 14, bottom: 30 }
-const numberFormat = new Intl.NumberFormat('pl-PL', { maximumFractionDigits: 2 })
-const tickFormat = new Intl.NumberFormat('pl-PL', { notation: 'compact', maximumSignificantDigits: 3 })
+const numberFormat = numberFormatter({ maximumFractionDigits: 2 })
+const tickFormat = numberFormatter({ notation: 'compact', maximumSignificantDigits: 3 })
 
 const index = ref(Math.floor((props.config.xs.length - 1) / 3))
 watch(() => props.config, (config) => { index.value = Math.floor((config.xs.length - 1) / 3) })
@@ -40,22 +41,22 @@ const barWidth = (v) => `${Math.max(2, Math.log10(Math.abs(v) + 1) / Math.log10(
 </script>
 
 <template>
-  <section class="card viz chart" aria-label="Wykres z regulacją">
+  <section class="card viz chart" :aria-label="t('Wykres z regulacją')">
     <Markdown class="instruction" :src="config.instruction" />
     <div class="layout">
       <div class="plot">
         <div class="axis-label">{{ config.yLabel }}</div>
-        <svg :viewBox="`0 0 ${W} ${H}`" role="img" :aria-label="`Wykres: ${config.yLabel} w zależności od ${config.xLabel}`">
+        <svg :viewBox="`0 0 ${W} ${H}`" role="img" :aria-label="t('Wykres: {0} w zależności od {1}', [config.yLabel, config.xLabel])">
           <defs>
             <clipPath :id="clipId"><rect :x="PAD.left" :y="PAD.top - 4" :width="W - PAD.left - PAD.right" :height="H - PAD.top - PAD.bottom + 4" /></clipPath>
           </defs>
           <g class="grid">
             <template v-for="t in yTicks" :key="t">
               <line :x1="PAD.left" :x2="W - PAD.right" :y1="py(t)" :y2="py(t)" />
-              <text :x="PAD.left - 8" :y="py(t) + 4" text-anchor="end">{{ tickFormat.format(t) }}</text>
+              <text :x="PAD.left - 8" :y="py(t) + 4" text-anchor="end">{{ tickFormat(t) }}</text>
             </template>
-            <text :x="PAD.left" :y="H - 8">{{ tickFormat.format(xMin) }}</text>
-            <text :x="W - PAD.right" :y="H - 8" text-anchor="end">{{ tickFormat.format(xMax) }}</text>
+            <text :x="PAD.left" :y="H - 8">{{ tickFormat(xMin) }}</text>
+            <text :x="W - PAD.right" :y="H - 8" text-anchor="end">{{ tickFormat(xMax) }}</text>
           </g>
           <line class="cursor" :x1="cursorX" :x2="cursorX" :y1="PAD.top" :y2="H - PAD.bottom" />
           <g :clip-path="`url(#${clipId})`">
@@ -66,22 +67,22 @@ const barWidth = (v) => `${Math.max(2, Math.log10(Math.abs(v) + 1) / Math.log10(
           </g>
         </svg>
         <label class="slider">
-          <span>{{ config.xLabel }} = <strong>{{ numberFormat.format(xs[index]) }}</strong></span>
+          <span>{{ config.xLabel }} = <strong>{{ numberFormat(xs[index]) }}</strong></span>
           <input
             v-model.number="index"
             type="range"
             min="0"
             :max="xs.length - 1"
             step="1"
-            :aria-valuetext="`${config.xLabel} ${numberFormat.format(xs[index])}`"
+            :aria-valuetext="`${config.xLabel} ${numberFormat(xs[index])}`"
           />
         </label>
       </div>
-      <ul class="values" :aria-label="`Wartości dla ${config.xLabel} = ${numberFormat.format(xs[index])}`" aria-live="polite">
+      <ul class="values" :aria-label="t('Wartości dla {0} = {1}', [config.xLabel, numberFormat(xs[index])])" aria-live="polite">
         <li v-for="s in series" :key="s.label" :class="{ off: s.off }">
           <div class="row">
             <span class="name"><svg width="18" height="8" aria-hidden="true"><line x1="0" x2="18" y1="4" y2="4" :style="{ stroke: s.color }" stroke-width="3" :stroke-dasharray="s.dash" /></svg><span>{{ s.label }}</span></span>
-            <span class="value" :style="{ color: s.color }">{{ numberFormat.format(s.value) }}<template v-if="s.off"> ↑</template></span>
+            <span class="value" :style="{ color: s.color }">{{ numberFormat(s.value) }}<template v-if="s.off"> ↑</template></span>
           </div>
           <div class="bar"><div :style="{ width: barWidth(s.value), background: s.color }" /></div>
         </li>

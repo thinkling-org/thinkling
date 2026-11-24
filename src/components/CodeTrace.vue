@@ -1,4 +1,5 @@
 <script setup>
+import { t } from '../lib/i18n.js'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { highlightLines } from '../lib/markdown.js'
 import { play, playStep } from '../lib/sfx.js'
@@ -87,10 +88,10 @@ onBeforeUnmount(() => {
 <template>
   <div class="trace">
     <div class="th">
-      <h2>Prześledźmy to razem</h2>
+      <h2>{{ t('Prześledźmy to razem') }}</h2>
       <template v-if="exercise.type !== 'learn'">
-        <span v-if="chosenIndex != null && !correct" class="chip-r">twoja: {{ exercise.options[chosenIndex] }}</span>
-        <span class="chip-g">poprawna: {{ exercise.options[exercise.correctIndex] }}</span>
+        <span v-if="chosenIndex != null && !correct" class="chip-r">{{ t('twoja:') }} {{ exercise.options[chosenIndex] }}</span>
+        <span class="chip-g">{{ t('poprawna:') }} {{ exercise.options[exercise.correctIndex] }}</span>
       </template>
     </div>
 
@@ -99,12 +100,12 @@ onBeforeUnmount(() => {
         <section class="out" aria-label="Output">
           <div class="out-h"><svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M4 7h16l-8 11z" /></svg>OUTPUT</div>
           <div class="out-b">
-            <span v-if="!output.length" class="muted">// pusto</span>
+            <span v-if="!output.length" class="muted">{{ t('// pusto') }}</span>
             <span v-for="(o, k) in output" :key="`${i}-${k}`" :class="{ fresh: o.fresh }">{{ o.text }}</span>
           </div>
         </section>
 
-        <section class="code" aria-label="Kod">
+        <section class="code" :aria-label="t('Kod')">
           <div class="code-h">
             <span v-if="step.phase" class="phase" :class="{ alt: /2|EXEC|MIKRO|MAKRO/i.test(step.phase) }">{{ step.phase }}</span>
             <span class="fn">{{ exercise.fileName || 'snippet.js' }}</span>
@@ -122,16 +123,16 @@ onBeforeUnmount(() => {
             </div>
           </div>
           <div class="ctrl">
-            <button class="cb" aria-label="Od początku" @click="go(0)"><Icon name="refresh" :size="18" :stroke="2.4" /></button>
-            <button class="cb" aria-label="Poprzedni krok" :disabled="i === 0" @click="go(i - 1)"><Icon name="arrow-left" :size="18" :stroke="2.6" /></button>
-            <button class="cb primary" aria-label="Następny krok" :disabled="atEnd" @click="go(i + 1)"><Icon name="arrow-right" :size="18" :stroke="2.8" /></button>
+            <button class="cb" :aria-label="t('Od początku')" @click="go(0)"><Icon name="refresh" :size="18" :stroke="2.4" /></button>
+            <button class="cb" :aria-label="t('Poprzedni krok')" :disabled="i === 0" @click="go(i - 1)"><Icon name="arrow-left" :size="18" :stroke="2.6" /></button>
+            <button class="cb primary" :aria-label="t('Następny krok')" :disabled="atEnd" @click="go(i + 1)"><Icon name="arrow-right" :size="18" :stroke="2.8" /></button>
             <div class="dots">
               <button
                 v-for="(s, k) in steps"
                 :key="k"
                 class="dot"
                 :class="{ cur: k === i, past: k < i, gap: k > 0 && s.phase !== steps[k - 1].phase }"
-                :aria-label="`Krok ${k + 1}`"
+                :aria-label="t('Krok {0}', [k + 1])"
                 @click="go(k)"
               />
             </div>
@@ -139,15 +140,15 @@ onBeforeUnmount(() => {
           </div>
         </section>
 
-        <section class="mem" aria-label="Pamięć">
-          <span class="label">Pamięć · scope</span>
+        <section class="mem" :aria-label="t('Pamięć')">
+          <span class="label">{{ t('Pamięć · scope') }}</span>
           <div class="mem-list">
-            <span v-if="!step.memory?.length" class="muted">pusto — silnik jeszcze nic nie zarejestrował</span>
+            <span v-if="!step.memory?.length" class="muted">{{ t('pusto — silnik jeszcze nic nie zarejestrował') }}</span>
             <div v-for="m in step.memory || []" :key="m.name" class="mrow" :class="{ changed: m.changed }">
               <span class="mn">{{ m.name }}</span>
               <span class="arrow">→</span>
               <span class="mv" :style="{ color: KIND_COLOR[m.kind] || KIND_COLOR.other }">{{ m.kind === 'uninitialized' ? '‹TDZ›' : m.value }}</span>
-              <span v-if="m.changed" class="badge">zmiana</span>
+              <span v-if="m.changed" class="badge">{{ t('zmiana') }}</span>
             </div>
           </div>
         </section>
@@ -173,15 +174,15 @@ onBeforeUnmount(() => {
 
     <div v-if="atEnd" ref="lessons" class="lessons">
       <div class="card ls">
-        <span class="label" :style="{ color: correct || exercise.type === 'learn' ? 'var(--green-light)' : 'var(--red-light)' }">{{ correct || exercise.type === 'learn' ? 'Co było kluczowe' : 'Gdzie był błąd' }}</span>
+        <span class="label" :style="{ color: correct || exercise.type === 'learn' ? 'var(--green-light)' : 'var(--red-light)' }">{{ correct || exercise.type === 'learn' ? t('Co było kluczowe') : t('Gdzie był błąd') }}</span>
         <Markdown :src="trace.mistake" />
       </div>
       <div class="card ls">
-        <span class="label" style="color: var(--green-light)">Zapamiętaj</span>
+        <span class="label" style="color: var(--green-light)">{{ t('Zapamiętaj') }}</span>
         <Markdown :src="trace.takeaway" />
       </div>
     </div>
-    <p v-else class="hint muted">Klikaj strzałkę (albo ← →), aż Hex dojdzie do końca kodu.</p>
+    <p v-else class="hint muted">{{ t('Klikaj strzałkę (albo ← →), aż Hex dojdzie do końca kodu.') }}</p>
   </div>
 </template>
 

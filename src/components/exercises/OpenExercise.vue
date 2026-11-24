@@ -1,4 +1,5 @@
 <script setup>
+import { t } from '../../lib/i18n.js'
 import { ref, onMounted } from 'vue'
 import Markdown from '../Markdown.vue'
 import CodeBlock from '../CodeBlock.vue'
@@ -25,12 +26,12 @@ const POINT = {
 
 <template>
   <div class="ex">
-    <span class="kind label">Pytanie otwarte</span>
+    <span class="kind label">{{ t('Pytanie otwarte') }}</span>
     <Markdown tag="h1" fit-heading class="q" :src="exercise.prompt" />
     <CodeBlock v-if="exercise.code" :code="exercise.code" :language="exercise.codeLanguage" />
 
     <div class="group">
-      <label :for="`a-${exercise.id}`" class="label">Twoja odpowiedź</label>
+      <label :for="`a-${exercise.id}`" class="label">{{ t('Twoja odpowiedź') }}</label>
       <textarea
         :id="`a-${exercise.id}`"
         ref="ta"
@@ -38,7 +39,7 @@ const POINT = {
         rows="6"
         :value="modelValue"
         :readonly="!!result || busy"
-        placeholder="Odpowiedz własnymi słowami — jak na rozmowie. Ctrl+Enter, aby sprawdzić."
+        :placeholder="t('Odpowiedz własnymi słowami — jak na rozmowie. Ctrl+Enter, aby sprawdzić.')"
         @input="emit('update:modelValue', $event.target.value)"
         @keydown.ctrl.enter.prevent="emit('submit')"
       />
@@ -46,14 +47,14 @@ const POINT = {
 
     <div v-if="busy" class="card grading">
       <span class="spinner" />
-      <span>{{ providerName }} czyta twoją odpowiedź…</span>
+      <span>{{ providerName }} {{ t('czyta twoją odpowiedź…') }}</span>
     </div>
 
     <div v-if="result?.status === 'unknown'" class="card feedback">
-      <span class="label" style="color: var(--purple-link)">Wzorcowa odpowiedź</span>
+      <span class="label" style="color: var(--purple-link)">{{ t('Wzorcowa odpowiedź') }}</span>
       <Markdown :src="exercise.referenceAnswer" class="ptxt" />
       <template v-if="exercise.keyPoints?.length">
-        <span class="label">Kluczowe elementy</span>
+        <span class="label">{{ t('Kluczowe elementy') }}</span>
         <Markdown v-for="(k, i) in exercise.keyPoints" :key="i" inline tag="span" :src="k" class="ptxt">
           <template #leading>
             <span class="pi" style="color: var(--yellow)"><Icon name="bulb" :size="18" :stroke="2.6" /></span>
@@ -71,7 +72,7 @@ const POINT = {
           <span class="pi" :style="{ color: POINT[p.kind]?.color }"><Icon :name="POINT[p.kind]?.icon || 'bulb'" :size="18" :stroke="3" /></span>
         </template>
       </Markdown>
-      <button class="link-btn" :aria-expanded="showModel" @click="showModel = !showModel">{{ showModel ? 'Ukryj' : 'Pokaż' }} wzorcową odpowiedź</button>
+      <button class="link-btn" :aria-expanded="showModel" @click="showModel = !showModel">{{ showModel ? t('Ukryj') : t('Pokaż') }} {{ t('wzorcową odpowiedź') }}</button>
       <Markdown v-if="showModel" class="model" :src="result.data.modelAnswer || exercise.referenceAnswer" />
     </div>
   </div>

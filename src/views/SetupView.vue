@@ -1,4 +1,5 @@
 <script setup>
+import { t } from '../lib/i18n.js'
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useApp } from '../stores/app.js'
@@ -7,6 +8,7 @@ import Logo from '../components/Logo.vue'
 import Icon from '../components/Icon.vue'
 import ModelPicker from '../components/ModelPicker.vue'
 import JobLog from '../components/JobLog.vue'
+import LanguagePicker from '../components/LanguagePicker.vue'
 
 const app = useApp()
 const router = useRouter()
@@ -147,12 +149,12 @@ const summary = computed(() => {
   const p = activeProvider.value
   return [
     {
-      label: `Silnik AI: ${app.settings.provider === 'codex' ? 'Codex' : 'Claude Code'}${app.settings.model ? ` · ${app.settings.model}` : ''}${app.settings.effort ? ` · ${app.settings.effort}` : ''}`,
+      label: t('Silnik AI: {0}{1}{2}', [app.settings.provider === 'codex' ? 'Codex' : 'Claude Code', app.settings.model ? ` · ${app.settings.model}` : '', app.settings.effort ? ` · ${app.settings.effort}` : '']),
       ok: providerReady.value,
-      note: !p?.available ? 'nie znaleziono CLI' : p?.auth?.loggedIn === false ? 'niezalogowane' : '',
+      note: !p?.available ? t('nie znaleziono CLI') : p?.auth?.loggedIn === false ? t('niezalogowane') : '',
     },
-    { label: 'Docker (piaskownica z terminalem)', ok: !!s.docker?.running, note: s.docker?.running ? '' : 'zadania w PHP, C++ itd. oceni tylko model' },
-    { label: 'Dyktowanie (Faster Whisper)', ok: !!s.dictation?.installed, note: s.dictation?.installed ? '' : 'możesz zainstalować później w Ustawieniach' },
+    { label: t('Docker (piaskownica z terminalem)'), ok: !!s.docker?.running, note: s.docker?.running ? '' : t('zadania w PHP, C++ itd. oceni tylko model') },
+    { label: t('Dyktowanie (Faster Whisper)'), ok: !!s.dictation?.installed, note: s.dictation?.installed ? '' : t('możesz zainstalować później w Ustawieniach') },
   ]
 })
 
@@ -164,12 +166,12 @@ onBeforeUnmount(() => clearInterval(poll))
   <div class="page">
     <header class="head">
       <Logo />
-      <span class="label">Konfiguracja · krok {{ step + 1 }} / {{ STEPS.length }}</span>
+      <span class="label">{{ t('Konfiguracja · krok') }} {{ step + 1 }} / {{ STEPS.length }}</span>
     </header>
 
     <main class="wrap">
       <div class="col">
-        <nav class="dots" aria-label="Kroki konfiguracji">
+        <nav class="dots" :aria-label="t('Kroki konfiguracji')">
           <button
             v-for="(s, i) in STEPS"
             :key="s.id"
@@ -179,32 +181,33 @@ onBeforeUnmount(() => clearInterval(poll))
             @click="step = i"
           >
             <span class="n">{{ i < step ? '✓' : i + 1 }}</span>
-            <span class="t">{{ s.title }}</span>
+            <span class="t">{{ t(s.title) }}</span>
           </button>
         </nav>
 
         <div v-if="!status && current !== 'welcome'" class="card box center">
-          <span class="spinner" /> Sprawdzam, co jest zainstalowane…
+          <span class="spinner" /> {{ t('Sprawdzam, co jest zainstalowane…') }}
         </div>
 
         <!-- ------------------------------------------------------- powitanie -->
         <section v-else-if="current === 'welcome'" class="card box">
-          <h1>Cześć! Przygotujmy Codenoms</h1>
+          <h1>{{ t('Cześć! Przygotujmy Codenoms') }}</h1>
+          <LanguagePicker />
           <p class="lead">
-            Codenoms działa w całości na Twoim komputerze. Zanim zaczniesz, kreator sprawdzi kilka rzeczy i pomoże doinstalować brakujące elementy:
+            {{ t('Codenoms działa w całości na Twoim komputerze. Zanim zaczniesz, kreator sprawdzi kilka rzeczy i pomoże doinstalować brakujące elementy:') }}
           </p>
           <ul class="list">
-            <li><strong>Silnik AI</strong>: Claude Code albo Codex, zalogowany Twoją subskrypcją (wymagany).</li>
-            <li><strong>Docker</strong>: prawdziwe środowiska z terminalem dla PHP, C++, Pythona, Go i innych (zalecany).</li>
-            <li><strong>Dyktowanie</strong>: odpowiedzi mówione do mikrofonu, rozpoznawane lokalnie (opcjonalne, ok. 0,5 GB).</li>
+            <li><strong>{{ t('Silnik AI') }}</strong>{{ t(': Claude Code albo Codex, zalogowany Twoją subskrypcją (wymagany).') }}</li>
+            <li><strong>Docker</strong>{{ t(': prawdziwe środowiska z terminalem dla PHP, C++, Pythona, Go i innych (zalecany).') }}</li>
+            <li><strong>{{ t('Dyktowanie') }}</strong>{{ t(': odpowiedzi mówione do mikrofonu, rozpoznawane lokalnie (opcjonalne, ok. 0,5 GB).') }}</li>
           </ul>
-          <p class="muted">Każdy krok możesz pominąć i wrócić do niego później w Ustawieniach.</p>
+          <p class="muted">{{ t('Każdy krok możesz pominąć i wrócić do niego później w Ustawieniach.') }}</p>
         </section>
 
         <!-- ------------------------------------------------------- silnik AI -->
         <section v-else-if="current === 'ai'" class="card box">
-          <h1>Silnik AI</h1>
-          <p class="lead">Wybierz, z którego CLI ma korzystać Codenoms. Używana jest Twoja subskrypcja, więc nie płacisz za tokeny API.</p>
+          <h1>{{ t('Silnik AI') }}</h1>
+          <p class="lead">{{ t('Wybierz, z którego CLI ma korzystać Codenoms. Używana jest Twoja subskrypcja, więc nie płacisz za tokeny API.') }}</p>
           <div class="providers">
             <button
               v-for="id in ['claude', 'codex']"
@@ -216,31 +219,31 @@ onBeforeUnmount(() => clearInterval(poll))
             >
               <div class="ph">
                 <strong>{{ id === 'claude' ? 'Claude Code' : 'Codex' }}</strong>
-                <span v-if="!providers[id]?.available" class="tag tag-red">brak CLI</span>
-                <span v-else-if="providers[id].auth?.loggedIn === false" class="tag tag-yellow">niezalogowane</span>
-                <span v-else class="tag tag-green">gotowe</span>
+                <span v-if="!providers[id]?.available" class="tag tag-red">{{ t('brak CLI') }}</span>
+                <span v-else-if="providers[id].auth?.loggedIn === false" class="tag tag-yellow">{{ t('niezalogowane') }}</span>
+                <span v-else class="tag tag-green">{{ t('gotowe') }}</span>
               </div>
-              <span class="pd">{{ id === 'claude' ? 'Subskrypcja Claude Pro / Max' : 'Konto ChatGPT (Plus / Pro / Business)' }}</span>
+              <span class="pd">{{ id === 'claude' ? t('Subskrypcja Claude Pro / Max') : t('Konto ChatGPT (Plus / Pro / Business)') }}</span>
               <code v-if="providers[id]?.version" class="pv">{{ providers[id].version }}</code>
             </button>
           </div>
 
           <div v-if="activeProvider && !activeProvider.available" class="hint">
-            <strong>Zainstaluj {{ app.settings.provider === 'claude' ? 'Claude Code' : 'Codex' }}</strong> w terminalu, a potem kliknij „Sprawdź ponownie”:
-            <div class="cmd"><code>{{ activeProvider.install }}</code><button class="btn btn-sm" @click="copy(activeProvider.install)">{{ copied === activeProvider.install ? 'Skopiowano' : 'Kopiuj' }}</button></div>
-            <span class="muted small">Jeśli CLI jest zainstalowane w nietypowym miejscu, podasz ścieżkę później w Ustawieniach.</span>
+            <strong>{{ t('Zainstaluj') }} {{ app.settings.provider === 'claude' ? 'Claude Code' : 'Codex' }}</strong> {{ t('w terminalu, a potem kliknij „Sprawdź ponownie”:') }}
+            <div class="cmd"><code>{{ activeProvider.install }}</code><button class="btn btn-sm" @click="copy(activeProvider.install)">{{ copied === activeProvider.install ? t('Skopiowano') : t('Kopiuj') }}</button></div>
+            <span class="muted small">{{ t('Jeśli CLI jest zainstalowane w nietypowym miejscu, podasz ścieżkę później w Ustawieniach.') }}</span>
           </div>
           <div v-else-if="activeProvider?.auth?.loggedIn === false" class="hint">
-            <strong>Zaloguj się</strong> w terminalu (otworzy się przeglądarka), a potem kliknij „Sprawdź ponownie”:
-            <div class="cmd"><code>{{ activeProvider.login }}</code><button class="btn btn-sm" @click="copy(activeProvider.login)">{{ copied === activeProvider.login ? 'Skopiowano' : 'Kopiuj' }}</button></div>
+            <strong>{{ t('Zaloguj się') }}</strong> {{ t('w terminalu (otworzy się przeglądarka), a potem kliknij „Sprawdź ponownie”:') }}
+            <div class="cmd"><code>{{ activeProvider.login }}</code><button class="btn btn-sm" @click="copy(activeProvider.login)">{{ copied === activeProvider.login ? t('Skopiowano') : t('Kopiuj') }}</button></div>
           </div>
 
           <ModelPicker v-if="activeProvider?.available" :key="app.settings.provider" />
 
           <div class="row">
-            <button class="btn btn-sm" :disabled="loading" @click="recheck"><Icon name="refresh" :size="16" /> Sprawdź ponownie</button>
+            <button class="btn btn-sm" :disabled="loading" @click="recheck"><Icon name="refresh" :size="16" /> {{ t('Sprawdź ponownie') }}</button>
             <button v-if="activeProvider?.available" class="btn btn-primary btn-sm" :disabled="testing" @click="test">
-              <span v-if="testing" class="spinner sm" /> Testuj połączenie
+              <span v-if="testing" class="spinner sm" /> {{ t('Testuj połączenie') }}
             </button>
             <span v-if="testResult" class="tr" :class="testResult.ok ? 'ok' : 'bad'">
               <Icon :name="testResult.ok ? 'check' : 'x'" :size="18" :stroke="3" />{{ testResult.text }}
@@ -252,43 +255,43 @@ onBeforeUnmount(() => clearInterval(poll))
         <section v-else-if="current === 'docker'" class="card box">
           <h1>Docker</h1>
           <p class="lead">
-            Dzięki Dockerowi zadania w PHP, C++, Pythonie, Go, Ruście, Javie, C#, Ruby i SQL uruchamiają się w prawdziwych, odizolowanych kontenerach z terminalem.
+            {{ t('Dzięki Dockerowi zadania w PHP, C++, Pythonie, Go, Ruście, Javie, C#, Ruby i SQL uruchamiają się w prawdziwych, odizolowanych kontenerach z terminalem.') }}
           </p>
 
           <div class="statusline">
             <span class="tag" :class="docker.running ? 'tag-green' : 'tag-red'">
-              {{ docker.running ? `Docker działa · ${docker.version}${docker.endpoint ? ` · ${docker.endpoint}` : ''}` : docker.problem === 'permission' ? 'brak uprawnień' : docker.installed ? 'zainstalowany, ale nie działa' : 'nie zainstalowany' }}
+              {{ docker.running ? t('Docker działa · {0}{1}', [docker.version, docker.endpoint ? ` · ${t(docker.endpoint)}` : '']) : docker.problem === 'permission' ? t('brak uprawnień') : docker.installed ? t('zainstalowany, ale nie działa') : t('nie zainstalowany') }}
             </span>
           </div>
 
           <template v-if="!docker.running">
             <div v-if="docker.problem === 'permission'" class="hint">
-              <strong>Docker działa, ale Twoje konto nie ma do niego dostępu.</strong> Wykonaj w terminalu:
-              <div v-for="c in docker.help.permission" :key="c" class="cmd"><code>{{ c }}</code><button v-if="!c.startsWith('Wyloguj')" class="btn btn-sm" @click="copy(c)">{{ copied === c ? 'Skopiowano' : 'Kopiuj' }}</button></div>
+              <strong>{{ t('Docker działa, ale Twoje konto nie ma do niego dostępu.') }}</strong> {{ t('Wykonaj w terminalu:') }}
+              <div v-for="c in docker.help.permission" :key="c" class="cmd"><code>{{ t(c) }}</code><button v-if="!c.startsWith('Wyloguj')" class="btn btn-sm" @click="copy(c)">{{ copied === c ? t('Skopiowano') : t('Kopiuj') }}</button></div>
             </div>
             <div v-else-if="!docker.installed" class="hint">
-              <strong>Zainstaluj Dockera.</strong>
+              <strong>{{ t('Zainstaluj Dockera.') }}</strong>
               <template v-if="docker.help.autoInstall">
-                Codenoms może zrobić to za Ciebie. System poprosi o hasło administratora.
-                <button class="btn btn-primary btn-sm self" :disabled="anyRunning" @click="startJob('docker-install')">Zainstaluj Dockera</button>
-                <span class="muted small">Albo ręcznie, w terminalu:</span>
+                {{ t('Codenoms może zrobić to za Ciebie. System poprosi o hasło administratora.') }}
+                <button class="btn btn-primary btn-sm self" :disabled="anyRunning" @click="startJob('docker-install')">{{ t('Zainstaluj Dockera') }}</button>
+                <span class="muted small">{{ t('Albo ręcznie, w terminalu:') }}</span>
               </template>
-              <template v-else>Wykonaj w terminalu:</template>
-              <div v-for="c in docker.help.install" :key="c" class="cmd"><code>{{ c }}</code><button class="btn btn-sm" @click="copy(c)">{{ copied === c ? 'Skopiowano' : 'Kopiuj' }}</button></div>
-              <a class="link small" :href="docker.help.link" target="_blank" rel="noopener">Oficjalna instrukcja instalacji ↗</a>
+              <template v-else>{{ t('Wykonaj w terminalu:') }}</template>
+              <div v-for="c in docker.help.install" :key="c" class="cmd"><code>{{ c }}</code><button class="btn btn-sm" @click="copy(c)">{{ copied === c ? t('Skopiowano') : t('Kopiuj') }}</button></div>
+              <a class="link small" :href="docker.help.link" target="_blank" rel="noopener">{{ t('Oficjalna instrukcja instalacji ↗') }}</a>
             </div>
             <div v-else class="hint">
-              <strong>Uruchom Dockera.</strong>
-              <button v-if="docker.help.autoStart" class="btn btn-primary btn-sm self" :disabled="anyRunning" @click="startJob('docker-start')">Uruchom Dockera</button>
-              <div v-for="c in docker.help.start" :key="c" class="cmd"><code>{{ c }}</code><button v-if="!c.startsWith('Uruchom')" class="btn btn-sm" @click="copy(c)">{{ copied === c ? 'Skopiowano' : 'Kopiuj' }}</button></div>
+              <strong>{{ t('Uruchom Dockera.') }}</strong>
+              <button v-if="docker.help.autoStart" class="btn btn-primary btn-sm self" :disabled="anyRunning" @click="startJob('docker-start')">{{ t('Uruchom Dockera') }}</button>
+              <div v-for="c in docker.help.start" :key="c" class="cmd"><code>{{ t(c) }}</code><button v-if="!c.startsWith('Uruchom')" class="btn btn-sm" @click="copy(c)">{{ copied === c ? t('Skopiowano') : t('Kopiuj') }}</button></div>
             </div>
           </template>
 
           <JobLog v-for="k in ['docker-install', 'docker-start']" :key="k" :job="job(k)" />
 
           <template v-if="docker.running && status.sandbox">
-            <span class="label">Przygotuj środowiska z góry (opcjonalnie)</span>
-            <span class="muted small">Inaczej obraz danego języka zbuduje się przy pierwszej lekcji, co zajmuje 1–3 min.</span>
+            <span class="label">{{ t('Przygotuj środowiska z góry (opcjonalnie)') }}</span>
+            <span class="muted small">{{ t('Inaczej obraz danego języka zbuduje się przy pierwszej lekcji, co zajmuje 1–3 min.') }}</span>
             <div class="seg">
               <button
                 v-for="(env, l) in status.sandbox"
@@ -304,33 +307,32 @@ onBeforeUnmount(() => clearInterval(poll))
               class="btn btn-sm self"
               :disabled="!languages.length || running('sandbox')"
               @click="startJob('sandbox', { languages })"
-            >Pobierz wybrane ({{ languages.length }})</button>
+            >{{ t('Pobierz wybrane (') }}{{ languages.length }})</button>
             <JobLog :job="job('sandbox')" />
           </template>
 
           <div class="row">
-            <button class="btn btn-sm" :disabled="loading" @click="recheck"><Icon name="refresh" :size="16" /> Sprawdź ponownie</button>
+            <button class="btn btn-sm" :disabled="loading" @click="recheck"><Icon name="refresh" :size="16" /> {{ t('Sprawdź ponownie') }}</button>
           </div>
         </section>
 
         <!-- ------------------------------------------------------- dyktowanie -->
         <section v-else-if="current === 'dictation'" class="card box">
-          <h1>Dyktowanie</h1>
+          <h1>{{ t('Dyktowanie') }}</h1>
           <p class="lead">
-            Wolisz mówić niż pisać? Z dyktowaniem odpowiesz na pytania otwarte głosem (mikrofon przy polu tekstowym albo <kbd>Alt+Shift+M</kbd>).
-            Mowę rozpoznaje lokalnie <strong>Faster Whisper</strong>.
+            {{ t('Wolisz mówić niż pisać? Z dyktowaniem odpowiesz na pytania otwarte głosem (mikrofon przy polu tekstowym albo') }} <kbd>Alt+Shift+M</kbd>{{ t('). Mowę rozpoznaje lokalnie') }} <strong>Faster Whisper</strong>.
           </p>
           <ul class="list small">
-            <li>Pobranie: ok. {{ status.dictation.downloadMB }} MB (model „small” + biblioteki Pythona).</li>
+            <li>{{ t('Pobranie: ok.') }} {{ status.dictation.downloadMB }} {{ t('MB (model „small” + biblioteki Pythona).') }}</li>
             <li>
-              Wymaga Pythona 3.10–3.13:
-              <span v-if="status.dictation.python && status.dictation.pythonTested" class="ok-text">znaleziono {{ status.dictation.python }}</span>
-              <span v-else-if="status.dictation.python" class="warn-text">znaleziono {{ status.dictation.python }}: nowsza wersja niż sprawdzone, instalacja może się nie udać (wtedy doinstaluj Pythona 3.12 lub 3.13)</span>
-              <span v-else class="bad-text">nie znaleziono, zainstaluj z <a class="link" href="https://www.python.org/downloads/" target="_blank" rel="noopener">python.org</a></span>
+              {{ t('Wymaga Pythona 3.10–3.13:') }}
+              <span v-if="status.dictation.python && status.dictation.pythonTested" class="ok-text">{{ t('znaleziono') }} {{ status.dictation.python }}</span>
+              <span v-else-if="status.dictation.python" class="warn-text">{{ t('znaleziono') }} {{ status.dictation.python }}{{ t(': nowsza wersja niż sprawdzone, instalacja może się nie udać (wtedy doinstaluj Pythona 3.12 lub 3.13)') }}</span>
+              <span v-else class="bad-text">{{ t('nie znaleziono, zainstaluj z') }} <a class="link" href="https://www.python.org/downloads/" target="_blank" rel="noopener">python.org</a></span>
             </li>
           </ul>
           <div class="statusline">
-            <span class="tag" :class="status.dictation.installed ? 'tag-green' : 'tag-yellow'">{{ status.dictation.installed ? 'Dyktowanie gotowe' : 'Nie zainstalowane' }}</span>
+            <span class="tag" :class="status.dictation.installed ? 'tag-green' : 'tag-yellow'">{{ status.dictation.installed ? t('Dyktowanie gotowe') : t('Nie zainstalowane') }}</span>
           </div>
           <div class="row">
             <button
@@ -340,35 +342,35 @@ onBeforeUnmount(() => clearInterval(poll))
               @click="startJob('dictation')"
             >
               <span v-if="running('dictation')" class="spinner sm" />
-              {{ running('dictation') ? 'Instaluję…' : job('dictation')?.status === 'error' ? 'Spróbuj ponownie' : 'Tak, zainstaluj dyktowanie' }}
+              {{ running('dictation') ? t('Instaluję…') : job('dictation')?.status === 'error' ? t('Spróbuj ponownie') : t('Tak, zainstaluj dyktowanie') }}
             </button>
-            <button v-if="!status.dictation.installed && !running('dictation')" class="btn" @click="next">Nie teraz</button>
+            <button v-if="!status.dictation.installed && !running('dictation')" class="btn" @click="next">{{ t('Nie teraz') }}</button>
           </div>
           <JobLog :job="job('dictation')" />
         </section>
 
         <!-- ------------------------------------------------------- gotowe -->
         <section v-else class="card box">
-          <h1>Wszystko gotowe</h1>
+          <h1>{{ t('Wszystko gotowe') }}</h1>
           <ul class="summary">
             <li v-for="s in summary" :key="s.label">
               <Icon :name="s.ok ? 'check' : 'x'" :size="18" :stroke="3" :class="s.ok ? 'ok-text' : 'bad-text'" />
               <span>{{ s.label }}<span v-if="s.note" class="muted"> · {{ s.note }}</span></span>
             </li>
           </ul>
-          <div v-if="anyRunning" class="hint">Instalacja wciąż trwa w tle. Możesz już zacząć naukę, a funkcja włączy się, gdy instalacja się skończy.</div>
-          <div v-if="!providerReady" class="hint warn">Bez działającego silnika AI Codenoms nie ułoży planu ani lekcji. Wróć do kroku „Silnik AI”.</div>
+          <div v-if="anyRunning" class="hint">{{ t('Instalacja wciąż trwa w tle. Możesz już zacząć naukę, a funkcja włączy się, gdy instalacja się skończy.') }}</div>
+          <div v-if="!providerReady" class="hint warn">{{ t('Bez działającego silnika AI Codenoms nie ułoży planu ani lekcji. Wróć do kroku „Silnik AI”.') }}</div>
         </section>
 
         <p v-if="startError" class="tr bad">{{ startError }}</p>
 
         <footer v-if="status || current === 'welcome'" class="nav">
-          <button v-if="step > 0" class="btn" @click="back"><Icon name="arrow-left" :size="18" /> Wstecz</button>
+          <button v-if="step > 0" class="btn" @click="back"><Icon name="arrow-left" :size="18" /> {{ t('Wstecz') }}</button>
           <span class="grow" />
           <button v-if="current !== 'done'" class="btn btn-primary" @click="next">
-            {{ current === 'welcome' ? 'Zaczynamy' : 'Dalej' }} <Icon name="arrow-right" :size="18" />
+            {{ current === 'welcome' ? t('Zaczynamy') : t('Dalej') }} <Icon name="arrow-right" :size="18" />
           </button>
-          <button v-else class="btn btn-green btn-lg" :disabled="!providerReady" @click="finish">Przejdź do nauki</button>
+          <button v-else class="btn btn-green btn-lg" :disabled="!providerReady" @click="finish">{{ t('Przejdź do nauki') }}</button>
         </footer>
       </div>
     </main>

@@ -1,6 +1,8 @@
+import { t } from '../lib/i18n.js'
 import { defineStore } from 'pinia'
 import { ai, getJSON, putJSON } from '../lib/api.js'
 import { newCard, schedule } from '../lib/srs.js'
+import { normalizeLocale, preferredLocale } from '../lib/languages.js'
 
 const today = () => new Date().toLocaleDateString('sv-SE') // YYYY-MM-DD w strefie lokalnej
 const dayDiff = (a, b) => Math.round((new Date(b) - new Date(a)) / 86_400_000)
@@ -24,7 +26,11 @@ function emptyState() {
     flashcards: [],
     weakSpots: [],
     stats: { xp: 0, streak: 0, lastActiveDay: null, history: [], daily: {} },
-    settings: { provider: 'claude', model: '', effort: '', prefs: {}, claudeBin: '', codexBin: '', sound: true, volume: 0.6, jsRuntime: 'browser', setupDone: false },
+    settings: {
+      provider: 'claude', model: '', effort: '', prefs: {}, claudeBin: '', codexBin: '',
+      sound: true, volume: 0.6, jsRuntime: 'browser', setupDone: false,
+      locale: preferredLocale(globalThis.navigator?.languages || []),
+    },
   }
 }
 
@@ -71,7 +77,7 @@ const LESSON_FORMAT = 3
 
 function validateLessonFlow(kind, intro, exercises) {
   if (![intro?.outcome, intro?.relevance, intro?.focus].every((value) => typeof value === 'string' && value.trim())) {
-    throw new Error('Model nie przygotował pełnego wprowadzenia do lekcji.')
+    throw new Error(t('Model nie przygotował pełnego wprowadzenia do lekcji.'))
   }
   const stages = exercises.map(({ stage }) => stage).join(' ')
   const validOrder = kind === 'test'
@@ -83,7 +89,7 @@ function validateLessonFlow(kind, intro, exercises) {
         if (stage === 'challenge') return type === 'choice'
         return type !== 'learn'
       })
-  if (!validOrder) throw new Error('Model zwrócił niewłaściwą kolejność etapów lekcji.')
+  if (!validOrder) throw new Error(t('Model zwrócił niewłaściwą kolejność etapów lekcji.'))
 }
 
 let saveTimer = null
@@ -149,10 +155,11 @@ export const useApp = defineStore('app', {
           stats: { ...base.stats, ...(data.stats || {}) },
           settings: { ...base.settings, ...(data.settings || {}) },
         })
+        this.settings.locale = normalizeLocale(this.settings.locale) || base.settings.locale
         // Istniejące instalacje (z planem nauki) nie muszą przechodzić kreatora od nowa.
         if (data.settings?.setupDone === undefined && data.plan) this.settings.setupDone = true
       } catch (err) {
-        console.error('Nie udało się wczytać stanu', err)
+        console.error(t('Nie udało się wczytać stanu'), err)
       }
       this.loaded = true
       this.refreshStatus()
@@ -175,6 +182,20 @@ export const useApp = defineStore('app', {
       saveTimer = null
       pendingSave = pendingSave.catch(() => {}).then(() => putJSON('/api/state', this.persisted()))
       return pendingSave
+    },
+
+    async changeLocale(value) {
+      const locale = normalizeLocale(value)
+      const previous = this.settings.locale
+      if (!locale || locale === previous) return
+      this.settings.locale = locale
+      this.scheduleSave()
+      try {
+        await this.flushSave()
+      } catch (error) {
+        this.settings.locale = previous
+        throw error
+      }
     },
 
     /** Przełącza silnik AI, pamiętając wybrany model i effort osobno dla każdego dostawcy. */
@@ -272,7 +293,7 @@ export const useApp = defineStore('app', {
         if (r.patch) Object.assign(e, r.patch)
         e.testsStatus = r.status
         if (r.total) e.testsTotal = r.total
-        if (r.fixed) e.testsFixNote = r.note || 'Testy poprawione automatycznie.'
+        if (r.fixed) e.testsFixNote = r.note || t('Testy poprawione automatycznie.')
       }
       delete this.lessonGen[id]
       return c
@@ -288,7 +309,7 @@ export const useApp = defineStore('app', {
         return v
       }
       const l = this.findLesson(id)
-      if (!l) return Promise.reject(new Error('Nie ma takiej lekcji'))
+      if (!l) return Promise.reject(new Error(t('Nie ma takiej lekcji')))
       this.lessonGen[id] = { chars: 0, elapsed: 0, error: null }
       let runtime = 'browser'
       const p = (this.docker ? Promise.resolve() : this.refreshStatus())
@@ -316,7 +337,7 @@ export const useApp = defineStore('app', {
                   : { runtime: runtime === 'docker' ? 'review' : runtime }
                 : {}),
             }))
-          if (!exercises.length) throw new Error('Model zwrócił pustą lekcję')
+          if (!exercises.length) throw new Error(t('Model zwrócił pustą lekcję'))
           validateLessonFlow(l.kind, data.intro, exercises)
           this.lessons[id] = { intro: data.intro, exercises, flashcards: data.flashcards || [], generatedAt: Date.now(), format: LESSON_FORMAT }
           return this.validateLesson(id)
@@ -356,7 +377,7 @@ export const useApp = defineStore('app', {
       refreshStatuses(this.plan)
       this.stats.xp += xp + (firstTime ? 20 : 5)
       const cards = this.lessons[id]?.flashcards || []
-      if (firstTime) this.addFlashcards(cards, `lekcja: ${l.title}`)
+      if (firstTime) this.addFlashcards(cards, t('lekcja: {0}', [l.title]))
       this.touchStreak()
       this.prefetchNext(id)
       return firstTime ? 20 : 5

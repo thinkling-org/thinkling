@@ -1,4 +1,5 @@
 import { shallowRef } from 'vue'
+import { t } from './i18n.js'
 
 export const activeTerm = shallowRef(null)
 
@@ -61,7 +62,10 @@ const escape = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 const aliases = [...definitions.keys()].sort((a, b) => b.length - a.length).map(escape)
 const pattern = new RegExp(`(?<![\\p{L}\\p{N}_$])(?:${aliases.join('|')})(?![\\p{L}\\p{N}_$])`, 'giu')
 
-export const glossaryEntry = (term) => definitions.get(term) || codeDefinitions.get(term)
+export function glossaryEntry(term) {
+  const entry = definitions.get(term) || codeDefinitions.get(term)
+  return entry && { title: t(entry.title), definition: t(entry.definition) }
+}
 
 export function linkCodeTerms(html, language) {
   const scope = language === 'typescript' ? 'javascript' : language
@@ -134,9 +138,9 @@ export function suggestTools(code, language) {
   if (!known || !code) return []
   const used = Object.keys(known).filter((name) =>
     new RegExp(`(?<![\\w.$])${name.replace('.', '\\.')}\\s*\\(`).test(code))
-  const tools = used.map((name) => ({ name: `${name}()`, description: known[name] }))
+  const tools = used.map((name) => ({ name: `${name}()`, description: t(known[name]) }))
   for (const [pattern, name, description] of CONSTRUCTS[scope] || []) {
-    if (pattern.test(code)) tools.push({ name, description })
+    if (pattern.test(code)) tools.push({ name, description: t(description) })
   }
   return tools.slice(0, 5)
 }

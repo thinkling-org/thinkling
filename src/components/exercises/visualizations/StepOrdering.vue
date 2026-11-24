@@ -1,4 +1,5 @@
 <script setup>
+import { t } from '../../../lib/i18n.js'
 import { computed, ref, watch } from 'vue'
 import Markdown from '../../Markdown.vue'
 import Icon from '../../Icon.vue'
@@ -50,10 +51,10 @@ function reset() {
 </script>
 
 <template>
-  <section class="card viz ordering" aria-label="Układanie kroków">
+  <section class="card viz ordering" :aria-label="t('Układanie kroków')">
     <Markdown class="instruction" :src="config.instruction" />
     <div class="layout">
-      <ol class="slots" aria-label="Twoja kolejność">
+      <ol class="slots" :aria-label="t('Twoja kolejność')">
         <li v-for="(slot, k) in slots" :key="k">
           <span class="no" aria-hidden="true">{{ k + 1 }}</span>
           <button
@@ -62,18 +63,18 @@ function reset() {
             class="piece placed"
             :class="checked && (slot.ok ? 'ok' : 'bad')"
             :disabled="checked"
-            :aria-label="checked ? `${slot.text}: ${slot.ok ? 'dobre miejsce' : 'złe miejsce'}` : `Cofnij: ${slot.text}`"
+            :aria-label="checked ? `${slot.text}: ${slot.ok ? t('dobre miejsce') : t('złe miejsce')}` : t('Cofnij: {0}', [slot.text])"
             @click="remove(k)"
           >
             <span :style="{ paddingLeft: `${slot.indent * 18}px` }">{{ slot.text }}</span>
             <Icon :name="checked ? (slot.ok ? 'check' : 'x') : 'x'" :size="16" :stroke="2.8" />
           </button>
-          <span v-else class="empty" aria-label="Puste miejsce" />
+          <span v-else class="empty" :aria-label="t('Puste miejsce')" />
         </li>
       </ol>
       <div class="bank-wrap">
-        <span class="label">Klocki · kliknij, żeby dodać</span>
-        <div class="bank" role="group" aria-label="Klocki do ułożenia">
+        <span class="label">{{ t('Klocki · kliknij, żeby dodać') }}</span>
+        <div class="bank" role="group" :aria-label="t('Klocki do ułożenia')">
           <button
             v-for="id in bank"
             :key="id"
@@ -85,16 +86,16 @@ function reset() {
           >{{ config.steps[id].text }}</button>
         </div>
         <div class="actions">
-          <button type="button" class="btn btn-ghost btn-sm" @click="reset">Od nowa</button>
-          <button v-if="checked && !solved" type="button" class="btn btn-ghost-yellow btn-sm" @click="retry">Popraw</button>
-          <button v-else type="button" class="btn btn-primary btn-sm" :disabled="!full || checked" @click="checked = true">Sprawdź</button>
+          <button type="button" class="btn btn-ghost btn-sm" @click="reset">{{ t('Od nowa') }}</button>
+          <button v-if="checked && !solved" type="button" class="btn btn-ghost-yellow btn-sm" @click="retry">{{ t('Popraw') }}</button>
+          <button v-else type="button" class="btn btn-primary btn-sm" :disabled="!full || checked" @click="checked = true">{{ t('Sprawdź') }}</button>
         </div>
       </div>
     </div>
     <p class="note" :class="checked && (solved ? 'success' : 'warn')" aria-live="polite">
-      <template v-if="!checked">{{ full ? 'Gotowe? Kliknij Sprawdź.' : 'Kliknij klocek, żeby dodać go na koniec. Kliknij ułożony, żeby go cofnąć.' }}</template>
-      <template v-else-if="solved">{{ config.success || 'Dobrze, wszystkie kroki są na swoim miejscu.' }}</template>
-      <template v-else>{{ good }} z {{ config.steps.length }} na swoim miejscu. {{ config.hint }}</template>
+      <template v-if="!checked">{{ full ? t('Gotowe? Kliknij Sprawdź.') : t('Kliknij klocek, żeby dodać go na koniec. Kliknij ułożony, żeby go cofnąć.') }}</template>
+      <template v-else-if="solved">{{ config.success || t('Dobrze, wszystkie kroki są na swoim miejscu.') }}</template>
+      <template v-else>{{ good }} {{ t('z') }} {{ config.steps.length }} {{ t('na swoim miejscu.') }} {{ config.hint }}</template>
     </p>
   </section>
 </template>

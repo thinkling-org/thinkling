@@ -1,4 +1,5 @@
 <script setup>
+import { numberFormatter, t } from '../../../lib/i18n.js'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import Markdown from '../../Markdown.vue'
 import Icon from '../../Icon.vue'
@@ -10,13 +11,13 @@ const W = 320
 const H = 140
 const PAD = { left: 8, right: 8, top: 10, bottom: 10 }
 const PLAY_FRAMES = 300
-const ALGORITHM_LABEL = { fixed: 'stałe okno', sliding: 'przesuwane okno', token: 'token bucket', leaky: 'leaky bucket' }
-const MODE_LABEL = { open: 'przepuszcza wszystko', closed: 'odrzuca wszystko', local: 'limit lokalny' }
-const number = new Intl.NumberFormat('pl-PL', { maximumFractionDigits: 1 })
-const compact = new Intl.NumberFormat('pl-PL', { notation: 'compact', maximumSignificantDigits: 3 })
+const ALGORITHM_LABEL = { fixed: t('stałe okno'), sliding: t('przesuwane okno'), token: 'token bucket', leaky: 'leaky bucket' }
+const MODE_LABEL = { open: t('przepuszcza wszystko'), closed: t('odrzuca wszystko'), local: t('limit lokalny') }
+const number = numberFormatter({ maximumFractionDigits: 1 })
+const compact = numberFormatter({ notation: 'compact', maximumSignificantDigits: 3 })
 
 const picks = ref([])
-const t = ref(0)
+const time = ref(0)
 const playing = ref(false)
 const hint = ref('')
 let timer = null
@@ -24,7 +25,7 @@ let timer = null
 function reset() {
   stop()
   picks.value = props.config.controls.map(() => 0)
-  t.value = 0
+  time.value = 0
   hint.value = ''
 }
 watch(() => props.config, reset, { immediate: true })
@@ -32,8 +33,8 @@ watch(picks, () => { hint.value = '' }, { deep: true })
 onBeforeUnmount(stop)
 
 const last = computed(() => props.config.duration - 1)
-const finished = computed(() => t.value >= last.value)
-const started = computed(() => t.value > 0)
+const finished = computed(() => time.value >= last.value)
+const started = computed(() => time.value > 0)
 
 function stop() {
   playing.value = false
@@ -42,11 +43,11 @@ function stop() {
 }
 function toggle() {
   if (playing.value) return stop()
-  if (finished.value) t.value = 0
+  if (finished.value) time.value = 0
   playing.value = true
   const step = Math.max(1, Math.round(props.config.duration / PLAY_FRAMES))
   timer = setInterval(() => {
-    t.value = Math.min(last.value, t.value + step)
+    time.value = Math.min(last.value, time.value + step)
     if (finished.value) stop()
   }, 50)
 }
@@ -56,7 +57,7 @@ function pick(control, option) {
 
 const result = computed(() => simulate(props.config, picks.value))
 const nodes = computed(() => configure(props.config, picks.value).nodes)
-const goals = computed(() => evaluate(props.config, result.value, t.value).map((goal) => ({
+const goals = computed(() => evaluate(props.config, result.value, time.value).map((goal) => ({
   ...goal,
   status: goal.metric === 'cost' || started.value ? (goal.ok ? 'ok' : 'bad') : 'todo',
 })))
@@ -64,11 +65,11 @@ const solved = computed(() => finished.value && goals.value.every((goal) => goal
 const otherSolutions = computed(() => props.config.solutions.length - 1)
 
 const clock = computed(() => {
-  const m = Math.floor(t.value / 60)
-  const s = t.value % 60
+  const m = Math.floor(time.value / 60)
+  const s = time.value % 60
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
 })
-const activeFailures = computed(() => props.config.failures.filter((f) => t.value >= f.from && t.value < f.to))
+const activeFailures = computed(() => props.config.failures.filter((f) => time.value >= f.from && time.value < f.to))
 
 const unit = (goal) => ({
   errorRate: '%',
@@ -77,7 +78,7 @@ const unit = (goal) => ({
   utilization: '%',
   cost: props.config.costUnit ? ` ${props.config.costUnit}` : '',
 }[goal.metric])
-const format = (value, goal) => `${value >= 10000 ? compact.format(value) : number.format(value)}${unit(goal)}`
+const format = (value, goal) => `${value >= 10000 ? compact(value) : number(value)}${unit(goal)}`
 
 // ---------------------------------------------------------------- wykresy
 
@@ -93,11 +94,11 @@ const charts = computed(() => goals.value.filter((goal) => goal.metric !== 'cost
   const yMax = goal.value > 0 ? Math.max(goal.value * 1.6, Math.min(peak * 1.05, goal.value * 4)) : Math.max(peak * 1.05, 1)
   const py = (v) => H - PAD.bottom - Math.min(v, yMax) / yMax * (H - PAD.top - PAD.bottom)
   const points = []
-  for (let time = 0; time <= t.value; time++) {
-    if (series[time] != null) points.push(`${px(time).toFixed(1)},${py(series[time]).toFixed(1)}`)
+  for (let second = 0; second <= time.value; second++) {
+    if (series[second] != null) points.push(`${px(second).toFixed(1)},${py(series[second]).toFixed(1)}`)
   }
   let now = null
-  for (let time = t.value; time >= 0 && now == null; time--) now = series[time]
+  for (let second = time.value; second >= 0 && now == null; second--) now = series[second]
   const bad = now != null && (goal.op === '>=' ? now < goal.value : now > goal.value)
   return {
     goal,
@@ -114,35 +115,35 @@ const charts = computed(() => goals.value.filter((goal) => goal.metric !== 'cost
 function nodeView(id) {
   const node = nodes.value.get(id)
   const series = result.value.perNode.get(id)
-  const mode = series.mode[t.value]
-  const utilization = series.utilization[t.value]
+  const mode = series.mode[time.value]
+  const utilization = series.utilization[time.value]
   const view = { id, label: node.label, kind: node.kind, lines: [], state: 'idle' }
   if (node.kind === 'limiter') {
-    view.lines.push(`${ALGORITHM_LABEL[node.algorithm]} · ${number.format(node.limit)} / ${node.window} s`)
-    if (node.store) view.lines.push(`licznik: ${nodes.value.get(node.store).label}`)
-    else if (node.copies > 1) view.lines.push(`liczniki lokalne ×${node.copies}`)
+    view.lines.push(`${ALGORITHM_LABEL[node.algorithm]} · ${number(node.limit)} / ${node.window} s`)
+    if (node.store) view.lines.push(t('licznik: {0}', [nodes.value.get(node.store).label]))
+    else if (node.copies > 1) view.lines.push(t('liczniki lokalne ×{0}', [node.copies]))
     if (mode !== 'normal') {
       view.state = 'alert'
-      view.lines.push(`awaria: ${MODE_LABEL[mode]}`)
+      view.lines.push(t('awaria: {0}', [MODE_LABEL[mode]]))
     } else view.state = 'active'
     return view
   }
   if (mode === 'down') {
     view.state = 'down'
-    view.lines.push('nie działa')
+    view.lines.push(t('nie działa'))
     return view
   }
   if (node.kind === 'cache') {
     view.state = 'active'
-    view.lines.push(`trafienia ${Math.round(node.hitRate * 100)}%`)
+    view.lines.push(t('trafienia {0}%', [Math.round(node.hitRate * 100)]))
     return view
   }
   if (node.kind === 'store' && !usedStores.value.has(id)) {
-    view.lines.push(`×${node.instances} · nieużywany`)
+    view.lines.push(t('×{0} · nieużywany', [node.instances]))
     return view
   }
   view.state = utilization > 100 ? 'alert' : 'active'
-  view.lines.push(`×${node.instances} · obciążenie ${Math.round(utilization)}%`)
+  view.lines.push(t('×{0} · obciążenie {1}%', [node.instances, Math.round(utilization)]))
   return view
 }
 
@@ -159,38 +160,38 @@ const stages = computed(() => props.config.path.map((id) => {
 }))
 const sources = computed(() => props.config.sources.map((source, k) => ({
   label: source.label,
-  rate: result.value.perClass[k].offered[t.value],
+  rate: result.value.perClass[k].offered[time.value],
 })))
 
 // ---------------------------------------------------------------- podpowiedź
 
 function showHint() {
   const failing = evaluate(props.config, result.value, last.value).find((goal) => !goal.ok)
-  if (!started.value) hint.value = 'Uruchom symulację i obserwuj wykresy. Czerwone pasy to czas awarii.'
-  else if (failing) hint.value = failing.hint || `Ten cel nie przechodzi: ${failing.label}.`
-  else if (!finished.value) hint.value = 'Na razie wygląda dobrze. Puść symulację do końca.'
+  if (!started.value) hint.value = t('Uruchom symulację i obserwuj wykresy. Czerwone pasy to czas awarii.')
+  else if (failing) hint.value = failing.hint || t('Ten cel nie przechodzi: {0}.', [failing.label])
+  else if (!finished.value) hint.value = t('Na razie wygląda dobrze. Puść symulację do końca.')
   else hint.value = ''
 }
 </script>
 
 <template>
-  <section class="card viz sim" aria-label="Symulacja systemu">
+  <section class="card viz sim" :aria-label="t('Symulacja systemu')">
     <Markdown class="instruction" :src="config.instruction" />
 
     <div class="player">
       <button type="button" class="btn btn-sm" :class="playing ? 'btn-ghost' : 'btn-primary'" @click="toggle">
-        <Icon :name="playing ? 'pause' : 'play'" :size="16" />{{ playing ? 'Pauza' : finished ? 'Jeszcze raz' : 'Uruchom' }}
+        <Icon :name="playing ? 'pause' : 'play'" :size="16" />{{ playing ? t('Pauza') : finished ? t('Jeszcze raz') : t('Uruchom') }}
       </button>
-      <button type="button" class="btn btn-ghost btn-sm icon-only" aria-label="Od początku" @click="stop(); t = 0">
+      <button type="button" class="btn btn-ghost btn-sm icon-only" :aria-label="t('Od początku')" @click="stop(); time = 0">
         <Icon name="refresh" :size="16" />
       </button>
       <input
-        v-model.number="t"
+        v-model.number="time"
         type="range"
         min="0"
         :max="last"
         step="1"
-        aria-label="Czas symulacji"
+        :aria-label="t('Czas symulacji')"
         :aria-valuetext="clock"
         @input="stop"
       />
@@ -200,10 +201,10 @@ function showHint() {
 
     <div class="layout">
       <div class="main">
-        <div class="arch" aria-label="Architektura">
+        <div class="arch" :aria-label="t('Architektura')">
           <div class="node sources">
-            <strong>Ruch</strong>
-            <span v-for="s in sources" :key="s.label" class="line">{{ s.label }}: {{ compact.format(s.rate) }}/s</span>
+            <strong>{{ t('Ruch') }}</strong>
+            <span v-for="s in sources" :key="s.label" class="line">{{ s.label }}: {{ compact(s.rate) }}/s</span>
           </div>
           <template v-for="stage in stages" :key="stage.main.id">
             <span class="wire" aria-hidden="true" />
@@ -229,26 +230,26 @@ function showHint() {
               <span>{{ chart.goal.label }}</span>
               <span class="now" :class="{ bad: chart.bad }">{{ chart.now }}</span>
             </figcaption>
-            <svg :viewBox="`0 0 ${W} ${H}`" role="img" :aria-label="`Wykres: ${chart.goal.label}. Teraz ${chart.now}.`">
+            <svg :viewBox="`0 0 ${W} ${H}`" role="img" :aria-label="t('Wykres: {0}. Teraz {1}.', [chart.goal.label, chart.now])">
               <rect v-for="(band, i) in failureBands" :key="i" class="band" :x="band.x" :y="PAD.top" :width="band.width" :height="H - PAD.top - PAD.bottom" />
               <line class="base" :x1="PAD.left" :x2="W - PAD.right" :y1="H - PAD.bottom" :y2="H - PAD.bottom" />
               <line class="limit" :x1="PAD.left" :x2="W - PAD.right" :y1="chart.threshold" :y2="chart.threshold" />
               <text class="limit-label" :x="W - PAD.right" :y="chart.threshold - 5" text-anchor="end">{{ format(chart.goal.value, chart.goal) }}</text>
               <polyline class="series" :points="chart.points" />
-              <line class="cursor" :x1="px(t)" :x2="px(t)" :y1="PAD.top" :y2="H - PAD.bottom" />
+              <line class="cursor" :x1="px(time)" :x2="px(time)" :y1="PAD.top" :y2="H - PAD.bottom" />
             </svg>
-            <span v-if="chart.clipped" class="clip-note">Wartości powyżej skali są przycięte.</span>
+            <span v-if="chart.clipped" class="clip-note">{{ t('Wartości powyżej skali są przycięte.') }}</span>
           </figure>
         </div>
 
-        <ul class="goals" aria-label="Cele">
+        <ul class="goals" :aria-label="t('Cele')">
           <li v-for="goal in goals" :key="goal.label" :class="goal.status">
             <span class="mark" aria-hidden="true">
               <Icon v-if="goal.status !== 'todo'" :name="goal.status === 'ok' ? 'check' : 'x'" :size="14" :stroke="3" />
             </span>
             <span class="goal-text">{{ goal.label }}</span>
             <span v-if="goal.status !== 'todo'" class="goal-value">{{ format(goal.current, goal) }}</span>
-            <span class="sr-only">{{ goal.status === 'ok' ? 'spełniony' : goal.status === 'bad' ? 'niespełniony' : 'jeszcze nie sprawdzony' }}</span>
+            <span class="sr-only">{{ goal.status === 'ok' ? t('spełniony') : goal.status === 'bad' ? t('niespełniony') : t('jeszcze nie sprawdzony') }}</span>
           </li>
         </ul>
       </div>
@@ -267,22 +268,22 @@ function showHint() {
             @click="pick(i, k)"
           >
             <strong>{{ option.label }}</strong>
-            <span v-if="option.detail || option.cost">{{ option.detail }}<template v-if="option.cost"> · koszt {{ number.format(option.cost) }}</template></span>
+            <span v-if="option.detail || option.cost">{{ option.detail }}<template v-if="option.cost"> {{ t('· koszt') }} {{ number(option.cost) }}</template></span>
           </button>
         </div>
       </aside>
     </div>
 
     <p v-if="solved" class="result ok" aria-live="polite">
-      Wszystkie cele spełnione przez cały przebieg.
+      {{ t('Wszystkie cele spełnione przez cały przebieg.') }}
       <template v-if="otherSolutions > 0">
-        Istnieje jeszcze {{ otherSolutions === 1 ? 'jedno inne ustawienie' : `${otherSolutions} inne ustawienia` }}, które też przechodzi. Znajdź je i zastanów się, czym się różnią.
+        {{ t('Istnieje jeszcze') }} {{ otherSolutions === 1 ? t('jedno inne ustawienie') : t('{0} inne ustawienia', [otherSolutions]) }}{{ t(', które też przechodzi. Znajdź je i zastanów się, czym się różnią.') }}
       </template>
     </p>
     <div v-else class="hint-row">
       <p v-if="hint" class="result hint" aria-live="polite">{{ hint }}</p>
       <button v-else type="button" class="btn btn-ghost btn-sm" @click="showHint">
-        <Icon name="bulb" :size="16" />Podpowiedź
+        <Icon name="bulb" :size="16" />{{ t('Podpowiedź') }}
       </button>
     </div>
   </section>

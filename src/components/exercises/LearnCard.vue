@@ -1,4 +1,5 @@
 <script setup>
+import { t } from '../../lib/i18n.js'
 import { computed, ref } from 'vue'
 import Markdown from '../Markdown.vue'
 import CodeBlock from '../CodeBlock.vue'
@@ -57,8 +58,8 @@ function saveConcept(concept) {
 
 <template>
   <div class="learn">
-    <span class="kind label"><Icon name="bulb" :size="16" :stroke="2.6" />Karta wiedzy</span>
-    <Markdown tag="h1" fit-heading class="title" :src="exercise.title || 'Nowe pojęcie'" inline />
+    <span class="kind label"><Icon name="bulb" :size="16" :stroke="2.6" />{{ t('Karta wiedzy') }}</span>
+    <Markdown tag="h1" fit-heading class="title" :src="exercise.title || t('Nowe pojęcie')" inline />
     <Markdown class="body" :src="exercise.prompt" />
     <component
       v-if="visualization"
@@ -69,32 +70,32 @@ function saveConcept(concept) {
     />
     <div v-if="!ownsCode && exercise.code?.trim()" class="example">
       <button type="button" class="btn btn-ghost btn-sm" @click="$emit('trace')" @keydown.enter.stop>
-        <Icon name="play" :size="16" />Prześledź przykład
+        <Icon name="play" :size="16" />{{ t('Prześledź przykład') }}
       </button>
-      <CodeBlock :code="exercise.code" :language="exercise.codeLanguage || 'javascript'" file-name="przykład" />
+      <CodeBlock :code="exercise.code" :language="exercise.codeLanguage || 'javascript'" :file-name="t('przykład')" />
     </div>
     <component
       v-if="exercise.prerequisites?.length || exercise.explanation || exercise.keyPoints?.length"
       :is="isComparison ? 'details' : 'div'"
       class="support"
     >
-      <summary v-if="isComparison">Pomoc do przykładu</summary>
+      <summary v-if="isComparison">{{ t('Pomoc do przykładu') }}</summary>
       <div v-if="exercise.prerequisites?.length" class="prerequisites">
         <details v-for="concept in exercise.prerequisites" :key="concept.term" class="card prerequisite">
-          <summary>Pokaż prostszy przykład · <Markdown :src="concept.term" inline tag="span" /></summary>
+          <summary>{{ t('Pokaż prostszy przykład ·') }} <Markdown :src="concept.term" inline tag="span" /></summary>
           <Markdown :src="concept.explanation" />
           <button type="button" class="btn btn-ghost btn-sm" :disabled="savedTerms.has(concept.term)" @click="saveConcept(concept)">
-            {{ savedTerms.has(concept.term) ? 'Zapisano do powtórki' : 'Zapisz do powtórki' }}
+            {{ savedTerms.has(concept.term) ? t('Zapisano do powtórki') : t('Zapisz do powtórki') }}
           </button>
         </details>
       </div>
       <div v-if="exercise.explanation || exercise.keyPoints?.length" class="cards">
         <div v-if="exercise.explanation" class="card trap">
-          <h2 class="label">{{ exercise.stage === 'learn' ? 'Dlaczego to działa' : 'Pułapka' }}</h2>
+          <h2 class="label">{{ exercise.stage === 'learn' ? t('Dlaczego to działa') : t('Pułapka') }}</h2>
           <Markdown :src="exercise.explanation.replace(/^\s*\**pułapka\**\s*:\s*/i, '')" />
         </div>
         <div v-if="exercise.keyPoints?.length" class="card keep">
-          <h2 class="label">Zapamiętaj</h2>
+          <h2 class="label">{{ t('Zapamiętaj') }}</h2>
           <ul>
             <li v-for="(k, i) in exercise.keyPoints" :key="i"><Markdown inline glossary tag="span" :src="k" /></li>
           </ul>

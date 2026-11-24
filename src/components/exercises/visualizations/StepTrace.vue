@@ -1,4 +1,5 @@
 <script setup>
+import { t } from '../../../lib/i18n.js'
 import { computed, ref, watch } from 'vue'
 import Markdown from '../../Markdown.vue'
 import CodeBlock from '../../CodeBlock.vue'
@@ -33,19 +34,19 @@ const variables = computed(() => {
 </script>
 
 <template>
-  <section class="card viz trace" aria-label="Przebieg krok po kroku">
+  <section class="card viz trace" :aria-label="t('Przebieg krok po kroku')">
     <Markdown v-if="config.instruction" class="instruction" :src="config.instruction" />
     <div class="layout">
-      <CodeBlock :code="config.code" :language="codeLanguage" file-name="przykład" :active-line="step.line" />
+      <CodeBlock :code="config.code" :language="codeLanguage" :file-name="t('przykład')" :active-line="step.line" />
       <div class="state">
         <div v-if="variables.length" class="vars">
           <div v-for="v in variables" :key="v.name" class="var" :class="{ changed: v.changed }">
             <span class="name">{{ v.name }}</span>
             <span :key="v.value" class="value">{{ v.value }}</span>
-            <span v-if="v.history.length > 1" class="history" :aria-label="`Historia ${v.name}`">{{ v.history.join(' → ') }}</span>
+            <span v-if="v.history.length > 1" class="history" :aria-label="t('Historia {0}', [v.name])">{{ v.history.join(' → ') }}</span>
           </div>
         </div>
-        <div v-if="step.output || config.steps.some((s) => s.output)" class="console" aria-label="Wyjście programu">
+        <div v-if="step.output || config.steps.some((s) => s.output)" class="console" :aria-label="t('Wyjście programu')">
           <span class="prompt" aria-hidden="true">›</span><span class="out">{{ step.output }}</span>
         </div>
       </div>

@@ -1,4 +1,5 @@
 <script setup>
+import { t } from '../lib/i18n.js'
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import Icon from './Icon.vue'
@@ -15,10 +16,10 @@ const waveform = ref(Array(BAR_COUNT).fill(0))
 let session
 
 const label = computed(() => ({
-  requesting: 'Czekam na mikrofon…',
-  recording: 'Zakończ dyktowanie',
-  transcribing: 'Rozpoznaję mowę…',
-})[phase.value] || 'Dyktuj (Alt+Shift+M)')
+  requesting: t('Czekam na mikrofon…'),
+  recording: t('Zakończ dyktowanie'),
+  transcribing: t('Rozpoznaję mowę…'),
+})[phase.value] || t('Dyktuj (Alt+Shift+M)'))
 
 function editable(element) {
   return element?.matches?.('textarea, input:not([type]), input[type="text"], input[type="search"]')
@@ -144,10 +145,10 @@ async function transcribe(current, audio) {
       signal: current.abort.signal,
     })
     const data = await response.json().catch(() => ({}))
-    if (!response.ok) throw new Error(data.error || 'Nie udało się rozpoznać nagrania.')
+    if (!response.ok) throw new Error(data.error || t('Nie udało się rozpoznać nagrania.'))
     if (session !== current) return
     if (data.text?.trim()) insertTranscript(current, data.text.trim())
-    else message.value = 'Nie wykryto mowy.'
+    else message.value = t('Nie wykryto mowy.')
   } catch (error) {
     if (session === current) message.value = error.message
   } finally {
@@ -169,7 +170,7 @@ async function toggle() {
   if (phase.value || !editable(target.value)) return
   message.value = ''
   if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') {
-    message.value = 'Ta przeglądarka nie udostępnia nagrywania z mikrofonu.'
+    message.value = t('Ta przeglądarka nie udostępnia nagrywania z mikrofonu.')
     return
   }
 
@@ -206,7 +207,7 @@ async function toggle() {
       if (session !== current) return
       session = null
       phase.value = ''
-      message.value = 'Nagrywanie zostało przerwane.'
+      message.value = t('Nagrywanie zostało przerwane.')
       releaseRecording(current)
     }
     recorder.start()
@@ -225,7 +226,7 @@ async function toggle() {
     if (session !== current) return
     session = null
     phase.value = ''
-    message.value = error.name === 'NotAllowedError' ? 'Brak dostępu do mikrofonu.' : 'Nie udało się uruchomić mikrofonu.'
+    message.value = error.name === 'NotAllowedError' ? t('Brak dostępu do mikrofonu.') : t('Nie udało się uruchomić mikrofonu.')
   }
 }
 
@@ -277,7 +278,7 @@ onBeforeUnmount(() => {
         <Icon v-else :name="phase === 'recording' ? 'stop' : 'microphone'" :size="17" />
       </button>
       <div v-if="phase === 'recording'" class="recording-meter" role="status">
-        <span class="recording-label"><span aria-hidden="true" />Nagrywam</span>
+        <span class="recording-label"><span aria-hidden="true" />{{ t('Nagrywam') }}</span>
         <span class="waveform" aria-hidden="true">
           <span v-for="(level, index) in waveform" :key="index" :style="{ height: `${3 + level * 19}px` }" />
         </span>

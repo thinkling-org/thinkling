@@ -1,3 +1,4 @@
+import { t } from './i18n.js'
 import * as monaco from 'monaco-editor'
 import EditorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker'
 import TsWorker from 'monaco-editor/esm/vs/language/typescript/ts.worker?worker'
@@ -92,7 +93,7 @@ export async function transpileTypeScript(code) {
     const client = await getWorker(uri)
     const out = await client.getEmitOutput(uri.toString())
     const file = out.outputFiles.find((f) => f.name.endsWith('.js'))
-    if (!file) throw new Error('brak wyjścia kompilatora')
+    if (!file) throw new Error(t('brak wyjścia kompilatora'))
     return file.text
   } finally {
     model.dispose()

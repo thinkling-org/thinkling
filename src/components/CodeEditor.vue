@@ -1,4 +1,5 @@
 <script setup>
+import { t } from '../lib/i18n.js'
 import { onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
 import { monaco, ensureTheme, monacoLanguage } from '../lib/monaco.js'
 import { renderMarkdown } from '../lib/markdown.js'
@@ -111,13 +112,13 @@ function buildNode(issue, idx) {
   if (issue.replacement && !props.readOnly) {
     const apply = document.createElement('button')
     apply.className = 'dl-zone-apply'
-    apply.textContent = `Zastosuj: ${issue.replacement.trim().slice(0, 60)}`
+    apply.textContent = t('Zastosuj: {0}', [issue.replacement.trim().slice(0, 60)])
     apply.onclick = () => applyFix(issue, idx)
     actions.appendChild(apply)
   }
   const dismiss = document.createElement('button')
   dismiss.className = 'dl-zone-dismiss'
-  dismiss.textContent = issue.replacement ? 'Sam poprawię' : 'OK'
+  dismiss.textContent = issue.replacement ? t('Sam poprawię') : 'OK'
   dismiss.onclick = () => emit('dismiss', idx)
   actions.appendChild(dismiss)
   node.appendChild(actions)

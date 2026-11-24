@@ -1,3 +1,4 @@
+import { t } from './i18n.js'
 export async function getJSON(url) {
   const res = await fetch(url)
   if (!res.ok) throw new Error(`${res.status} ${await res.text()}`)
@@ -51,7 +52,7 @@ async function readNdjson(res, onProgress) {
         else if (ev.type === 'done') return ev.data
         else if (ev.type === 'error') throw new Error(ev.message)
       }
-      if (done) throw new Error('Połączenie z serwerem zostało przerwane')
+      if (done) throw new Error(t('Połączenie z serwerem zostało przerwane'))
     }
   } finally {
     reader.cancel().catch(() => {})

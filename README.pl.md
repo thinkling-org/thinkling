@@ -7,6 +7,10 @@
 Lokalna aplikacja do szybkiej nauki programowania krótkimi lekcjami z grywalizacją. Działa na Twojej
 **subskrypcji Claude (Claude Code CLI) albo ChatGPT (Codex CLI)**, więc nie płacisz za tokeny API.
 
+Interfejs jest dostępny po **polsku i angielsku**. Przy pierwszym uruchomieniu Codenoms zapisuje preferowany
+język systemu w wersji desktopowej lub język przeglądarki w wersji webowej. Przy innym języku interfejs jest
+angielski, a nowe odpowiedzi AI powstają w zapisanym języku. Zmienisz go w **Ustawieniach → Język**.
+
 - Opisujesz swoją sytuację, a model układa plan: moduły, lekcje i ocenę poziomu (plan pojawia się na żywo w trakcie generowania).
 - Ścieżka nauki: kolejne lekcje, XP, seria dni, cel dzienny i wynik 0–1000.
 - Ćwiczenia:
@@ -78,7 +82,7 @@ W **Ustawieniach** każdy dostawca ma własny wybór modelu i effortu (zapamięt
 ## Dyktowanie
 
 W aktywnym polu tekstowym kliknij mikrofon lub użyj **Alt+Shift+M**. Drugie
-kliknięcie kończy nagrywanie i wstawia rozpoznany polski tekst w miejscu kursora.
+kliknięcie kończy nagrywanie i wstawia rozpoznany tekst w miejscu kursora.
 Codenoms przetwarza nagranie lokalnie przez Faster Whisper (model `small`, CPU int8).
 
 Instalacja lokalna używa `data/whisper/venv/bin/python` i wag w `data/whisper/model`.

@@ -7,7 +7,9 @@
 A local app for learning to code fast through short, gamified lessons. It runs on your existing
 **Claude (Claude Code CLI) or ChatGPT (Codex CLI) subscription**, so you don't need an API key.
 
-> **Language note:** the app interface, lessons and dictation are currently in **Polish**.
+The interface supports **English and Polish**. On first launch, Codenoms saves your preferred system language
+on desktop or your browser language on the web. Other languages use the English interface. New AI responses use
+your saved language. You can change it under **Settings → Language**.
 
 - Describe your situation and the model builds a plan: modules, lessons and a skill assessment (the plan streams in live as it is generated).
 - A learning path with lessons, XP, daily streaks, a daily goal and a 0–1000 score.
@@ -80,7 +82,7 @@ In **Settings**, each provider has its own model and effort choice (remembered w
 ## Dictation
 
 In any focused text field, click the microphone or press **Alt+Shift+M**. Click again to stop recording, and the
-recognized Polish text is inserted at the cursor. Codenoms transcribes locally with Faster Whisper
+recognized text is inserted at the cursor. Codenoms transcribes locally with Faster Whisper
 (`small` model, CPU int8).
 
 The local install uses `data/whisper/venv/bin/python` and the weights in `data/whisper/model`. On another machine,

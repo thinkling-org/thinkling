@@ -1,3 +1,4 @@
+import { t } from './i18n.js'
 // Lokalna diagnoza oblanych testów: z komunikatu "expected X, got Y" wyciąga obie wartości,
 // znajduje dokładną różnicę i opisuje ją po ludzku. Bez modelu, więc działa od razu.
 
@@ -22,7 +23,7 @@ export const visible = (text) => text.replace(/\n/g, '↵').replace(/\t/g, '⇥'
 
 function describeChars(text) {
   const shown = visible(text)
-  const names = [...text].map((char) => NAMES[char]).filter(Boolean)
+  const names = [...text].map((char) => NAMES[char]).filter(Boolean).map((name) => t(name))
   return names.length === [...text].length && names.length <= 2 ? `„${shown}” (${names.join(', ')})` : `„${shown}”`
 }
 
@@ -43,24 +44,24 @@ function compare(expected, got) {
   const onlySpaces = expected.replace(/\s+/g, '') === got.replace(/\s+/g, '')
   if (expected.trim() && got.trim() && Number.isFinite(a) && Number.isFinite(b)) {
     kind = 'number'
-    message = `Liczba się nie zgadza: oczekiwano ${expected.trim()}, a wyszło ${got.trim()} (różnica ${+(b - a).toFixed(6)}).`
+    message = t('Liczba się nie zgadza: oczekiwano {0}, a wyszło {1} (różnica {2}).', [expected.trim(), got.trim(), +(b - a).toFixed(6)])
   } else if (expected !== got && expected.toLowerCase() === got.toLowerCase()) {
     kind = 'case'
-    message = 'Tekst się zgadza, różni się tylko wielkość liter.'
+    message = t('Tekst się zgadza, różni się tylko wielkość liter.')
   } else if (!missing && small(extra)) {
     kind = 'extra'
-    message = `Masz o ${extra.length === 1 ? 'jeden znak' : 'kilka znaków'} za dużo: ${describeChars(extra)}.`
+    message = t('Masz o {0} za dużo: {1}.', [extra.length === 1 ? t('jeden znak') : t('kilka znaków'), describeChars(extra)])
   } else if (!extra && small(missing)) {
     kind = 'missing'
-    message = `Brakuje ${missing.length === 1 ? 'jednego znaku' : 'kilku znaków'}: ${describeChars(missing)}.`
+    message = t('Brakuje {0}: {1}.', [missing.length === 1 ? t('jednego znaku') : t('kilku znaków'), describeChars(missing)])
   } else if (onlySpaces) {
     kind = 'whitespace'
-    message = 'Treść się zgadza, różnią się tylko spacje albo znaki nowej linii.'
+    message = t('Treść się zgadza, różnią się tylko spacje albo znaki nowej linii.')
   } else if (small(missing) && small(extra)) {
     kind = 'replaced'
-    message = `Zamiast ${describeChars(missing)} masz ${describeChars(extra)}.`
+    message = t('Zamiast {0} masz {1}.', [describeChars(missing), describeChars(extra)])
   } else {
-    message = 'Wynik różni się od oczekiwanego. Porównaj zaznaczony fragment.'
+    message = t('Wynik różni się od oczekiwanego. Porównaj zaznaczony fragment.')
   }
   return { kind, message, start, missing, extra, nearMiss: kind !== 'different' }
 }
@@ -103,9 +104,9 @@ export function diagnoseRun(run, code = '') {
   const total = run.results.length
   const passed = total - failed.length
   let headline
-  if (first.diff.nearMiss && same) headline = `Prawie! Wszystkie oblane testy (${failed.length}) mają ten sam drobny błąd.`
-  else if (first.diff.nearMiss) headline = passed ? `Prawie! ${passed} z ${total} testów przechodzi, a w reszcie wynik różni się drobiazgiem.` : 'Prawie! Wynik różni się tylko drobiazgiem.'
-  else headline = `Wynik różni się od oczekiwanego w ${failed.length} z ${total} testów.`
+  if (first.diff.nearMiss && same) headline = t('Prawie! Wszystkie oblane testy ({0}) mają ten sam drobny błąd.', [failed.length])
+  else if (first.diff.nearMiss) headline = passed ? t('Prawie! {0} z {1} testów przechodzi, a w reszcie wynik różni się drobiazgiem.', [passed, total]) : t('Prawie! Wynik różni się tylko drobiazgiem.')
+  else headline = t('Wynik różni się od oczekiwanego w {0} z {1} testów.', [failed.length, total])
 
   return {
     headline,

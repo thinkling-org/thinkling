@@ -1,4 +1,5 @@
 <script setup>
+import { t } from '../../../lib/i18n.js'
 import { computed, ref, watch } from 'vue'
 import Markdown from '../../Markdown.vue'
 
@@ -31,11 +32,11 @@ function toggle(id) {
 </script>
 
 <template>
-  <section class="card viz circuit" aria-label="Interaktywny schemat">
+  <section class="card viz circuit" :aria-label="t('Interaktywny schemat')">
     <Markdown class="instruction" :src="config.instruction" />
     <div class="layout">
       <div class="board">
-        <div class="inputs" role="group" aria-label="Wejścia">
+        <div class="inputs" role="group" :aria-label="t('Wejścia')">
           <button
             v-for="input in config.inputs"
             :key="input.id"
@@ -63,7 +64,7 @@ function toggle(id) {
       </div>
       <div v-if="table.length" class="table-wrap">
         <table>
-          <caption class="label">Tabela prawdy</caption>
+          <caption class="label">{{ t('Tabela prawdy') }}</caption>
           <thead>
             <tr>
               <th v-for="input in config.inputs" :key="input.id" scope="col">{{ input.id }}</th>

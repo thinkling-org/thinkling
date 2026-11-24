@@ -1,4 +1,5 @@
 <script setup>
+import { t } from '../../../lib/i18n.js'
 import { computed, ref, watch } from 'vue'
 import Markdown from '../../Markdown.vue'
 import CodeBlock from '../../CodeBlock.vue'
@@ -14,17 +15,17 @@ watch(() => props.config, () => { selected.value = 0 })
 </script>
 
 <template>
-  <section class="card viz definitions" aria-label="Definicje w miejscu użycia">
+  <section class="card viz definitions" :aria-label="t('Definicje w miejscu użycia')">
     <Markdown v-if="config.instruction" class="instruction" :src="config.instruction" />
     <CodeBlock
       :code="config.code"
       :language="codeLanguage"
-      file-name="przykład"
+      :file-name="t('przykład')"
       :tokens="tokens"
       :active-token="selected"
       @token="selected = $event"
     />
-    <div class="chips" role="group" aria-label="Fragmenty z definicją">
+    <div class="chips" role="group" :aria-label="t('Fragmenty z definicją')">
       <button
         v-for="(t, i) in config.terms"
         :key="t.token"
