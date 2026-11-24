@@ -1,10 +1,8 @@
 <script setup>
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { renderMarkdown } from '../lib/markdown.js'
-import SpeechPlayer from './SpeechPlayer.vue'
 import { readableSpeechText } from '../lib/speech-text.js'
 import { activeTerm, linkGlossaryTerms } from '../lib/glossary.js'
-import { useApp } from '../stores/app.js'
 
 defineOptions({ inheritAttrs: false })
 
@@ -12,11 +10,9 @@ const props = defineProps({
   src: { type: String, default: '' },
   inline: Boolean,
   tag: { type: String, default: 'div' },
-  readAloud: Boolean,
   fitHeading: Boolean,
   glossary: Boolean,
 })
-const app = useApp()
 const content = ref(null)
 const html = computed(() => {
   const rendered = renderMarkdown(props.src, { inline: props.inline })
@@ -27,7 +23,6 @@ const textLength = computed(() => {
   template.innerHTML = html.value
   return readableSpeechText(template.content).length
 })
-const canRead = computed(() => props.readAloud && app.status?.features?.speech !== false && textLength.value >= 100)
 const headingStyle = computed(() => {
   if (!props.fitHeading) return undefined
   const length = textLength.value
@@ -36,7 +31,6 @@ const headingStyle = computed(() => {
   if (length >= 70) return { fontSize: 'clamp(1.375rem, 3.1vw, 1.8125rem)' }
   return undefined
 })
-const getText = () => [readableSpeechText(content.value)]
 
 function openDefinition(event) {
   const term = event.target.closest('button[data-glossary-term]')
@@ -60,8 +54,7 @@ onBeforeUnmount(closeLocalDefinition)
 </script>
 
 <template>
-  <div v-if="canRead || $slots.leading" v-bind="$attrs" class="readable-markdown" :class="{ 'has-leading': $slots.leading }" :style="headingStyle">
-    <SpeechPlayer v-if="canRead" :key="html" :get-text="getText" class="markdown-reader" />
+  <div v-if="$slots.leading" v-bind="$attrs" class="markdown-with-leading" :style="headingStyle">
     <slot name="leading" />
     <component :is="tag" ref="content" class="md" :class="{ 'fitted-heading': fitHeading }" v-html="html" @click="openDefinition" @keydown="guardTermShortcut" />
   </div>
@@ -69,22 +62,17 @@ onBeforeUnmount(closeLocalDefinition)
 </template>
 
 <style scoped>
-.readable-markdown {
+.markdown-with-leading {
   display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 8px;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 8px 12px;
+  align-items: start;
   min-width: 0;
 }
-.readable-markdown.has-leading {
-  grid-template-columns: auto minmax(0, 1fr);
-  column-gap: 12px;
-  align-items: start;
-}
-.has-leading > .markdown-reader,
-.has-leading > .md {
+.markdown-with-leading > .md {
   grid-column: 2;
 }
-.readable-markdown > :is(h1, h2, h3, h4, h5, h6) {
+.markdown-with-leading > :is(h1, h2, h3, h4, h5, h6) {
   font-size: inherit;
   line-height: inherit;
 }

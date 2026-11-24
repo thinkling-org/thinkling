@@ -3,7 +3,6 @@ import { computed, ref } from 'vue'
 import Markdown from '../Markdown.vue'
 import CodeBlock from '../CodeBlock.vue'
 import Icon from '../Icon.vue'
-import SpeechPlayer from '../SpeechPlayer.vue'
 import CodeComparison from './visualizations/CodeComparison.vue'
 import LinearRegression from './visualizations/LinearRegression.vue'
 import CodeDefinitions from './visualizations/CodeDefinitions.vue'
@@ -15,7 +14,6 @@ import StepOrdering from './visualizations/StepOrdering.vue'
 import Diagnosis from './visualizations/Diagnosis.vue'
 import SystemSim from './visualizations/SystemSim.vue'
 import { readLessonVisualization } from '../../lib/lesson-visualizations.js'
-import { readableSpeechText, speechSentence } from '../../lib/speech-text.js'
 
 const props = defineProps({
   exercise: { type: Object, required: true },
@@ -23,7 +21,6 @@ const props = defineProps({
 })
 const activeVariant = defineModel('activeVariant', { type: Number, default: 0 })
 const emit = defineEmits(['trace', 'review-concept'])
-const card = ref(null)
 const savedTerms = ref(new Set())
 const visualizations = {
   'code-comparison': CodeComparison,
@@ -56,25 +53,11 @@ function saveConcept(concept) {
   savedTerms.value.add(concept.term)
 }
 
-function cardText() {
-  const visibleText = (selector) => readableSpeechText(card.value.querySelector(selector))
-  const readSupport = !isComparison.value || card.value.querySelector('.support')?.open
-  return [
-    speechSentence(`Temat lekcji: ${visibleText('.title')}`),
-    visibleText('.body'),
-    visibleText('.viz .instruction'),
-    visibleText('.variant-outcome'),
-    readSupport ? visibleText('.trap') : '',
-    readSupport ? visibleText('.keep') : '',
-  ]
-}
 </script>
 
 <template>
-  <div ref="card" class="learn">
-    <SpeechPlayer :get-text="cardText">
-      <span class="kind label"><Icon name="bulb" :size="16" :stroke="2.6" />Karta wiedzy</span>
-    </SpeechPlayer>
+  <div class="learn">
+    <span class="kind label"><Icon name="bulb" :size="16" :stroke="2.6" />Karta wiedzy</span>
     <Markdown tag="h1" fit-heading class="title" :src="exercise.title || 'Nowe pojęcie'" inline />
     <Markdown class="body" :src="exercise.prompt" />
     <component

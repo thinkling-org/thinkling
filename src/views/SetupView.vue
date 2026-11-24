@@ -16,7 +16,6 @@ const STEPS = [
   { id: 'welcome', title: 'Witaj' },
   { id: 'ai', title: 'Silnik AI' },
   { id: 'docker', title: 'Docker' },
-  { id: 'voice', title: 'Głos lektora' },
   { id: 'dictation', title: 'Dyktowanie' },
   { id: 'done', title: 'Gotowe' },
 ]
@@ -31,7 +30,6 @@ const startError = ref('')
 const languages = ref([])
 const testing = ref(false)
 const testResult = ref(null)
-const skipped = ref({ voice: false, dictation: false })
 let poll = null
 
 const current = computed(() => STEPS[step.value].id)
@@ -136,11 +134,6 @@ function next() {
 function back() {
   if (step.value > 0) step.value--
 }
-function skip(kind) {
-  skipped.value[kind] = true
-  next()
-}
-
 async function finish() {
   app.settings.setupDone = true
   await putJSON('/api/state', app.persisted())
@@ -159,7 +152,6 @@ const summary = computed(() => {
       note: !p?.available ? 'nie znaleziono CLI' : p?.auth?.loggedIn === false ? 'niezalogowane' : '',
     },
     { label: 'Docker (piaskownica z terminalem)', ok: !!s.docker?.running, note: s.docker?.running ? '' : 'zadania w PHP, C++ itd. oceni tylko model' },
-    { label: 'Głos lektora (ZONOS3-Mini)', ok: !!s.voice?.running, note: s.voice?.running ? '' : 'możesz zainstalować później w Ustawieniach' },
     { label: 'Dyktowanie (Faster Whisper)', ok: !!s.dictation?.installed, note: s.dictation?.installed ? '' : 'możesz zainstalować później w Ustawieniach' },
   ]
 })
@@ -204,7 +196,6 @@ onBeforeUnmount(() => clearInterval(poll))
           <ul class="list">
             <li><strong>Silnik AI</strong>: Claude Code albo Codex, zalogowany Twoją subskrypcją (wymagany).</li>
             <li><strong>Docker</strong>: prawdziwe środowiska z terminalem dla PHP, C++, Pythona, Go i innych (zalecany).</li>
-            <li><strong>Głos lektora</strong>: lokalny model, który czyta lekcje na głos (opcjonalny, ok. 1,7 GB).</li>
             <li><strong>Dyktowanie</strong>: odpowiedzi mówione do mikrofonu, rozpoznawane lokalnie (opcjonalne, ok. 0,5 GB).</li>
           </ul>
           <p class="muted">Każdy krok możesz pominąć i wrócić do niego później w Ustawieniach.</p>
@@ -262,7 +253,6 @@ onBeforeUnmount(() => clearInterval(poll))
           <h1>Docker</h1>
           <p class="lead">
             Dzięki Dockerowi zadania w PHP, C++, Pythonie, Go, Ruście, Javie, C#, Ruby i SQL uruchamiają się w prawdziwych, odizolowanych kontenerach z terminalem.
-            Głos lektora też działa w Dockerze.
           </p>
 
           <div class="statusline">
@@ -323,45 +313,6 @@ onBeforeUnmount(() => clearInterval(poll))
           </div>
         </section>
 
-        <!-- ------------------------------------------------------- głos -->
-        <section v-else-if="current === 'voice'" class="card box">
-          <h1>Głos lektora</h1>
-          <p class="lead">
-            Zainstalować lokalny głos AI? Przycisk <strong>Przeczytaj</strong> odczyta wtedy po polsku karty wiedzy i wyjaśnienia.
-            Model mowy <strong>ZONOS3-Mini</strong> działa na procesorze, bez internetu i bez wysyłania tekstu do chmury.
-          </p>
-          <ul class="list small">
-            <li>Pobranie: ok. {{ (status.voice.downloadMB / 1000).toFixed(1).replace('.', ',') }} GB wag modelu z Hugging Face.</li>
-            <li>Jednorazowa kompilacja serwera w Dockerze: zwykle 5–20 minut.</li>
-            <li>Później serwer startuje sam, razem z Dockerem, i zajmuje ok. 1,5 GB RAM.</li>
-          </ul>
-
-          <div class="statusline">
-            <span class="tag" :class="status.voice.running ? 'tag-green' : 'tag-yellow'">
-              {{ status.voice.running ? 'Głos działa' : status.voice.modelsReady ? 'Modele pobrane, serwer nie działa' : 'Nie zainstalowany' }}
-            </span>
-          </div>
-
-          <div v-if="!docker.running && !status.voice.running" class="hint warn">
-            Głos wymaga Dockera. Wróć do poprzedniego kroku, żeby go uruchomić, albo pomiń ten krok.
-          </div>
-
-          <div class="row">
-            <button
-              v-if="!status.voice.running"
-              class="btn btn-primary"
-              :disabled="!docker.running || running('voice')"
-              @click="startJob('voice')"
-            >
-              <span v-if="running('voice')" class="spinner sm" />
-              {{ running('voice') ? 'Instaluję…' : job('voice')?.status === 'error' ? 'Spróbuj ponownie' : 'Tak, zainstaluj głos' }}
-            </button>
-            <button v-if="!status.voice.running && !running('voice')" class="btn" @click="skip('voice')">Nie teraz</button>
-          </div>
-          <JobLog :job="job('voice')" />
-          <span v-if="running('voice')" class="muted small">Możesz przejść dalej. Instalacja będzie trwać w tle.</span>
-        </section>
-
         <!-- ------------------------------------------------------- dyktowanie -->
         <section v-else-if="current === 'dictation'" class="card box">
           <h1>Dyktowanie</h1>
@@ -391,7 +342,7 @@ onBeforeUnmount(() => clearInterval(poll))
               <span v-if="running('dictation')" class="spinner sm" />
               {{ running('dictation') ? 'Instaluję…' : job('dictation')?.status === 'error' ? 'Spróbuj ponownie' : 'Tak, zainstaluj dyktowanie' }}
             </button>
-            <button v-if="!status.dictation.installed && !running('dictation')" class="btn" @click="skip('dictation')">Nie teraz</button>
+            <button v-if="!status.dictation.installed && !running('dictation')" class="btn" @click="next">Nie teraz</button>
           </div>
           <JobLog :job="job('dictation')" />
         </section>

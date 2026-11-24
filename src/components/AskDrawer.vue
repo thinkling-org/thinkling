@@ -104,7 +104,7 @@ const SUGGESTIONS = ['Daj prostszy przykład', 'Gdzie to się przydaje w praktyc
           <button v-for="s in SUGGESTIONS" :key="s" class="chip" @click="ask(s)">{{ s }}</button>
         </div>
         <div v-for="(m, i) in messages" :key="i" class="msg" :class="m.role">
-          <Markdown read-aloud v-if="m.role === 'assistant'" :src="m.content" />
+          <Markdown v-if="m.role === 'assistant'" :src="m.content" />
           <template v-else>{{ m.content }}</template>
         </div>
         <div v-if="busy" class="msg assistant thinking">

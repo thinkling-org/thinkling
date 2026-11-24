@@ -113,13 +113,13 @@ onBeforeUnmount(() => {
           <article class="fc card" :key="card.id">
             <div class="side">
               <span class="label">Pytanie</span>
-              <Markdown read-aloud class="front" :src="card.front" />
+              <Markdown class="front" :src="card.front" />
             </div>
             <template v-if="revealed">
               <div class="sep" />
               <div class="side">
                 <span class="label" style="color: var(--green)">Odpowiedź</span>
-                <Markdown read-aloud class="back" :src="card.back" />
+                <Markdown class="back" :src="card.back" />
               </div>
             </template>
           </article>

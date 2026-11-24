@@ -29,7 +29,7 @@ function state(i) {
     <span v-else-if="isPractice" class="kind label">Próba bez oceny</span>
     <span v-else-if="exercise.stage === 'challenge'" class="kind label warm">Opcjonalne wyzwanie</span>
     <span v-else class="kind label">{{ isOutput ? 'Co wypisze ten kod?' : 'Quiz' }}</span>
-    <Markdown read-aloud tag="h1" fit-heading class="q" :src="exercise.prompt" />
+    <Markdown tag="h1" fit-heading class="q" :src="exercise.prompt" />
     <CodeBlock v-if="exercise.code" :code="exercise.code" :language="exercise.codeLanguage" />
     <details v-if="isPractice && exercise.hint && !result" class="card hint">
       <summary>Pokaż podpowiedź</summary>
@@ -60,7 +60,7 @@ function state(i) {
     </div>
     <div v-else-if="result && exercise.explanation" class="card explain" :class="result.status">
       <span class="label">{{ isPractice ? 'Jak rozwiązać to ćwiczenie' : 'Wyjaśnienie' }}</span>
-      <Markdown read-aloud :src="exercise.explanation" />
+      <Markdown :src="exercise.explanation" />
     </div>
   </div>
 </template>

@@ -165,7 +165,7 @@ onBeforeUnmount(() => {
           </svg>
           <div class="bubble" :key="i">
             <span class="kicker">{{ step.title }}</span>
-            <Markdown read-aloud :src="step.say" class="say" />
+            <Markdown :src="step.say" class="say" />
           </div>
         </div>
       </aside>
@@ -174,11 +174,11 @@ onBeforeUnmount(() => {
     <div v-if="atEnd" ref="lessons" class="lessons">
       <div class="card ls">
         <span class="label" :style="{ color: correct || exercise.type === 'learn' ? 'var(--green-light)' : 'var(--red-light)' }">{{ correct || exercise.type === 'learn' ? 'Co było kluczowe' : 'Gdzie był błąd' }}</span>
-        <Markdown read-aloud :src="trace.mistake" />
+        <Markdown :src="trace.mistake" />
       </div>
       <div class="card ls">
         <span class="label" style="color: var(--green-light)">Zapamiętaj</span>
-        <Markdown read-aloud :src="trace.takeaway" />
+        <Markdown :src="trace.takeaway" />
       </div>
     </div>
     <p v-else class="hint muted">Klikaj strzałkę (albo ← →), aż Hex dojdzie do końca kodu.</p>

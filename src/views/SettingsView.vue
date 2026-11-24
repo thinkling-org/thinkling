@@ -5,7 +5,6 @@ import { useApp } from '../stores/app.js'
 import { ai, putJSON } from '../lib/api.js'
 import AppShell from '../components/AppShell.vue'
 import Icon from '../components/Icon.vue'
-import VoiceDesign from '../components/VoiceDesign.vue'
 import ModelPicker from '../components/ModelPicker.vue'
 import { play, playStep } from '../lib/sfx.js'
 
@@ -49,8 +48,8 @@ async function choose(id) {
   app.refreshStatus()
 }
 
-function runSetup(step) {
-  router.push(step ? { path: '/setup', query: { step } } : '/setup')
+function runSetup() {
+  router.push('/setup')
 }
 
 async function saveBins() {
@@ -178,19 +177,6 @@ function resetAll() {
         <div v-if="app.settings.sound !== false" class="row">
           <span class="label">Odsłuchaj:</span>
           <button v-for="s in SOUND_DEMO" :key="s.id" class="btn btn-sm" @click="s.fn ? s.fn() : play(s.id)">{{ s.label }}</button>
-        </div>
-      </section>
-
-      <VoiceDesign v-if="app.status?.features?.speech" />
-      <section v-else class="sec">
-        <h2>Głos lektora</h2>
-        <div class="card dk">
-          <div class="ph">
-            <strong>Czytanie lekcji na głos</strong>
-            <span class="tag tag-red">{{ app.status ? 'niezainstalowany lub wyłączony' : '…' }}</span>
-          </div>
-          <span class="pd">Lokalny model mowy ZONOS3-Mini działa w Dockerze. Instalację uruchomisz w kreatorze konfiguracji.</span>
-          <button class="btn btn-sm" style="align-self: flex-start" @click="runSetup('voice')">Zainstaluj głos</button>
         </div>
       </section>
 

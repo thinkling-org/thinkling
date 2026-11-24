@@ -3,10 +3,8 @@ import { ref, onMounted } from 'vue'
 import Markdown from '../Markdown.vue'
 import CodeBlock from '../CodeBlock.vue'
 import Icon from '../Icon.vue'
-import SpeechPlayer from '../SpeechPlayer.vue'
-import { readableSpeechText } from '../../lib/speech-text.js'
 
-const props = defineProps({
+defineProps({
   exercise: { type: Object, required: true },
   modelValue: { type: String, default: '' },
   result: { type: Object, default: null },
@@ -15,16 +13,8 @@ const props = defineProps({
 })
 const emit = defineEmits(['update:modelValue', 'submit'])
 const showModel = ref(false)
-const gradedFeedback = ref(null)
 const ta = ref(null)
 onMounted(() => ta.value?.focus())
-
-function feedbackText() {
-  const card = gradedFeedback.value
-  const points = Array.from(card.querySelectorAll('.feedback-point .md'), readableSpeechText)
-  const example = readableSpeechText(card.querySelector('.model'))
-  return [`Wynik: ${props.result.data.score} na 10.`, ...points, example && `Wzorcowa odpowiedź. ${example}`]
-}
 
 const POINT = {
   good: { icon: 'check', color: 'var(--green)' },
@@ -36,7 +26,7 @@ const POINT = {
 <template>
   <div class="ex">
     <span class="kind label">Pytanie otwarte</span>
-    <Markdown read-aloud tag="h1" fit-heading class="q" :src="exercise.prompt" />
+    <Markdown tag="h1" fit-heading class="q" :src="exercise.prompt" />
     <CodeBlock v-if="exercise.code" :code="exercise.code" :language="exercise.codeLanguage" />
 
     <div class="group">
@@ -61,7 +51,7 @@ const POINT = {
 
     <div v-if="result?.status === 'unknown'" class="card feedback">
       <span class="label" style="color: var(--purple-link)">Wzorcowa odpowiedź</span>
-      <Markdown read-aloud :src="exercise.referenceAnswer" class="ptxt" />
+      <Markdown :src="exercise.referenceAnswer" class="ptxt" />
       <template v-if="exercise.keyPoints?.length">
         <span class="label">Kluczowe elementy</span>
         <Markdown v-for="(k, i) in exercise.keyPoints" :key="i" inline tag="span" :src="k" class="ptxt">
@@ -72,13 +62,11 @@ const POINT = {
       </template>
     </div>
 
-    <div v-if="result?.data" ref="gradedFeedback" class="card feedback">
-      <SpeechPlayer :key="showModel ? 'with-example' : 'feedback'" :get-text="feedbackText">
-        <span class="tag grade" :class="result.status === 'correct' ? 'tag-green' : result.status === 'almost' ? 'tag-yellow' : 'tag-red'">
-          {{ result.data.score }} / 10
-        </span>
-      </SpeechPlayer>
-      <Markdown v-for="(p, i) in result.data.points" :key="i" :src="p.text" class="ptxt feedback-point">
+    <div v-if="result?.data" class="card feedback">
+      <span class="tag grade" :class="result.status === 'correct' ? 'tag-green' : result.status === 'almost' ? 'tag-yellow' : 'tag-red'">
+        {{ result.data.score }} / 10
+      </span>
+      <Markdown v-for="(p, i) in result.data.points" :key="i" :src="p.text" class="ptxt">
         <template #leading>
           <span class="pi" :style="{ color: POINT[p.kind]?.color }"><Icon :name="POINT[p.kind]?.icon || 'bulb'" :size="18" :stroke="3" /></span>
         </template>
@@ -127,6 +115,7 @@ const POINT = {
   animation: dl-pop 0.25s ease-out;
 }
 .grade {
+  align-self: flex-start;
   font-size: 15px;
   font-weight: 900;
 }

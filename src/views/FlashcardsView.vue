@@ -76,9 +76,9 @@ function firstLine(md) {
             <span class="d">{{ dueText(c) }}</span>
           </button>
           <div v-if="openId === c.id" class="ib">
-            <Markdown read-aloud :src="c.front" />
+            <Markdown :src="c.front" />
             <div class="sep" />
-            <Markdown read-aloud :src="c.back" class="back" />
+            <Markdown :src="c.back" class="back" />
             <div class="ifoot">
               <span class="muted small">{{ c.source }} · powtórki: {{ c.reps }} · pomyłki: {{ c.lapses }}</span>
               <button class="btn btn-sm btn-ghost-red" @click="app.deleteCard(c.id)"><Icon name="trash" :size="16" />Usuń</button>

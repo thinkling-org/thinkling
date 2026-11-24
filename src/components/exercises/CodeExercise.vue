@@ -130,7 +130,7 @@ defineExpose({
       <header class="head">
         <span class="kicker">Zadanie</span>
         <Markdown tag="h1" fit-heading class="title" :src="exercise.title || 'Zadanie'" inline />
-        <Markdown read-aloud class="desc" :src="exercise.prompt" />
+        <Markdown class="desc" :src="exercise.prompt" />
       </header>
 
       <div v-if="expectedOutput" class="group">
@@ -285,7 +285,7 @@ defineExpose({
           </template>
           <template v-else>
             <span v-if="busy" class="muted">{{ providerName }} robi review…</span>
-            <Markdown read-aloud v-else-if="result?.data?.summary" :src="result.data.summary" class="review" />
+            <Markdown v-else-if="result?.data?.summary" :src="result.data.summary" class="review" />
             <span v-else class="muted">Review pojawi się po „Sprawdź z {{ providerName }}”.</span>
           </template>
         </div>

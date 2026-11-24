@@ -355,7 +355,7 @@ defineExpose({ runTests, userFiles, showReview: () => (panel.value = 'review') }
         </div>
         <div v-if="panel === 'review'" class="list">
           <span v-if="busy" class="muted">{{ providerName }} robi review…</span>
-          <Markdown read-aloud v-else-if="review?.summary" :src="review.summary" class="review" />
+          <Markdown v-else-if="review?.summary" :src="review.summary" class="review" />
           <span v-else class="muted">Review pojawi się po „Sprawdź z {{ providerName }}”.</span>
         </div>
       </div>

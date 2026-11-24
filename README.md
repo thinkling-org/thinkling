@@ -7,7 +7,7 @@
 A local app for learning to code fast through short, gamified lessons. It runs on your existing
 **Claude (Claude Code CLI) or ChatGPT (Codex CLI) subscription**, so you don't need an API key.
 
-> **Language note:** the app interface, lessons and voice features are currently in **Polish**.
+> **Language note:** the app interface, lessons and dictation are currently in **Polish**.
 
 - Describe your situation and the model builds a plan: modules, lessons and a skill assessment (the plan streams in live as it is generated).
 - A learning path with lessons, XP, daily streaks, a daily goal and a 0–1000 score.
@@ -23,7 +23,7 @@ A local app for learning to code fast through short, gamified lessons. It runs o
 - Node.js 22.12+ to install dependencies and build from source. The Windows installer includes the runtime.
 - **Claude Code** (`claude`) **or** **Codex** (`codex`), logged in. The app looks for the binary in `PATH`,
   `~/.local/bin`, VS Code/Cursor extensions and the Codex install directory. You can also set the path in Settings.
-- Optional: **Docker** (sandbox with a terminal, and the voice reader) and **Python 3.10–3.13** (dictation).
+- Optional: **Docker** (sandbox with a terminal) and **Python 3.10–3.13** (dictation).
 
 ## Getting started
 
@@ -65,13 +65,9 @@ On first launch the app walks you through setup (`/setup`, later available under
 2. **Docker**: checks that Docker is installed, running and usable without sudo. It can install Docker
    (Linux: `get.docker.com` via `pkexec`, macOS: Homebrew, Windows: winget) or start it, and can prebuild images
    for the languages you choose.
-3. **Voice reader**: on request, downloads the ZONOS3-Mini weights (about 1.7 GB) to `data/zonos/models`, builds the
-   `codenoms/zonos:1` image from [server/zonos/Dockerfile](server/zonos/Dockerfile) and starts the `codenoms-zonos`
-   container (restarts with Docker, port `127.0.0.1:1919`).
-4. **Dictation**: creates `data/whisper/venv`, installs Faster Whisper and downloads the `small` model.
+3. **Dictation**: creates `data/whisper/venv`, installs Faster Whisper and downloads the `small` model.
 
-Installs run in the background on the server, so reloading the page doesn't interrupt them. Skipped features are
-hidden in the UI (for example, the **Read aloud** (*Przeczytaj*) button only appears once the voice server responds).
+Installs run in the background on the server, so reloading the page doesn't interrupt them.
 
 ### Model and effort
 
@@ -80,33 +76,6 @@ In **Settings**, each provider has its own model and effort choice (remembered w
 - **Claude Code**: the aliases `fable`, `opus`, `sonnet`, `haiku` (or a full model ID) and `--effort low…max`.
 - **Codex**: the model list comes from `codex debug models` together with the supported levels, and is passed as
   `-m <model> -c model_reasoning_effort=<level>`.
-
-## Reading lesson cards aloud
-
-The **Read aloud** button reads the card's title and content in Polish, including the pitfall and the key
-takeaways. Code blocks are skipped, and identifiers in the text, such as `console.log`, are read as separate words.
-The player supports pause, seeking and restarting. Recent recordings can be replayed during the same app session.
-
-The local `backbone-ptq-edit.gguf` variant supports native pause tokens, so Codenoms can generate several sentences
-at once. With the older variant, the app inserts pauses when stitching the recording together.
-
-Under **Settings → Voice design** (*Ustawienia → Projektowanie głosu*) you can randomize a synthetic voice, adjust its traits, listen to your own sample
-text and save the design as the lesson voice. Voice design uses Zyphra's local voice pack and the profiles in
-`steer.gguf`.
-
-All voices are synthetic and generated from the ZONOS3-Mini voice pack that the wizard downloads. Without a saved
-design, lessons use the default voice design with a Polish accent. The repository contains no voice recordings or
-voice embeddings.
-
-By default Codenoms talks to `http://127.0.0.1:1919` using the `POST /v2/generate` API. The local Docker setup uses
-the `codenoms-zonos` container with automatic restart. The
-[Zyphra/ZONOS3-Mini](https://huggingface.co/Zyphra/ZONOS3-Mini) weights live in `data/zonos/models`.
-To run the server elsewhere, follow [Zyphra's instructions](https://github.com/Zyphra/ZONOS3-Mini#quick-start) and set
-the address with `ZONOS_URL`:
-
-```bash
-ZONOS_URL=http://127.0.0.1:1919 npm run dev
-```
 
 ## Dictation
 
