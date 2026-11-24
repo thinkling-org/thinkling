@@ -40,6 +40,8 @@ albo w trybie deweloperskim:
 npm run dev        # API na :3141 + Vite na http://localhost:5173
 ```
 
+`npm run typecheck` sprawdza typy we frontendzie Vue, serwerze i Electronie. Build produkcyjny zapisuje interfejs w `dist/`, a skompilowany kod serwera i Electrona w `dist-node/`.
+
 ### Aplikacja desktopowa na Windows
 
 ```powershell
@@ -102,13 +104,13 @@ Vue 3 (Vite, Pinia, Monaco)  ──fetch NDJSON──▶  Express :3141  ──s
 - Każde zapytanie to osobny proces CLI z wyłączonymi narzędziami (`--tools ""`), bez zapisywania sesji,
   uruchamiany w katalogu tymczasowym. Wynik ma ustrukturyzowaną postać i jest walidowany schematem JSON.
 - Proces CLI dostaje środowisko bez `ANTHROPIC_API_KEY` i `OPENAI_API_KEY`, więc zawsze korzysta z logowania subskrypcją.
-- Prompty i schematy są w [server/prompts.js](server/prompts.js), a uruchamianie CLI w [server/providers.js](server/providers.js).
-- Testy zadań JS/TS działają w przeglądarce ([src/lib/runner.worker.js](src/lib/runner.worker.js)): `test`, `expect`, `mockFn`, `sleep`.
+- Prompty i schematy są w [server/prompts.ts](server/prompts.ts), a uruchamianie CLI w [server/providers.ts](server/providers.ts).
+- Testy zadań JS/TS działają w przeglądarce ([src/lib/runner.worker.ts](src/lib/runner.worker.ts)): `test`, `expect`, `mockFn`, `sleep`.
   TypeScript jest transpilowany przez worker TS z Monaco. Rozwiązania w innych językach ocenia sam model, bez uruchamiania kodu.
 
 ## Piaskownica (Docker): prawdziwy edytor i terminal
 
-Gdy działa Docker, zadania w PHP, C++, Pythonie, Go, Ruście, Javie, C#, Ruby i SQL (a opcjonalnie też JS/TS) wykonują się w prawdziwych kontenerach. Kod jest w [server/sandbox.js](server/sandbox.js).
+Gdy działa Docker, zadania w PHP, C++, Pythonie, Go, Ruście, Javie, C#, Ruby i SQL (a opcjonalnie też JS/TS) wykonują się w prawdziwych kontenerach. Kod jest w [server/sandbox.ts](server/sandbox.ts).
 
 - **Workspace:** każde zadanie ma własny katalog `data/workspaces/<id>`, podmontowany w kontenerze jako `/workspace`. Edytor Monaco z drzewem plików zapisuje zmiany prosto na dysk.
 - **Terminal:** prawdziwy `bash` w kontenerze (xterm.js połączony przez WebSocket).

@@ -1,5 +1,5 @@
-<script setup>
-import { numberFormatter, t } from '../../../lib/i18n.js'
+<script setup lang="ts">
+import { numberFormatter, t } from '../../../lib/i18n.ts'
 import { computed, ref, useId, watch } from 'vue'
 import Markdown from '../../Markdown.vue'
 

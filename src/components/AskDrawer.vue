@@ -1,9 +1,9 @@
-<script setup>
-import { t } from '../lib/i18n.js'
+<script setup lang="ts">
+import { t } from '../lib/i18n.ts'
 import { nextTick, onBeforeUnmount, ref, watch } from 'vue'
-import { ai } from '../lib/api.js'
-import { play } from '../lib/sfx.js'
-import { useApp } from '../stores/app.js'
+import { ai } from '../lib/api.ts'
+import { play } from '../lib/sfx.ts'
+import { useApp } from '../stores/app.ts'
 import Markdown from './Markdown.vue'
 import Icon from './Icon.vue'
 
@@ -14,19 +14,19 @@ const props = defineProps({
 const emit = defineEmits(['close'])
 const app = useApp()
 
-const messages = ref([])
+const messages = ref<{ role: 'user' | 'assistant'; content: string; error?: boolean }[]>([])
 const input = ref('')
 const busy = ref(false)
 const progress = ref(0)
-const list = ref(null)
-const inputEl = ref(null)
-let ctrl = null
+const list = ref<HTMLDivElement | null>(null)
+const inputEl = ref<HTMLTextAreaElement | null>(null)
+let ctrl: AbortController | null = null
 
 function scroll() {
   nextTick(() => list.value && (list.value.scrollTop = list.value.scrollHeight))
 }
 
-async function run(task, payload, userText) {
+async function run(task: 'chat' | 'explain', payload: unknown, userText: string) {
   if (busy.value) return
   if (userText) messages.value.push({ role: 'user', content: userText })
   busy.value = true
@@ -60,7 +60,7 @@ async function run(task, payload, userText) {
   }
 }
 
-function ask(question) {
+function ask(question?: string) {
   const q = (question ?? input.value).trim()
   if (!q) return
   input.value = ''

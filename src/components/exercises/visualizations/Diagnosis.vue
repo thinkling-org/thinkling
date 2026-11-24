@@ -1,5 +1,5 @@
-<script setup>
-import { t } from '../../../lib/i18n.js'
+<script setup lang="ts">
+import { t } from '../../../lib/i18n.ts'
 import { computed, ref, watch } from 'vue'
 import Markdown from '../../Markdown.vue'
 

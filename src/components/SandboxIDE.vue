@@ -1,26 +1,28 @@
-<script setup>
-import { t } from '../lib/i18n.js'
+<script setup lang="ts">
+import { t } from '../lib/i18n.ts'
 import { computed, onBeforeUnmount, shallowRef, useTemplateRef } from 'vue'
-import { sandbox } from '../lib/sandbox.js'
-import { fileBadge, fileLanguage } from '../lib/sandbox-file-types.js'
-import { useSandboxWorkspace } from '../composables/useSandboxWorkspace.js'
-import { allTestsPassed } from '../lib/runner.js'
-import { play } from '../lib/sfx.js'
+import { sandbox } from '../lib/sandbox.ts'
+import { fileBadge, fileLanguage } from '../lib/sandbox-file-types.ts'
+import { useSandboxWorkspace } from '../composables/useSandboxWorkspace.ts'
+import { allTestsPassed } from '../lib/runner.ts'
+import { play } from '../lib/sfx.ts'
 import CodeEditor from './CodeEditor.vue'
 import Terminal from './Terminal.vue'
 import Markdown from './Markdown.vue'
 import Icon from './Icon.vue'
 import TestDiagnosis from './exercises/TestDiagnosis.vue'
 import SandboxFileExplorer from './sandbox/SandboxFileExplorer.vue'
+import type { PropType } from 'vue'
+import type { CodeIssue, TestRun, WorkspaceFile } from '../domain.ts'
 
 const props = defineProps({
   wsId: { type: String, required: true },
   language: { type: String, required: true },
-  seedFiles: { type: Array, default: () => [] }, // Starter files and tests, each with path and content.
+  seedFiles: { type: Array as PropType<WorkspaceFile[]>, default: () => [] }, // Starter files and tests, each with path and content.
   testCommand: { type: String, default: '' },
-  testPaths: { type: Array, default: () => [] },
+  testPaths: { type: Array as PropType<string[]>, default: () => [] },
   mainFile: { type: String, default: '' },
-  issues: { type: Array, default: () => [] }, // [{file, line, ...}]
+  issues: { type: Array as PropType<CodeIssue[]>, default: () => [] }, // [{file, line, ...}]
   review: { type: Object, default: null }, // { summary } albo null
   busy: Boolean,
   providerName: { type: String, default: 'Claude' },
@@ -36,7 +38,7 @@ const {
 
 const panel = shallowRef('terminal')
 const running = shallowRef(false)
-const run = shallowRef(null)
+const run = shallowRef<TestRun | null>(null)
 const cursor = shallowRef({ line: 1, col: 1 })
 const terminal = useTemplateRef('terminal')
 
@@ -146,18 +148,18 @@ defineExpose({ runTests, userFiles, showReview: () => (panel.value = 'review') }
 
     <div class="tabs" role="tablist">
       <button
-        v-for="t in tabs"
-        :key="t"
+        v-for="tabPath in tabs"
+        :key="tabPath"
         role="tab"
         class="ftab"
-        :class="{ on: t === active }"
-        :aria-selected="t === active"
-        @click="active = t"
-        @auxclick.prevent="closeTab(t)"
+        :class="{ on: tabPath === active }"
+        :aria-selected="tabPath === active"
+        @click="active = tabPath"
+        @auxclick.prevent="closeTab(tabPath)"
       >
-        <span class="ext">{{ fileBadge(t) }}</span>{{ t.split('/').pop() }}
-        <span v-if="files[t]?.dirty" class="dirty" :title="t('Unsaved')" />
-        <span class="x" role="button" :aria-label="t('Close')" @click.stop="closeTab(t)">×</span>
+        <span class="ext">{{ fileBadge(tabPath) }}</span>{{ tabPath.split('/').pop() }}
+        <span v-if="files[tabPath]?.dirty" class="dirty" :title="t('Unsaved')" />
+        <span class="x" role="button" :aria-label="t('Close')" @click.stop="closeTab(tabPath)">×</span>
       </button>
     </div>
 

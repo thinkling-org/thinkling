@@ -1,8 +1,8 @@
-<script setup>
-import { t, uiLocale } from '../lib/i18n.js'
+<script setup lang="ts">
+import { t, uiLocale } from '../lib/i18n.ts'
 import { computed } from 'vue'
-import { useApp } from '../stores/app.js'
-import { getAiProvider } from '../lib/ai-providers.js'
+import { useApp } from '../stores/app.ts'
+import { getAiProvider } from '../lib/ai-providers.ts'
 import Icon from './Icon.vue'
 import Logo from './Logo.vue'
 

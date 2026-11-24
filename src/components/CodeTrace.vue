@@ -1,20 +1,22 @@
-<script setup>
-import { t } from '../lib/i18n.js'
+<script setup lang="ts">
+import { t } from '../lib/i18n.ts'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { highlightLines } from '../lib/markdown.js'
-import { play, playStep } from '../lib/sfx.js'
+import { highlightLines } from '../lib/markdown.ts'
+import { play, playStep } from '../lib/sfx.ts'
 import Markdown from './Markdown.vue'
 import Icon from './Icon.vue'
+import type { PropType } from 'vue'
+import type { CodeTrace, Exercise, TraceStep } from '../domain.ts'
 
 const props = defineProps({
-  exercise: { type: Object, required: true },
-  trace: { type: Object, required: true }, // { headline, mistake, takeaway, steps[] }
+  exercise: { type: Object as PropType<Exercise>, required: true },
+  trace: { type: Object as PropType<CodeTrace>, required: true }, // { headline, mistake, takeaway, steps[] }
   chosenIndex: { type: Number, default: null },
 })
 const i = ref(0)
 const steps = computed(() => props.trace.steps || [])
-const step = computed(() => steps.value[i.value] || {})
-const prevStep = computed(() => steps.value[i.value - 1] || { output: [] })
+const step = computed<TraceStep>(() => steps.value[i.value] || {})
+const prevStep = computed<TraceStep>(() => steps.value[i.value - 1] || { output: [] })
 const atEnd = computed(() => i.value >= steps.value.length - 1)
 const correct = computed(() => props.chosenIndex === props.exercise.correctIndex)
 const lines = computed(() => highlightLines(props.exercise.code, props.exercise.codeLanguage || 'javascript'))

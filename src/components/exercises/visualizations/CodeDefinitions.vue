@@ -1,11 +1,12 @@
-<script setup>
-import { t } from '../../../lib/i18n.js'
+<script setup lang="ts">
+import { t } from '../../../lib/i18n.ts'
 import { computed, ref, watch } from 'vue'
 import Markdown from '../../Markdown.vue'
 import CodeBlock from '../../CodeBlock.vue'
+import type { PropType } from 'vue'
 
 const props = defineProps({
-  config: { type: Object, required: true },
+  config: { type: Object as PropType<{ code: string; instruction?: string; terms: { token: string; title?: string; definition?: string; kind?: string; example?: string }[] }>, required: true },
   codeLanguage: { type: String, default: 'javascript' },
 })
 const selected = ref(0)

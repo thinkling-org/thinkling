@@ -1,5 +1,5 @@
-<script setup>
-import { t } from '../lib/i18n.js'
+<script setup lang="ts">
+import { t } from '../lib/i18n.ts'
 import { nextTick, ref, watch } from 'vue'
 
 /** Show the current installation step, download progress and recent logs. */

@@ -1,8 +1,8 @@
-<script setup>
-import { t } from '../lib/i18n.js'
+<script setup lang="ts">
+import { t } from '../lib/i18n.ts'
 import { computed } from 'vue'
-import { useApp } from '../stores/app.js'
-import { getAiProvider } from '../lib/ai-providers.js'
+import { useApp } from '../stores/app.ts'
+import { getAiProvider } from '../lib/ai-providers.ts'
 
 const props = defineProps({ busy: { type: Boolean, default: false }, label: { type: String, default: '' }, compact: Boolean })
 const app = useApp()

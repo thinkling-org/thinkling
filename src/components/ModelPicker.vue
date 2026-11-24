@@ -1,8 +1,8 @@
-<script setup>
-import { t } from '../lib/i18n.js'
+<script setup lang="ts">
+import { t } from '../lib/i18n.ts'
 import { computed, ref, watch } from 'vue'
-import { useApp } from '../stores/app.js'
-import { getJSON } from '../lib/api.js'
+import { useApp } from '../stores/app.ts'
+import { getJSON } from '../lib/api.ts'
 
 const app = useApp()
 const catalog = ref(null)

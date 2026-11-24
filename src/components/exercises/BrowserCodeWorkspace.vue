@@ -1,12 +1,13 @@
-<script setup>
-import { t } from '../../lib/i18n.js'
+<script setup lang="ts">
+import { t } from '../../lib/i18n.ts'
 import { computed, shallowRef } from 'vue'
 import CodeEditor from '../CodeEditor.vue'
 import Markdown from '../Markdown.vue'
 import TestDiagnosis from './TestDiagnosis.vue'
-import { allTestsPassed, RUNNABLE, runTests } from '../../lib/runner.js'
-import { play } from '../../lib/sfx.js'
-import { useApp } from '../../stores/app.js'
+import { allTestsPassed, RUNNABLE, runTests } from '../../lib/runner.ts'
+import { play } from '../../lib/sfx.ts'
+import { useApp } from '../../stores/app.ts'
+import type { CodeIssue } from '../../domain.ts'
 
 const props = defineProps({
   exercise: { type: Object, required: true },
@@ -19,7 +20,7 @@ const props = defineProps({
   busy: Boolean,
 })
 const solution = defineModel({ type: String, default: '' })
-const issues = defineModel('issues', { type: Array, default: () => [] })
+const issues = defineModel<CodeIssue[]>('issues', { default: () => [] })
 const emit = defineEmits(['run', 'submit'])
 const app = useApp()
 

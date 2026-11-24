@@ -1,10 +1,12 @@
-<script setup>
-import { t } from '../../lib/i18n.js'
+<script setup lang="ts">
+import { t } from '../../lib/i18n.ts'
 import CodeTrace from '../CodeTrace.vue'
 import Icon from '../Icon.vue'
+import type { PropType } from 'vue'
+import type { Exercise } from '../../domain.ts'
 
 defineProps({
-  exercise: { type: Object, required: true },
+  exercise: { type: Object as PropType<Exercise>, required: true },
   chosenIndex: { type: Number, default: null },
   progress: { type: Object, default: null },
   providerName: { type: String, required: true },

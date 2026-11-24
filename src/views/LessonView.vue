@@ -1,14 +1,14 @@
-<script setup>
-import { t } from '../lib/i18n.js'
+<script setup lang="ts">
+import { t } from '../lib/i18n.ts'
 import { computed, nextTick, onBeforeUnmount, onMounted, shallowRef, useTemplateRef } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { useApp } from '../stores/app.js'
-import { getAiProvider } from '../lib/ai-providers.js'
-import { useLessonAssessment } from '../composables/useLessonAssessment.js'
-import { useLessonExamples } from '../composables/useLessonExamples.js'
-import { useLessonSession } from '../composables/useLessonSession.js'
-import { buildLessonChatContext } from '../lib/lesson-context.js'
-import { play } from '../lib/sfx.js'
+import { useApp } from '../stores/app.ts'
+import { getAiProvider } from '../lib/ai-providers.ts'
+import { useLessonAssessment } from '../composables/useLessonAssessment.ts'
+import { useLessonExamples } from '../composables/useLessonExamples.ts'
+import { useLessonSession } from '../composables/useLessonSession.ts'
+import { buildLessonChatContext } from '../lib/lesson-context.ts'
+import { play } from '../lib/sfx.ts'
 import Icon from '../components/Icon.vue'
 import LessonFooter from '../components/LessonFooter.vue'
 import LessonIntro from '../components/LessonIntro.vue'
@@ -26,7 +26,7 @@ const route = useRoute()
 const router = useRouter()
 const app = useApp()
 
-const lessonId = computed(() => route.params.id)
+const lessonId = computed(() => route.params.id as string)
 const {
   phase, loadError, level, levels, exerciseIndex, meta, intro, gen, exercises, exercise, estimate, summary,
   load, regenerate, finish, commitTime,
@@ -100,7 +100,7 @@ async function startLesson() {
   heading?.focus()
 }
 
-function goToExercise(index) {
+function goToExercise(index: number) {
   selectVariant(0)
   showTrace.value = false
   drawerOpen.value = false
@@ -143,10 +143,10 @@ function explainInChat() {
 
 // Exercise keyboard shortcuts
 
-function onKey(e) {
+function onKey(e: KeyboardEvent) {
   if (e.defaultPrevented || e.repeat || e.altKey || e.shiftKey || phase.value !== 'play' || drawerOpen.value) return
   if (showTrace.value && exercise.value?.type === 'learn') return
-  const target = e.target
+  const target = e.target as HTMLElement
   const typing = target.closest?.('textarea, input, .monaco-editor') || target.isContentEditable
   if (target.closest?.('button, a, select, summary, audio, [role=button]')) return
   if (e.key === 'Enter' && (!typing || e.ctrlKey || e.metaKey)) {
@@ -224,7 +224,7 @@ const wide = computed(() => phase.value === 'play' && exercise.value?.type === '
         <LessonTracePanel
           v-if="showTrace && (exercise.type === 'learn' || exercise.type === 'choice')"
           :exercise="exercise"
-          :chosen-index="exercise.type === 'choice' ? answers[exercise.id] : null"
+          :chosen-index="exercise.type === 'choice' ? (answers[exercise.id] as number | null) : null"
           :progress="traceProgress"
           :provider-name="providerName"
           @close="showTrace = false"
@@ -241,18 +241,26 @@ const wide = computed(() => phase.value === 'play' && exercise.value?.type === '
         />
         <OpenExercise
           v-else-if="exercise.type === 'open'"
-          v-model="answers[exercise.id]"
+          :model-value="answers[exercise.id] as string"
+          @update:model-value="answers[exercise.id] = $event"
           :exercise="exercise"
           :result="result"
           :busy="busy"
           :provider-name="providerName"
           @submit="check"
         />
-        <ChoiceExercise v-else-if="exercise.type === 'choice'" v-model="answers[exercise.id]" :exercise="exercise" :result="result" />
+        <ChoiceExercise
+          v-else-if="exercise.type === 'choice'"
+          :model-value="answers[exercise.id] as number | null"
+          :exercise="exercise"
+          :result="result"
+          @update:model-value="answers[exercise.id] = $event"
+        />
         <CodeExercise
           v-else-if="exercise.type === 'code'"
           ref="codeEditor"
-          v-model="answers[exercise.id]"
+          :model-value="answers[exercise.id] as string"
+          @update:model-value="answers[exercise.id] = $event"
           v-model:issues="issues[exercise.id]"
           :exercise="exercise"
           :result="result"

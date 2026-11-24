@@ -1,5 +1,5 @@
-<script setup>
-import { t } from '../lib/i18n.js'
+<script setup lang="ts">
+import { t } from '../lib/i18n.ts'
 import { computed } from 'vue'
 
 const props = defineProps({ score: { type: Number, default: 0 }, delta: { type: Number, default: 0 } })

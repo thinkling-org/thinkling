@@ -1,8 +1,8 @@
-<script setup>
+<script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
-import { highlightLines, normalizeLang } from '../lib/markdown.js'
-import { activeTerm, closeCodeDefinitionSoon, keepCodeDefinitionOpen, linkCodeTerms } from '../lib/glossary.js'
-import { markCodeTokens } from '../lib/code-tokens.js'
+import { highlightLines, normalizeLang } from '../lib/markdown.ts'
+import { activeTerm, closeCodeDefinitionSoon, keepCodeDefinitionOpen, linkCodeTerms } from '../lib/glossary.ts'
+import { markCodeTokens } from '../lib/code-tokens.ts'
 
 const props = defineProps({
   code: { type: String, default: '' },

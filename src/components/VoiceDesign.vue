@@ -1,8 +1,8 @@
-<script setup>
-import { t, uiLocale } from '../lib/i18n.js'
+<script setup lang="ts">
+import { t, uiLocale } from '../lib/i18n.ts'
 import { computed, ref } from 'vue'
-import { useApp } from '../stores/app.js'
-import { DEFAULT_VOICE_DESIGN, normalizeVoiceDesign, VOICE_CONTROLS } from '../lib/voice-design.js'
+import { useApp } from '../stores/app.ts'
+import { DEFAULT_VOICE_DESIGN, normalizeVoiceDesign, VOICE_CONTROLS } from '../lib/voice-design.ts'
 import Icon from './Icon.vue'
 import SpeechPlayer from './SpeechPlayer.vue'
 

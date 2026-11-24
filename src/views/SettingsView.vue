@@ -1,16 +1,16 @@
-<script setup>
-import { t } from '../lib/i18n.js'
+<script setup lang="ts">
+import { t } from '../lib/i18n.ts'
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { useApp } from '../stores/app.js'
-import { useProviderSettings } from '../composables/useProviderSettings.js'
-import { AI_PROVIDERS, getAiProvider } from '../lib/ai-providers.js'
+import { useApp } from '../stores/app.ts'
+import { useProviderSettings } from '../composables/useProviderSettings.ts'
+import { AI_PROVIDERS, getAiProvider } from '../lib/ai-providers.ts'
 import ProviderConnectionTest from '../components/ProviderConnectionTest.vue'
 import AppShell from '../components/AppShell.vue'
 import ModelPicker from '../components/ModelPicker.vue'
 import LanguagePicker from '../components/LanguagePicker.vue'
-import { play } from '../lib/sfx.js'
-import { SOUND_PREVIEWS, playSoundPreview } from '../lib/sound-previews.js'
+import { play } from '../lib/sfx.ts'
+import { SOUND_PREVIEWS, playSoundPreview } from '../lib/sound-previews.ts'
 
 const app = useApp()
 const router = useRouter()
@@ -121,7 +121,7 @@ function resetAll() {
               step="0.05"
               :value="app.settings.volume ?? 0.6"
               :disabled="app.settings.sound === false"
-              @input="app.settings.volume = Number($event.target.value)"
+              @input="app.settings.volume = Number(($event.target as HTMLInputElement).value)"
               @change="play('pop')"
             />
           </label>

@@ -1,5 +1,5 @@
-<script setup>
-import { t } from '../lib/i18n.js'
+<script setup lang="ts">
+import { t } from '../lib/i18n.ts'
 import { useId } from 'vue'
 
 // Give each instance a unique SVG mask ID.

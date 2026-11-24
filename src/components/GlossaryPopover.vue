@@ -1,6 +1,6 @@
-<script setup>
+<script setup lang="ts">
 import { computed, nextTick, ref, useId, watch } from 'vue'
-import { activeTerm, closeCodeDefinitionSoon, glossaryEntry, keepCodeDefinitionOpen } from '../lib/glossary.js'
+import { activeTerm, closeCodeDefinitionSoon, glossaryEntry, keepCodeDefinitionOpen } from '../lib/glossary.ts'
 
 const definition = computed(() => glossaryEntry(activeTerm.value?.dataset.glossaryTerm))
 const panel = ref(null)

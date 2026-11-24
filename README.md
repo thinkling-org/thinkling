@@ -11,7 +11,7 @@ The interface supports **English and Polish**. On first launch, Codenoms saves y
 on desktop or your browser language on the web. Other languages use the English interface. New AI responses use
 your saved language. You can change it under **Settings → Language**.
 
-Use English source messages in `t()` and add their Polish translations in [`src/locales/pl.js`](src/locales/pl.js).
+Use English source messages in `t()` and add their Polish translations in [`src/locales/pl.ts`](src/locales/pl.ts).
 
 - Describe your situation and the model builds a plan: modules, lessons and a skill assessment (the plan streams in live as it is generated).
 - A learning path with lessons, XP, daily streaks, a daily goal and a 0–1000 score.
@@ -41,6 +41,8 @@ or in development mode:
 ```bash
 npm run dev        # API on :3141 + Vite on http://localhost:5173
 ```
+
+Run `npm run typecheck` to check the Vue, server and Electron TypeScript sources. The production build emits the renderer to `dist/` and the Node and Electron entry points to `dist-node/`.
 
 ### Windows desktop app
 
@@ -104,15 +106,15 @@ Vue 3 (Vite, Pinia, Monaco)  ──fetch NDJSON──▶  Express :3141  ──s
   temporary directory. The output is structured and validated against a JSON schema.
 - The CLI process runs without `ANTHROPIC_API_KEY` and `OPENAI_API_KEY` in its environment, so it always uses your
   subscription login.
-- Prompts and schemas live in [server/prompts.js](server/prompts.js), and CLI execution in [server/providers.js](server/providers.js).
-- JS/TS task tests run in the browser ([src/lib/runner.worker.js](src/lib/runner.worker.js)) with `test`, `expect`,
+- Prompts and schemas live in [server/prompts.ts](server/prompts.ts), and CLI execution in [server/providers.ts](server/providers.ts).
+- JS/TS task tests run in the browser ([src/lib/runner.worker.ts](src/lib/runner.worker.ts)) with `test`, `expect`,
   `mockFn` and `sleep`. TypeScript is transpiled by Monaco's TS worker. Solutions in other languages are graded by the
   model alone, without running the code (unless Docker is available, see below).
 
 ## Sandbox (Docker): a real editor and terminal
 
 When Docker is running, tasks in PHP, C++, Python, Go, Rust, Java, C#, Ruby and SQL (and optionally JS/TS) run in real
-containers. The code is in [server/sandbox.js](server/sandbox.js).
+containers. The code is in [server/sandbox.ts](server/sandbox.ts).
 
 - **Workspace:** each task gets its own `data/workspaces/<id>` directory, mounted in the container as `/workspace`.
   The Monaco editor with a file tree saves changes straight to disk.

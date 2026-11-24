@@ -1,5 +1,5 @@
-<script setup>
-import { t } from '../../lib/i18n.js'
+<script setup lang="ts">
+import { t } from '../../lib/i18n.ts'
 import { ref, onMounted } from 'vue'
 import Markdown from '../Markdown.vue'
 import CodeBlock from '../CodeBlock.vue'
@@ -40,7 +40,7 @@ const POINT = {
         :value="modelValue"
         :readonly="!!result || busy"
         :placeholder="t('Answer in your own words, as in an interview. Press Ctrl+Enter to submit.')"
-        @input="emit('update:modelValue', $event.target.value)"
+        @input="emit('update:modelValue', ($event.target as HTMLTextAreaElement).value)"
         @keydown.ctrl.enter.prevent="emit('submit')"
       />
     </div>

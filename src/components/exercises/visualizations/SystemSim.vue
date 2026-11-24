@@ -1,11 +1,13 @@
-<script setup>
-import { numberFormatter, t } from '../../../lib/i18n.js'
+<script setup lang="ts">
+import { numberFormatter, t } from '../../../lib/i18n.ts'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import Markdown from '../../Markdown.vue'
 import Icon from '../../Icon.vue'
-import { configure, evaluate, goalSeries, simulate } from '../../../lib/system-sim.js'
+import { configure, evaluate, goalSeries, simulate } from '../../../lib/system-sim.ts'
+import type { SimulationScenario } from '../../../lib/system-sim.ts'
+import type { PropType } from 'vue'
 
-const props = defineProps({ config: { type: Object, required: true } })
+const props = defineProps({ config: { type: Object as PropType<SimulationScenario>, required: true } })
 
 const W = 320
 const H = 140

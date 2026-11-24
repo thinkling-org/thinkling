@@ -1,14 +1,16 @@
-<script setup>
-import { t } from '../../lib/i18n.js'
+<script setup lang="ts">
+import { t } from '../../lib/i18n.ts'
 import { computed } from 'vue'
 import Markdown from '../Markdown.vue'
 import CodeBlock from '../CodeBlock.vue'
 import Icon from '../Icon.vue'
+import type { PropType } from 'vue'
+import type { Exercise, ExerciseResult } from '../../domain.ts'
 
 const props = defineProps({
-  exercise: { type: Object, required: true },
+  exercise: { type: Object as PropType<Exercise>, required: true },
   modelValue: { type: Number, default: null },
-  result: { type: Object, default: null },
+  result: { type: Object as PropType<ExerciseResult>, default: null },
 })
 const emit = defineEmits(['update:modelValue'])
 

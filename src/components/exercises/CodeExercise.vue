@@ -1,11 +1,12 @@
-<script setup>
+<script setup lang="ts">
 import { computed, shallowRef, useTemplateRef, watch } from 'vue'
 import BrowserCodeWorkspace from './BrowserCodeWorkspace.vue'
 import CodeTaskBrief from './CodeTaskBrief.vue'
 import SandboxIDE from '../SandboxIDE.vue'
-import { RUNNABLE } from '../../lib/runner.js'
-import { mergeFiles, wsIdFor } from '../../lib/sandbox.js'
-import { useApp } from '../../stores/app.js'
+import { RUNNABLE } from '../../lib/runner.ts'
+import { mergeFiles, wsIdFor } from '../../lib/sandbox.ts'
+import { useApp } from '../../stores/app.ts'
+import type { CodeIssue } from '../../domain.ts'
 
 const props = defineProps({
   exercise: { type: Object, required: true },
@@ -13,7 +14,7 @@ const props = defineProps({
   busy: Boolean,
 })
 const solution = defineModel({ type: String, default: '' })
-const issues = defineModel('issues', { type: Array, default: () => [] })
+const issues = defineModel<CodeIssue[]>('issues', { default: () => [] })
 const emit = defineEmits(['submit'])
 const app = useApp()
 

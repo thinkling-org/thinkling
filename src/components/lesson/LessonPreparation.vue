@@ -1,5 +1,5 @@
-<script setup>
-import { t, uiLocale } from '../../lib/i18n.js'
+<script setup lang="ts">
+import { t, uiLocale } from '../../lib/i18n.ts'
 import { computed } from 'vue'
 import Gem from '../Gem.vue'
 

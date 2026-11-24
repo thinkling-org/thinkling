@@ -1,24 +1,26 @@
-<script setup>
-import { t } from '../lib/i18n.js'
+<script setup lang="ts">
+import { t } from '../lib/i18n.ts'
 import { onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
-import { monaco, ensureTheme, monacoLanguage } from '../lib/monaco.js'
-import { renderMarkdown } from '../lib/markdown.js'
+import { monaco, ensureTheme, monacoLanguage } from '../lib/monaco.ts'
+import { renderMarkdown } from '../lib/markdown.ts'
+import type { PropType } from 'vue'
+import type { CodeIssue } from '../domain.ts'
 
 const props = defineProps({
   modelValue: { type: String, default: '' },
   language: { type: String, default: 'javascript' },
   fileName: { type: String, default: 'main.js' },
   uid: { type: String, default: () => Math.random().toString(36).slice(2) },
-  issues: { type: Array, default: () => [] }, // [{line, severity, message, replacement}]
+  issues: { type: Array as PropType<CodeIssue[]>, default: () => [] }, // [{line, severity, message, replacement}]
   readOnly: Boolean,
   providerName: { type: String, default: 'Claude' },
   keepModel: Boolean, // Retain undo history when switching files.
 })
 const emit = defineEmits(['update:modelValue', 'cursor', 'apply', 'dismiss', 'submit', 'save'])
 
-const el = ref(null)
-const editor = shallowRef(null)
-let model = null
+const el = ref<HTMLElement | null>(null)
+const editor = shallowRef<monaco.editor.IStandaloneCodeEditor | null>(null)
+let model: monaco.editor.ITextModel | null = null
 let decorations = null
 let zones = [] // { zoneId, widget }
 let silent = false

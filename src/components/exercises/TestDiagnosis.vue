@@ -1,7 +1,7 @@
-<script setup>
-import { t } from '../../lib/i18n.js'
+<script setup lang="ts">
+import { t } from '../../lib/i18n.ts'
 import { computed } from 'vue'
-import { diagnoseRun, visible } from '../../lib/test-diagnosis.js'
+import { diagnoseRun, visible } from '../../lib/test-diagnosis.ts'
 
 const props = defineProps({
   run: { type: Object, default: null },

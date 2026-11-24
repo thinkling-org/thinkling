@@ -1,0 +1,21 @@
+{
+  "compilerOptions": {
+    "target": "ES2024",
+    "lib": ["ES2024"],
+    "module": "NodeNext",
+    "rewriteRelativeImportExtensions": true,
+    "erasableSyntaxOnly": true,
+    "verbatimModuleSyntax": true,
+    "strict": true,
+    "strictNullChecks": false,
+    "noImplicitAny": false,
+    "useUnknownInCatchVariables": false,
+    "skipLibCheck": true,
+    "noEmitOnError": true,
+    "types": ["node"],
+    "rootDir": ".",
+    "outDir": "dist-node",
+    "sourceMap": true
+  },
+  "include": ["server/**/*.ts", "electron/**/*.ts"]
+}

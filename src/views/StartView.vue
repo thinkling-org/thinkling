@@ -1,10 +1,10 @@
-<script setup>
-import { t } from '../lib/i18n.js'
+<script setup lang="ts">
+import { t } from '../lib/i18n.ts'
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { useApp } from '../stores/app.js'
-import { getAiProvider } from '../lib/ai-providers.js'
-import { DAILY_MINUTE_OPTIONS, LEARNING_STYLES, LEARNING_TEMPLATES } from '../lib/learning-profile.js'
+import { useApp } from '../stores/app.ts'
+import { getAiProvider } from '../lib/ai-providers.ts'
+import { DAILY_MINUTE_OPTIONS, LEARNING_STYLES, LEARNING_TEMPLATES } from '../lib/learning-profile.ts'
 import Logo from '../components/Logo.vue'
 import Gem from '../components/Gem.vue'
 import Icon from '../components/Icon.vue'

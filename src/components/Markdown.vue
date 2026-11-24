@@ -1,8 +1,8 @@
-<script setup>
+<script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
-import { renderMarkdown } from '../lib/markdown.js'
-import { readableSpeechText } from '../lib/speech-text.js'
-import { activeTerm, linkGlossaryTerms } from '../lib/glossary.js'
+import { renderMarkdown } from '../lib/markdown.ts'
+import { readableSpeechText } from '../lib/speech-text.ts'
+import { activeTerm, linkGlossaryTerms } from '../lib/glossary.ts'
 
 defineOptions({ inheritAttrs: false })
 

@@ -1,10 +1,10 @@
-<script setup>
-import { t } from '../lib/i18n.js'
+<script setup lang="ts">
+import { t } from '../lib/i18n.ts'
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import '@xterm/xterm/css/xterm.css'
-import { terminalUrl } from '../lib/sandbox.js'
+import { terminalUrl } from '../lib/sandbox.ts'
 
 const props = defineProps({ wsId: { type: String, required: true }, active: { type: Boolean, default: true } })
 const el = ref(null)

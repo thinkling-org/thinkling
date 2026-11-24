@@ -1,14 +1,14 @@
-<script setup>
-import { t } from '../lib/i18n.js'
+<script setup lang="ts">
+import { t } from '../lib/i18n.ts'
 import { computed, nextTick, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { useApp } from '../stores/app.js'
-import { LESSON_KINDS } from '../lib/lesson-kinds.js'
+import { useApp } from '../stores/app.ts'
+import { LESSON_KINDS } from '../lib/lesson-kinds.ts'
 import AppShell from '../components/AppShell.vue'
 import Gem from '../components/Gem.vue'
 import Icon from '../components/Icon.vue'
 import ScoreGauge from '../components/ScoreGauge.vue'
-import { play } from '../lib/sfx.js'
+import { play } from '../lib/sfx.ts'
 
 const app = useApp()
 const router = useRouter()

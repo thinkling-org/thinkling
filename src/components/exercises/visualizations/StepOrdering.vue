@@ -1,10 +1,11 @@
-<script setup>
-import { t } from '../../../lib/i18n.js'
+<script setup lang="ts">
+import { t } from '../../../lib/i18n.ts'
 import { computed, ref, watch } from 'vue'
 import Markdown from '../../Markdown.vue'
 import Icon from '../../Icon.vue'
+import type { PropType } from 'vue'
 
-const props = defineProps({ config: { type: Object, required: true } })
+const props = defineProps({ config: { type: Object as PropType<{ instruction: string; success?: string; hint?: string; steps: { text: string; indent: number }[] }>, required: true } })
 
 // Shuffle deterministically so the same lesson always starts with the same order.
 function shuffle(count, seedText) {

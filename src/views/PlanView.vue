@@ -1,10 +1,11 @@
-<script setup>
-import { t, uiLocale } from '../lib/i18n.js'
+<script setup lang="ts">
+import { t, uiLocale } from '../lib/i18n.ts'
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { useApp } from '../stores/app.js'
-import { LESSON_KINDS } from '../lib/lesson-kinds.js'
-import { describePlanProgress, summarizeModule } from '../lib/plan-overview.js'
+import { useApp } from '../stores/app.ts'
+import { LESSON_KINDS } from '../lib/lesson-kinds.ts'
+import { describePlanProgress, summarizeModule } from '../lib/plan-overview.ts'
+import type { PlanPreview } from '../domain.ts'
 import Logo from '../components/Logo.vue'
 import Gem from '../components/Gem.vue'
 import Icon from '../components/Icon.vue'
@@ -15,7 +16,7 @@ const router = useRouter()
 
 const running = computed(() => app.gen.status === 'running')
 const failed = computed(() => app.gen.status === 'error')
-const view = computed(() => (running.value ? app.gen.partial || {} : app.plan || {}))
+const view = computed<PlanPreview>(() => (running.value ? app.gen.partial : app.plan) || {})
 const modules = computed(() => (view.value.modules || []).filter((m) => m && m.title))
 const lessonCount = computed(() => modules.value.reduce((a, m) => a + (m.lessons?.length || 0), 0))
 const isFirstPlan = computed(() => !app.plan)

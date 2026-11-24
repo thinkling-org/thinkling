@@ -1,7 +1,7 @@
-<script setup>
-import { t } from '../../lib/i18n.js'
+<script setup lang="ts">
+import { t } from '../../lib/i18n.ts'
 import { computed } from 'vue'
-import { firstSentence } from '../../lib/markdown.js'
+import { firstSentence } from '../../lib/markdown.ts'
 import Icon from '../Icon.vue'
 import LessonFooter from '../LessonFooter.vue'
 import Markdown from '../Markdown.vue'

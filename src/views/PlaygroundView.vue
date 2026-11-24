@@ -1,8 +1,8 @@
-<script setup>
-import { t } from '../lib/i18n.js'
+<script setup lang="ts">
+import { t } from '../lib/i18n.ts'
 import { computed, onMounted, shallowRef } from 'vue'
-import { useApp } from '../stores/app.js'
-import { DEFAULT_SANDBOX_LANGUAGE, getSandboxStarter, hasSandboxStarter } from '../lib/sandbox-starters.js'
+import { useApp } from '../stores/app.ts'
+import { DEFAULT_SANDBOX_LANGUAGE, getSandboxStarter, hasSandboxStarter } from '../lib/sandbox-starters.ts'
 import AppShell from '../components/AppShell.vue'
 import SandboxIDE from '../components/SandboxIDE.vue'
 

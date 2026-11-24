@@ -1,7 +1,7 @@
-<script setup>
-import { numberFormatter, t, uiLocale } from '../../../lib/i18n.js'
+<script setup lang="ts">
+import { numberFormatter, t, uiLocale } from '../../../lib/i18n.ts'
 import { computed, onBeforeUnmount, onMounted, ref, watch, watchPostEffect } from 'vue'
-import { evaluateRegression } from '../../../lib/linear-regression.js'
+import { evaluateRegression } from '../../../lib/linear-regression.ts'
 import Markdown from '../../Markdown.vue'
 
 const props = defineProps({ config: { type: Object, required: true } })
@@ -185,7 +185,7 @@ const slope = computed(() => parameters.value.rise / props.config.model.xSpan)
           :max="sliderSteps"
           :value="sliderPosition(parameters.rise, config.model.riseRange)"
           :aria-valuetext="formatNumber(slope)"
-          @input="updateParameter('rise', config.model.riseRange, $event.target.value)"
+          @input="updateParameter('rise', config.model.riseRange, ($event.target as HTMLInputElement).value)"
         />
       </label>
       <label>
@@ -196,7 +196,7 @@ const slope = computed(() => parameters.value.rise / props.config.model.xSpan)
           :max="sliderSteps"
           :value="sliderPosition(parameters.start, config.model.startRange)"
           :aria-valuetext="t('{0} at x = {1}', [formatNumber(parameters.start), formatNumber(config.model.xMin)])"
-          @input="updateParameter('start', config.model.startRange, $event.target.value)"
+          @input="updateParameter('start', config.model.startRange, ($event.target as HTMLInputElement).value)"
         />
       </label>
     </div>

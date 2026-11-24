@@ -1,11 +1,13 @@
-<script setup>
-import { t } from '../../lib/i18n.js'
+<script setup lang="ts">
+import { t } from '../../lib/i18n.ts'
 import { computed } from 'vue'
-import { fileBadge } from '../../lib/sandbox-file-types.js'
+import { fileBadge } from '../../lib/sandbox-file-types.ts'
 import Icon from '../Icon.vue'
+import type { PropType } from 'vue'
+import type { WorkspaceEntry } from '../../domain.ts'
 
 const props = defineProps({
-  entries: { type: Array, required: true },
+  entries: { type: Array as PropType<WorkspaceEntry[]>, required: true },
   active: { type: String, required: true },
   isTest: { type: Function, required: true },
 })

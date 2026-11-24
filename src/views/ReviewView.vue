@@ -1,11 +1,11 @@
-<script setup>
-import { t } from '../lib/i18n.js'
+<script setup lang="ts">
+import { t } from '../lib/i18n.ts'
 import { nextTick, onBeforeUnmount, onMounted, useTemplateRef, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { useApp } from '../stores/app.js'
-import { RATINGS } from '../lib/srs.js'
-import { useFlashcardReview } from '../composables/useFlashcardReview.js'
-import { play } from '../lib/sfx.js'
+import { useApp } from '../stores/app.ts'
+import { RATINGS } from '../lib/srs.ts'
+import { useFlashcardReview } from '../composables/useFlashcardReview.ts'
+import { play } from '../lib/sfx.ts'
 import Icon from '../components/Icon.vue'
 import Gem from '../components/Gem.vue'
 import Markdown from '../components/Markdown.vue'

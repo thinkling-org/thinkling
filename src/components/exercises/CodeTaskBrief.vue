@@ -1,16 +1,18 @@
-<script setup>
-import { t } from '../../lib/i18n.js'
+<script setup lang="ts">
+import { t } from '../../lib/i18n.ts'
 import { computed, shallowRef, watch } from 'vue'
 import CodeBlock from '../CodeBlock.vue'
 import Markdown from '../Markdown.vue'
-import { suggestTools } from '../../lib/glossary.js'
-import { allTestsPassed } from '../../lib/runner.js'
+import { suggestTools } from '../../lib/glossary.ts'
+import { allTestsPassed } from '../../lib/runner.ts'
+import type { PropType } from 'vue'
+import type { TestRun } from '../../domain.ts'
 
 const props = defineProps({
   exercise: { type: Object, required: true },
   language: { type: String, required: true },
   fileName: { type: String, required: true },
-  run: { type: Object, default: null },
+  run: { type: Object as PropType<TestRun>, default: null },
   showSolution: Boolean,
 })
 

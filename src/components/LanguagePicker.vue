@@ -1,8 +1,8 @@
-<script setup>
+<script setup lang="ts">
 import { computed, shallowRef } from 'vue'
-import { useApp } from '../stores/app.js'
-import { INTERFACE_LANGUAGES, languageName } from '../lib/languages.js'
-import { t, uiLocale } from '../lib/i18n.js'
+import { useApp } from '../stores/app.ts'
+import { INTERFACE_LANGUAGES, languageName } from '../lib/languages.ts'
+import { t, uiLocale } from '../lib/i18n.ts'
 
 const props = defineProps({ explain: Boolean })
 const app = useApp()

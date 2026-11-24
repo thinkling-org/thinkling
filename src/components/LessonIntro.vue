@@ -1,13 +1,15 @@
-<script setup>
-import { t } from '../lib/i18n.js'
+<script setup lang="ts">
+import { t } from '../lib/i18n.ts'
 import { computed } from 'vue'
 import Markdown from './Markdown.vue'
 import Icon from './Icon.vue'
+import type { PropType } from 'vue'
+import type { LessonLocation, LessonIntro } from '../domain.ts'
 
 const props = defineProps({
-  meta: { type: Object, required: true },
-  intro: { type: Object, default: null },
-  levels: { type: Array, default: () => [] },
+  meta: { type: Object as PropType<LessonLocation>, required: true },
+  intro: { type: Object as PropType<LessonIntro>, default: null },
+  levels: { type: Array as PropType<{ label: string; plan: string }[]>, default: () => [] },
 })
 const level = defineModel('level', { type: Number, default: 0 })
 

@@ -1,10 +1,10 @@
-<script setup>
-import { t } from '../lib/i18n.js'
+<script setup lang="ts">
+import { t } from '../lib/i18n.ts'
 import { computed, nextTick, onBeforeUnmount, ref } from 'vue'
 import Icon from './Icon.vue'
-import { getRecording, playRecording } from '../lib/speech.js'
-import { speechChunks } from '../lib/speech-text.js'
-import { useApp } from '../stores/app.js'
+import { getRecording, playRecording } from '../lib/speech.ts'
+import { speechChunks } from '../lib/speech-text.ts'
+import { useApp } from '../stores/app.ts'
 
 const props = defineProps({
   getText: { type: Function, required: true },
@@ -105,8 +105,8 @@ onBeforeUnmount(() => {
         :src="recordingUrl"
         hidden
         preload="metadata"
-        @loadedmetadata="duration = $event.target.duration"
-        @timeupdate="currentTime = $event.target.currentTime"
+        @loadedmetadata="duration = ($event.target as HTMLAudioElement).duration"
+        @timeupdate="currentTime = ($event.target as HTMLAudioElement).currentTime"
         @play="reading = true"
         @pause="reading = false"
         @ended="reading = false"
@@ -134,7 +134,7 @@ onBeforeUnmount(() => {
         :style="{ '--played': `${duration ? (currentTime / duration) * 100 : 0}%` }"
         aria-label="Pozycja odtwarzania"
         :aria-valuetext="`${formatTime(currentTime)} z ${formatTime(duration)}`"
-        @input="seek(Number($event.target.value))"
+        @input="seek(Number(($event.target as HTMLInputElement).value))"
       />
       <span class="player-time">{{ formatTime(currentTime) }} / {{ formatTime(duration) }}</span>
     </div>

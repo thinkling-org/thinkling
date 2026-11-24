@@ -1,13 +1,14 @@
-<script setup>
+<script setup lang="ts">
 import { computed } from 'vue'
-import { GEMS } from '../stores/app.js'
+import type { PropType } from 'vue'
+import { GEMS } from '../stores/app.ts'
 
 const props = defineProps({
   index: { type: Number, default: 0 },
   size: { type: [Number, String], default: 44 },
   glow: { type: Boolean, default: false },
   muted: { type: Boolean, default: false },
-  colors: { type: Array, default: null },
+  colors: { type: Array as PropType<string[]>, default: null },
 })
 const c = computed(() => (props.muted ? ['#2C3237', '#3A4147'] : props.colors || GEMS[props.index % GEMS.length]))
 </script>

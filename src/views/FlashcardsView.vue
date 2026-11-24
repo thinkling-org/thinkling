@@ -1,8 +1,8 @@
-<script setup>
-import { t } from '../lib/i18n.js'
+<script setup lang="ts">
+import { t } from '../lib/i18n.ts'
 import { computed, ref } from 'vue'
-import { useApp } from '../stores/app.js'
-import { formatDelay } from '../lib/srs.js'
+import { useApp } from '../stores/app.ts'
+import { formatDelay } from '../lib/srs.ts'
 import AppShell from '../components/AppShell.vue'
 import Gem from '../components/Gem.vue'
 import Icon from '../components/Icon.vue'

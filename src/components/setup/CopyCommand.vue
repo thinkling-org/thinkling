@@ -1,6 +1,6 @@
-<script setup>
+<script setup lang="ts">
 import { onScopeDispose, shallowRef } from 'vue'
-import { t } from '../../lib/i18n.js'
+import { t } from '../../lib/i18n.ts'
 
 const props = defineProps({ command: { type: String, required: true } })
 const copied = shallowRef('')

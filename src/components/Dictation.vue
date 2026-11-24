@@ -1,11 +1,25 @@
-<script setup>
-import { t } from '../lib/i18n.js'
+<script setup lang="ts">
+import { t } from '../lib/i18n.ts'
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import Icon from './Icon.vue'
 
+type EditableField = HTMLInputElement | HTMLTextAreaElement
+interface RecordingSession {
+  field: EditableField
+  initialValue: string
+  start: number | null
+  end: number | null
+  abort: AbortController
+  stream?: MediaStream
+  recorder?: MediaRecorder
+  meter?: AudioContext | null
+  meterFrame?: number
+  timer?: ReturnType<typeof setTimeout>
+}
+
 const route = useRoute()
-const target = shallowRef(null)
+const target = shallowRef<EditableField | null>(null)
 const toolbar = ref(null)
 const position = ref(null)
 const dock = shallowRef(null)
@@ -13,7 +27,7 @@ const phase = ref('')
 const message = ref('')
 const BAR_COUNT = 30
 const waveform = ref(Array(BAR_COUNT).fill(0))
-let session
+let session: RecordingSession | null = null
 
 const label = computed(() => ({
   requesting: t('Waiting for the microphone…'),
@@ -59,7 +73,7 @@ function updateTarget(event) {
   place()
 }
 
-function releaseRecording(current) {
+function releaseRecording(current: RecordingSession) {
   clearTimeout(current.timer)
   cancelAnimationFrame(current.meterFrame)
   current.meter?.close().catch(() => {})
@@ -67,7 +81,7 @@ function releaseRecording(current) {
   current.stream?.getTracks().forEach((track) => track.stop())
 }
 
-function prepareMeter(current) {
+function prepareMeter(current: RecordingSession) {
   const AudioContext = window.AudioContext || window.webkitAudioContext
   if (!AudioContext) return
   try {
@@ -78,7 +92,7 @@ function prepareMeter(current) {
   }
 }
 
-function showWaveform(current) {
+function showWaveform(current: RecordingSession) {
   if (!current.meter) return
   const analyser = current.meter.createAnalyser()
   analyser.fftSize = 1024
@@ -175,7 +189,7 @@ async function toggle() {
   }
 
   const field = target.value
-  const current = {
+  const current: RecordingSession = {
     field,
     initialValue: field.value,
     start: field.selectionStart,
@@ -196,7 +210,7 @@ async function toggle() {
       .find((type) => MediaRecorder.isTypeSupported(type))
     const recorder = new MediaRecorder(current.stream, mimeType ? { mimeType } : undefined)
     current.recorder = recorder
-    const chunks = []
+    const chunks: Blob[] = []
     recorder.ondataavailable = ({ data }) => { if (data.size) chunks.push(data) }
     recorder.onstop = () => {
       releaseRecording(current)
