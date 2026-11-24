@@ -18,7 +18,7 @@ Lokalna aplikacja do szybkiej nauki programowania krótkimi lekcjami z grywaliza
 
 ## Wymagania
 
-- Node 20.3+
+- Node.js 22.12+ do instalacji zależności i budowania ze źródeł. Instalator Windows zawiera środowisko uruchomieniowe.
 - Zalogowane **Claude Code** (`claude`) **lub** **Codex** (`codex`). Aplikacja sama szuka binarki w PATH,
   `~/.local/bin`, rozszerzeniach VS Code/Cursor i w instalacji Codex. Ścieżkę możesz też podać w Ustawieniach.
 - Opcjonalnie: **Docker** (piaskownica z terminalem i głos lektora) oraz **Python 3.10–3.13** (dyktowanie).
@@ -34,6 +34,24 @@ albo w trybie deweloperskim:
 
 ```bash
 npm run dev        # API na :3141 + Vite na http://localhost:5173
+```
+
+### Aplikacja desktopowa na Windows
+
+```powershell
+npm.cmd ci
+npm.cmd run desktop          # buduje interfejs i otwiera okno Electrona
+npm.cmd run desktop:package  # tworzy instalator .exe w katalogu release/
+```
+
+Electron sam uruchamia lokalny serwer na czas działania aplikacji. Dane desktopowe trafiają do
+`%APPDATA%\Codenoms\data`. Aby otworzyć istniejący plan, postępy i lokalne środowiska z wersji
+przeglądarkowej, zamknij jej serwer i ustaw `CODENOMS_DATA` na dotychczasowy katalog danych.
+Poniższe polecenia uruchom w PowerShellu z katalogu repozytorium.
+
+```powershell
+$env:CODENOMS_DATA = (Resolve-Path .\data).Path
+npm.cmd run desktop
 ```
 
 ### Kreator pierwszego uruchomienia

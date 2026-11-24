@@ -67,7 +67,7 @@ function toCommand(p, npmScripts) {
     const base = path.dirname(p)
     for (const rel of npmScripts) {
       const js = path.join(base, 'node_modules', ...rel)
-      if (exists(js)) return { cmd: process.execPath, prefix: [js], path: p }
+      if (exists(js)) return { cmd: process.execPath, prefix: [js], path: p, nodeScript: true }
     }
     if (isWin && !lower.endsWith('.exe')) return null
   }
@@ -130,8 +130,9 @@ function resolveProvider(id, overridePath) {
   return cmd
 }
 
-function cleanEnv(id) {
+function cleanEnv(id, cmd) {
   const env = { ...process.env }
+  if (cmd.nodeScript && process.versions.electron) env.ELECTRON_RUN_AS_NODE = '1'
   // Wymuszamy logowanie subskrypcją, a nie płatnym kluczem API.
   if (id === 'claude') {
     delete env.ANTHROPIC_API_KEY
@@ -155,7 +156,7 @@ export async function providerStatus(id, overridePath) {
         encoding: 'utf8',
         timeout: 15_000,
         windowsHide: true,
-        env: cleanEnv(id),
+        env: cleanEnv(id, cmd),
         stdio: ['ignore', 'pipe', 'ignore'],
       }).trim()
       versionCache.set(cmd.path, version)
@@ -175,7 +176,7 @@ function safeEffort(effort) {
 
 function runQuiet(cmd, args, id, timeout = 20_000) {
   return new Promise((resolve) => {
-    const child = spawn(cmd.cmd, [...cmd.prefix, ...args], { env: cleanEnv(id), windowsHide: true, cwd: WORK_DIR })
+    const child = spawn(cmd.cmd, [...cmd.prefix, ...args], { env: cleanEnv(id, cmd), windowsHide: true, cwd: WORK_DIR })
     let out = ''
     let err = ''
     const timer = setTimeout(() => child.kill(), timeout)
@@ -354,7 +355,7 @@ function runClaude({ cmd, model, effort, system, prompt, schema, onProgress, sig
 
     let timedOut = false
     const child = spawnWithGuards(cmd, args, {
-      env: cleanEnv('claude'),
+      env: cleanEnv('claude', cmd),
       signal,
       timeoutMs,
       onTimeout: () => (timedOut = true),
@@ -439,7 +440,7 @@ function runCodex({ cmd, model, effort, system, prompt, schema, onProgress, sign
 
     let timedOut = false
     const child = spawnWithGuards(cmd, args, {
-      env: cleanEnv('codex'),
+      env: cleanEnv('codex', cmd),
       signal,
       timeoutMs,
       onTimeout: () => (timedOut = true),

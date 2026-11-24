@@ -11,8 +11,8 @@ import { play } from '../lib/sfx.js'
 const app = useApp()
 const router = useRouter()
 
-const KIND_ICON = { theory: 'question', output: 'terminal', code: 'code', mixed: 'mixed', test: 'trophy' }
-const KIND_LABEL = { theory: 'Pytania otwarte', output: 'Co wypisze kod?', code: 'Zadania w edytorze', mixed: 'Mieszanka', test: 'Sprawdzian modułu' }
+const KIND_ICON = { theory: 'question', output: 'terminal', code: 'code', mixed: 'mixed', design: 'design', test: 'trophy' }
+const KIND_LABEL = { theory: 'Pytania otwarte', output: 'Co wypisze kod?', code: 'Zadania w edytorze', mixed: 'Mieszanka', design: 'Decyzje projektowe', test: 'Sprawdzian modułu' }
 
 const current = computed(() => app.currentLesson)
 const currentModuleIndex = computed(() => current.value?.moduleIndex ?? app.plan.modules.length - 1)

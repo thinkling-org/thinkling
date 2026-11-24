@@ -1,5 +1,9 @@
 import { buildRegressionModel } from './linear-regression.js'
 import { compileLogic } from './logic-expression.js'
+import { checkScenario } from './system-sim.js'
+
+// Sprawdzenie scenariusza przelicza wszystkie kombinacje przełączników, więc zapamiętujemy wynik.
+const checkedScenarios = new WeakMap()
 
 const hasText = (value) => typeof value === 'string' && value.trim().length > 0
 const list = (value) => (Array.isArray(value) ? value : [])
@@ -145,6 +149,15 @@ const readers = {
     if (validChecks.length < 2 || validOptions.length < 2 || validOptions.filter((o) => o.correct).length !== 1) return null
     return { type: 'diagnosis', instruction, symptom, checks: validChecks, options: validOptions }
   },
+
+  'system-sim'(visualization) {
+    if (!checkedScenarios.has(visualization)) {
+      const { scenario, error } = checkScenario(visualization)
+      if (error) console.warn(`[system-sim] odrzucony scenariusz: ${error}`)
+      checkedScenarios.set(visualization, scenario ?? null)
+    }
+    return checkedScenarios.get(visualization)
+  },
 }
 
 export function readLessonVisualization(exercise) {
@@ -179,6 +192,19 @@ export function describeVisualization(visualization) {
       return `Układanie kroków (poprawna kolejność):\n${steps(visualization.steps, (s) => s.text)}`
     case 'diagnosis':
       return `Diagnoza: ${visualization.symptom}\nPomiary:\n${visualization.checks.map((c) => `- ${c.name} (${c.action}): ${c.result}`).join('\n')}\nOdpowiedzi: ${visualization.options.map((o) => `${o.text}${o.correct ? ' (poprawna)' : ''}`).join(' | ')}`
+    case 'system-sim': {
+      const { sources, nodes, path, failures, controls, goals, solutions } = visualization
+      const option = (control, k) => control.options[k].label
+      return [
+        `Symulacja systemu: ${visualization.instruction}`,
+        `Ruch: ${sources.map((s) => `${s.label} ${s.rate}/s${s.burstEvery ? ` + ${s.burstSize}/s co ${s.burstEvery} s` : ''}`).join('; ')}`,
+        `Ścieżka: ${path.map((id) => nodes.find((n) => n.id === id).label).join(' → ')}`,
+        failures.length ? `Awarie: ${failures.map((f) => `${f.label} (${f.from}–${f.to} s)`).join('; ')}` : '',
+        `Przełączniki:\n${controls.map((c) => `- ${c.label}: ${c.options.map((o) => o.label).join(' | ')}`).join('\n')}`,
+        `Cele:\n${goals.map((g) => `- ${g.label}`).join('\n')}`,
+        `Ustawienia spełniające cele (nie zdradzaj ich wprost, naprowadzaj):\n${solutions.map((picks) => `- ${controls.map((c, i) => option(c, picks[i])).join(', ')}`).join('\n')}`,
+      ].filter(Boolean).join('\n')
+    }
     default:
       return ''
   }

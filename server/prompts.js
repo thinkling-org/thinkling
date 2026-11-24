@@ -19,7 +19,7 @@ const LANGUAGES = [
   'javascript', 'typescript', 'python', 'go', 'rust', 'java', 'csharp', 'cpp',
   'php', 'ruby', 'kotlin', 'swift', 'sql', 'other',
 ]
-const LESSON_KINDS = ['theory', 'output', 'code', 'mixed', 'test']
+const LESSON_KINDS = ['theory', 'output', 'code', 'mixed', 'design', 'test']
 
 export const SYSTEM_JSON = `Jesteś Codenoms — konkretnym tutorem programowania. Dopasowujesz poziom wyjaśnień do konkretnego ucznia i pojęcia.
 Tworzysz materiały po polsku (terminy techniczne mogą zostać po angielsku). Piszesz zwięźle, technicznie, bez lania wody i bez emoji.
@@ -80,10 +80,12 @@ function planRules() {
   - "output": pokaz mechanizmu, próba z podpowiedzią i przewidywanie zachowania podobnego kodu,
   - "code": technika na przykładzie, próba z podpowiedzią i małe zadanie w edytorze,
   - "mixed": pojęcie z przykładem, próba z podpowiedzią i zastosowanie,
+  - "design": decyzja projektowa bez kodu (architektura, szacowanie obciążenia, wybór bazy, cache, kolejki, limity, odporność na awarie): mechanizm na schemacie lub w symulacji, próba z podpowiedzią i uzasadnienie kompromisów,
   - "test": sprawdzian modułu — zawsze OSTATNIA lekcja każdego modułu.
+- Dobierz "kind" do umiejętności, a nie do języka planu. "code" i "output" tylko wtedy, gdy umiejętnością jest napisanie lub czytanie kodu (np. implementacja token bucket, idempotentny konsument). Szacowanie, wybór architektury, kompromisy i zachowanie systemu przy awariach to "design" albo "theory", także gdy uczeń prosi o zadania z kodem. W planie o projektowaniu systemów większość lekcji to "design" i "theory".
 - "focus": 1 zdanie o konkretnej umiejętności, którą uczeń zdobędzie lub utrwali.
 - Tytuły lekcji krótkie (2–5 słów), konkretne.
-- "language": główny język programowania planu (do edytora kodu).
+- "language": główny język programowania planu (do edytora kodu i lekcji z kodem).
 - Staż i poziom określają tempo, ale znajomość pojęć wyprowadzaj z opisu ucznia. Wykorzystaj znane mu języki, narzędzia i sytuacje zawodowe jako kontekst przykładów.
 - Jeśli celem jest rozmowa rekrutacyjna, najpierw zaplanuj naukę i praktykę, a symulację rozmowy zostaw na sprawdzian. Algorytmy dodawaj wtedy, gdy wynikają z opisu celu.`
 }
@@ -200,6 +202,48 @@ const visualizationSchema = {
       checks: arr(obj({ name: str, detail: str, action: str, result: str, ok: bool })),
       options: arr(obj({ text: str, correct: bool, why: str })),
     }),
+    obj({
+      type: { type: 'string', enum: ['system-sim'] },
+      instruction: str,
+      duration: int,
+      costUnit: str,
+      sources: arr(obj({
+        id: str, label: str, rate: num, burstSize: num, burstEvery: int, burstOffset: int, burstLength: int, limited: bool,
+        phases: arr(obj({ from: int, to: int, rate: num })),
+      })),
+      nodes: arr(obj({
+        id: str,
+        label: str,
+        kind: { type: 'string', enum: ['limiter', 'cache', 'service', 'queue', 'store'] },
+        capacity: num,
+        instances: int,
+        latencyMs: num,
+        hitRate: num,
+        maxQueue: num,
+        algorithm: { type: 'string', enum: ['', 'fixed', 'sliding', 'token', 'leaky'] },
+        limit: num,
+        window: int,
+        burst: num,
+        copies: int,
+        store: str,
+        failMode: { type: 'string', enum: ['', 'open', 'closed', 'local'] },
+      })),
+      path: arr(str),
+      failures: arr(obj({ node: str, from: int, to: int, label: str })),
+      controls: arr(obj({
+        label: str,
+        options: arr(obj({ label: str, detail: str, cost: num, set: arr(obj({ node: str, param: str, value: str })) })),
+      })),
+      goals: arr(obj({
+        label: str,
+        metric: { type: 'string', enum: ['errorRate', 'latency', 'passedPerWindow', 'utilization', 'cost'] },
+        target: str,
+        op: { type: 'string', enum: ['<=', '>='] },
+        value: num,
+        window: int,
+        hint: str,
+      })),
+    }),
   ],
 }
 
@@ -249,7 +293,8 @@ const CHECK_BY_KIND = {
   theory: 'jedno "open" albo "choice" sprawdzające zrozumienie mechanizmu',
   output: 'jedno "choice" z przewidywaniem zachowania podobnego kodu',
   code: 'jedno krótkie "code" z zastosowaniem poznanej techniki',
-  mixed: 'jedno krótkie "code" albo "open" z zastosowaniem poznanej techniki',
+  mixed: 'jedno krótkie "code" albo "open" z zastosowaniem poznanej techniki. "code" tylko wtedy, gdy rozwiązaniem jest kod; obliczenie albo decyzja projektowa to "open"',
+  design: 'jedno "open", w którym uczeń podejmuje decyzję projektową w nowym, konkretnym scenariuszu i uzasadnia kompromisy (z liczbami, gdy temat tego wymaga). W "keyPoints" po jednym kryterium na decyzję lub kompromis',
 }
 
 const RUNNABLE = ['javascript', 'typescript']
@@ -291,7 +336,14 @@ export function lessonTask({ profile, plan, moduleIndex, lessonIndex, weakSpots,
       .filter((l, li) => l.status === 'done' && (mi < moduleIndex || li < lessonIndex))
       .map((l) => l.focus || l.title))
   const sequence = lesson.kind === 'test'
-    ? 'Po wprowadzeniu daj 4–6 ćwiczeń z ukończonych lekcji tego modułu, każde ze stage "check". Dobierz mieszankę "choice", "code" i "open" do materiału i celu ucznia.'
+    ? 'Po wprowadzeniu daj 4–6 ćwiczeń z ukończonych lekcji tego modułu, każde ze stage "check". Dobierz mieszankę "choice", "code" i "open" do materiału i celu ucznia. "code" tylko do umiejętności, które są kodem; decyzje projektowe i szacowania sprawdzaj przez "open" albo "choice".'
+    : lesson.kind === 'design'
+      ? `Po wprowadzeniu daj dokładnie w tej kolejności:
+1. Jedną lub dwie karty "learn" ze stage "learn" BEZ kodu ("code" = "", "codeLanguage" = ""). Mechanizm pokaż przez "visualization": "system-sim", gdy uczeń może dobrać ustawienia i zobaczyć skutki pod obciążeniem lub w czasie awarii; "diagnosis", "state-inspector", "value-chart" albo "step-ordering", gdy lepiej pasują. Liczby i przykład w "prompt" opisz słowami albo w krótkim rachunku w Markdown.
+2. Jedno "choice" ze stage "practice": ta sama decyzja w podobnym scenariuszu, z podpowiedzią i pełnym wyjaśnieniem. Bez kodu, chyba że pytanie dotyczy fragmentu konfiguracji lub kontraktu API.
+3. Stage "check": ${CHECK_BY_KIND.design}.
+4. Opcjonalnie jedno "choice" ze stage "challenge" na samym końcu: pytanie z rozmowy rekrutacyjnej o kompromisie, oparte na pokazanym mechanizmie.
+Nie dawaj ćwiczeń "code" w tej lekcji.`
     : `Po wprowadzeniu daj dokładnie w tej kolejności:
 1. Jedną lub dwie karty "learn" ze stage "learn" i konkretnym rozwiązanym przykładem.
 2. Jedno "choice" ze stage "practice". Uczeń stosuje pokazany mechanizm w podobnym przypadku. Dodaj podpowiedź i pełne wyjaśnienie. Aplikacja pozwala obejrzeć rozwiązanie i nie wystawia oceny.
@@ -333,7 +385,7 @@ ${sequence}
 - "practice" oraz pierwsze sprawdzenie ćwiczą tylko pokazany mechanizm. Pierwsze zastosowanie ma być wprost analogiczne do przykładu. Pułapki i niuanse odłóż do opcjonalnego wyzwania lub osobnego sprawdzianu po nauce.
 
 ## Format ćwiczeń (wszystkie pola są wymagane; nieużywane = "" / [] / 0 / null)
-- "learn" (karta wiedzy): "title" = jedno pojęcie; "prompt" = problem z praktyki, wyjaśnienie mechanizmu i na co patrzeć w przykładzie (max 4 zdania / ~70 słów); "code" = krótki rozwiązany przykład, max 8 linii; "codeLanguage"; "explanation" = dlaczego rozwiązanie działa, 1–2 zdania; "keyPoints" = 2–3 krótkie zasady.
+- "learn" (karta wiedzy): "title" = jedno pojęcie; "prompt" = problem z praktyki, wyjaśnienie mechanizmu i na co patrzeć w przykładzie (max 4 zdania / ~70 słów); "code" = krótki rozwiązany przykład, max 8 linii, tylko gdy pojęcie jest konstrukcją w kodzie (przy szacowaniu, architekturze i kompromisach "code" = ""; nie opakowuj rachunku w funkcję); "codeLanguage"; "explanation" = dlaczego rozwiązanie działa, 1–2 zdania; "keyPoints" = 2–3 krótkie zasady.
 - "visualization" wybieraj tylko w kartach "learn", jeśli uczeń może dzięki niej zaobserwować uczony mechanizm. W pozostałych ćwiczeniach i przy braku pasującego komponentu zwróć null.
   - "code-comparison": gdy zmiana jednej decyzji w kodzie tłumaczy pojęcie, daj dokładnie dwa "variants" z tym samym kontekstem. Dla każdego podaj krótki "label" (np. "Bez nawiasów"), "code", wynik w jednym zdaniu w "outcome" i 2–4 "steps". Każdy krok ma numer linii od 1 ("line") i jedno krótkie zdanie ("say") o wykonywanej operacji lub wyniku pośrednim. Możesz użyć tego samego numeru linii w kilku krokach. Ostatni krok pokazuje wynik. Treść "prompt" karty ma wprowadzić przykład w maksymalnie dwóch zdaniach. Dodatkowe wyjaśnienia i punkty do zapamiętania mają uzupełniać kroki. Ustaw główne "code" na "".
   - "linear-regression": użyj przy nauce dopasowania prostej, reszt lub średniego kwadratu błędu. W "points" podaj 5–12 par liczbowych z co najmniej dwiema różnymi wartościami x, sensownym trendem i widocznym rozrzutem. Dopasuj przykład do celu ucznia i podaj jednostki w "xLabel" oraz "yLabel", jeśli występują. W "instruction" poproś ucznia o dopasowanie prostej suwakiem i zwrócenie uwagi na zmianę pionowych odcinków. Wynik dopasowania, suwaki i błąd wylicza aplikacja. Wyjaśnij, co oznaczają kreski i czemu mniejszy średni kwadrat błędu oznacza lepsze dopasowanie. Jeżeli dodajesz przykład w kodzie, użyj dokładnie tych samych punktów.
@@ -344,6 +396,15 @@ ${sequence}
   - "logic-circuit": przy bramkach logicznych, warunkach logicznych, połączeniu szeregowym i równoległym przełączników. "inputs" = 1–4 wejścia [{id, label, on}] (id: krótka nazwa, np. "A"), "outputs" = 1–4 wyjścia [{label, expression}], gdzie "expression" używa id wejść, nawiasów i operatorów AND, OR, XOR, NOT. "notes" = komentarze dla wybranych ustawień wejść [{pattern, say}], gdzie pattern to ciąg 0/1 w kolejności "inputs" (np. "10"). Tabelę prawdy liczy aplikacja.
   - "step-ordering": gdy uczeń ma sam ułożyć kroki algorytmu, procedury lub konfiguracji. "steps" = 3–7 kroków we WŁAŚCIWEJ kolejności (aplikacja je przetasuje), "indent" = poziom wcięcia 0–2, teksty krótkie i rozróżnialne. "success" = co uczeń ma zauważyć po ułożeniu, "hint" = podpowiedź po błędzie bez zdradzania kolejności.
   - "diagnosis": przy szukaniu przyczyny awarii (błąd w kodzie, niedostępny host, przerwany obwód). "symptom" = obserwowany objaw, "checks" = 3–6 pomiarów w kolejności drogi danych lub prądu [{name, detail, action, result, ok}], gdzie "action" to nazwa narzędzia lub czynności (np. "ping", "curl", "pomiar napięcia"), "result" to wynik, a "ok" mówi, czy wynik jest poprawny. "options" = 3–4 diagnozy, dokładnie jedna "correct": true, każda z "why" tłumaczącym, które pomiary ją potwierdzają lub wykluczają.
+  - "system-sim": przy projektowaniu systemów i architektury (limity zapytań, cache, kolejki, skalowanie, odporność na awarie), gdy uczeń ma sam dobrać ustawienia i zobaczyć skutki pod obciążeniem i podczas awarii. Aplikacja symuluje ruch co sekundę i sama liczy wykresy oraz cele. Ty opisujesz tylko scenariusz:
+    - "duration" = długość przebiegu w sekundach (120–900). "costUnit" = jednostka kosztu (np. "węzły Redis") albo "".
+    - "sources" = 1–4 klasy ruchu: "rate" = stały ruch w zapytaniach/s; opcjonalne szpilki: "burstSize" zapytań/s przez "burstLength" s co "burstEvery" s, od sekundy "burstOffset" (0 = brak); "phases" = okresy z innym "rate" [{from, to, rate}]. "limited": true = klasa to jeden klucz, który może trafić w limit; false = ruch wielu kluczy, sprawdzany, ale nigdy nie odrzucany.
+    - "nodes" = 2–6 węzłów; "path" = id węzłów w kolejności przepływu (bez "store"). Rodzaje: "limiter" (limit na klucz: "algorithm" fixed | sliding | token | leaky, "limit" zapytań na "window" s, "burst" = zapas tokenów albo długość kolejki leaky, "copies" = liczba niezależnych liczników, gdy "store" = "", "store" = id magazynu ze wspólnym licznikiem, "failMode" = open | closed | local, gdy magazyn nie działa), "cache" ("hitRate" 0–1; gdy nie działa, wszystko idzie dalej), "service"/"queue" ("capacity" zapytań/s na instancję × "instances", "maxQueue" = ile może czekać, nadmiar jest odrzucany, "latencyMs" rośnie z obciążeniem), "store" (np. Redis: każde sprawdzenie limitu to operacja; przeciążenie wydłuża sprawdzenia). Nieużywane pola = 0 lub "".
+    - "failures" = 0–2 awarie [{node, from, to, label}], np. magazyn leży przez minutę.
+    - "controls" = 2–4 przełączniki po 2–4 opcje. Każda opcja ustawia parametry: "set" = [{node, param, value}], value jako tekst (np. {"node": "gw", "param": "algorithm", "value": "sliding"}, {"node": "redis", "param": "instances", "value": "2"}, "store" = "" wyłącza wspólny licznik). "cost" = koszt opcji. Pierwsza opcja każdego przełącznika to naiwny wybór; ustawienie z samych pierwszych opcji musi oblewać co najmniej jeden cel. Najwyżej 512 kombinacji.
+    - "goals" = 2–4 cele: "metric" = errorRate (% odrzuconych zapytań klasy "target" w całym przebiegu) | latency (najgorszy średni czas odpowiedzi klasy, ms) | passedPerWindow (najwięcej obsłużonych zapytań klasy w dowolnym oknie "window" s) | utilization (najwyższe obciążenie węzła "target", %) | cost (suma kosztów opcji, "target" = ""). "op" zwykle "<=". "hint" = podpowiedź, gdy cel oblewa: na co spojrzeć, bez zdradzania opcji.
+    - Policz w głowie, że dokładnie 1–2 kombinacje spełniają wszystkie cele, a każdy błędny wybór oblewa inny cel. Aplikacja sprawdza wszystkie kombinacje i odrzuca scenariusz bez rozwiązania. Uwzględnij prawdziwe zachowanie algorytmów: token bucket przepuszcza "burst" ponad limit, stałe okno pozwala na prawie 2× limit na granicy okien, osobne liczniki mnożą limit przez "copies".
+    - Po karcie z "system-sim" dodaj ćwiczenie "open", w którym uczeń uzasadnia swoje ustawienia (np. dlaczego taki algorytm i co się dzieje w czasie awarii). Kryteria w "keyPoints".
   Wybierz jedną pomoc, która najlepiej pokazuje mechanizm karty. Nie dodawaj pomocy na siłę.
 - "practice": w "hint" wskaż, na który element przykładu spojrzeć albo co zrobić jako pierwszy krok. Podpowiedź nie zdradza poprawnej opcji. Po ćwiczeniu "explanation" tłumaczy rozwiązanie niezależnie od wyboru ucznia. Pole "hint" ustaw na "" w innych etapach.
 - "open": zadaj jedno skupione pytanie o zrozumienie mechanizmu. Jeśli ma podpunkty, zapisz je wprost w "prompt". W "referenceAnswer" podaj zwięzły przykład poprawnej odpowiedzi. W "keyPoints" podaj po jednym kryterium na każdą niezależną rzecz, o którą pytasz, bez powtórzeń. Opcjonalnie dodaj "code" z fragmentem, którego dotyczy pytanie.

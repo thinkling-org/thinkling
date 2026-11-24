@@ -21,6 +21,7 @@ const KIND = {
   output: { label: 'output', icon: 'terminal' },
   code: { label: 'zadania', icon: 'code' },
   mixed: { label: 'mix', icon: 'mixed' },
+  design: { label: 'projekt', icon: 'design' },
   test: { label: 'test', icon: 'trophy' },
 }
 

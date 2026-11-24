@@ -87,6 +87,7 @@ function validateLessonFlow(kind, intro, exercises) {
 }
 
 let saveTimer = null
+let pendingSave = Promise.resolve()
 const inflight = new Map()
 
 export const useApp = defineStore('app', {
@@ -165,7 +166,15 @@ export const useApp = defineStore('app', {
 
     scheduleSave() {
       clearTimeout(saveTimer)
-      saveTimer = setTimeout(() => putJSON('/api/state', this.persisted()).catch((e) => console.error(e)), 400)
+      saveTimer = setTimeout(() => this.flushSave().catch(console.error), 400)
+    },
+
+    flushSave() {
+      if (saveTimer === null) return pendingSave
+      clearTimeout(saveTimer)
+      saveTimer = null
+      pendingSave = pendingSave.catch(() => {}).then(() => putJSON('/api/state', this.persisted()))
+      return pendingSave
     },
 
     /** Przełącza silnik AI, pamiętając wybrany model i effort osobno dla każdego dostawcy. */

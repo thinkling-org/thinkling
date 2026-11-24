@@ -20,7 +20,7 @@ A local app for learning to code fast through short, gamified lessons. It runs o
 
 ## Requirements
 
-- Node 20.3+
+- Node.js 22.12+ to install dependencies and build from source. The Windows installer includes the runtime.
 - **Claude Code** (`claude`) **or** **Codex** (`codex`), logged in. The app looks for the binary in `PATH`,
   `~/.local/bin`, VS Code/Cursor extensions and the Codex install directory. You can also set the path in Settings.
 - Optional: **Docker** (sandbox with a terminal, and the voice reader) and **Python 3.10–3.13** (dictation).
@@ -36,6 +36,24 @@ or in development mode:
 
 ```bash
 npm run dev        # API on :3141 + Vite on http://localhost:5173
+```
+
+### Windows desktop app
+
+```powershell
+npm.cmd ci
+npm.cmd run desktop          # builds the frontend and opens the Electron window
+npm.cmd run desktop:package  # creates an .exe installer in release/
+```
+
+Electron starts a local server for the lifetime of the app. The desktop data directory is
+`%APPDATA%\Codenoms\data`. To open an existing plan, progress, and local environments from
+the browser version, stop its server and set `CODENOMS_DATA` to the previous data directory.
+From the repository root in PowerShell, run the following.
+
+```powershell
+$env:CODENOMS_DATA = (Resolve-Path .\data).Path
+npm.cmd run desktop
 ```
 
 ### First-run wizard

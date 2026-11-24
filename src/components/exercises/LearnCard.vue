@@ -13,6 +13,7 @@ import ValueChart from './visualizations/ValueChart.vue'
 import LogicCircuit from './visualizations/LogicCircuit.vue'
 import StepOrdering from './visualizations/StepOrdering.vue'
 import Diagnosis from './visualizations/Diagnosis.vue'
+import SystemSim from './visualizations/SystemSim.vue'
 import { readLessonVisualization } from '../../lib/lesson-visualizations.js'
 import { readableSpeechText, speechSentence } from '../../lib/speech-text.js'
 
@@ -34,6 +35,7 @@ const visualizations = {
   'logic-circuit': LogicCircuit,
   'step-ordering': StepOrdering,
   diagnosis: Diagnosis,
+  'system-sim': SystemSim,
 }
 const WITH_CODE = ['code-comparison', 'code-definitions', 'step-trace', 'state-inspector']
 const visualization = computed(() => readLessonVisualization(props.exercise))

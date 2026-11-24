@@ -11,8 +11,10 @@ const app = createApp(App)
 const pinia = createPinia()
 app.use(pinia)
 
-useApp(pinia)
-  .load()
+const store = useApp(pinia)
+window.flushCodenomsSave = () => store.flushSave()
+
+store.load()
   .finally(() => {
     app.use(router)
     app.mount('#app')

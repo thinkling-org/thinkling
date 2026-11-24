@@ -36,6 +36,7 @@ defineProps({
     <template v-else-if="name === 'question'"><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3" /><path d="M12 17h.01" /></template>
     <template v-else-if="name === 'trophy'"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0z" /><path d="M17 5h3v2a3 3 0 0 1-3 3M7 5H4v2a3 3 0 0 0 3 3" /></template>
     <template v-else-if="name === 'mixed'"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z" /></template>
+    <template v-else-if="name === 'design'"><rect x="3" y="3" width="7" height="6" rx="1.5" /><rect x="14" y="3" width="7" height="6" rx="1.5" /><rect x="8.5" y="15" width="7" height="6" rx="1.5" /><path d="M6.5 9v2.5h11V9M12 11.5V15" /></template>
     <template v-else-if="name === 'sparkle'"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z" /><path d="M19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8z" /></template>
     <template v-else-if="name === 'check'"><path d="M5 12l5 5 9-10" /></template>
     <template v-else-if="name === 'x'"><path d="M7 7l10 10M17 7L7 17" /></template>

@@ -3,6 +3,7 @@
 // i własny kontener bez sieci, z limitami pamięci / CPU / procesów.
 import { initialDocker, findWorkingDocker } from './docker-connect.js'
 import tar from 'tar-stream'
+import { createHash } from 'node:crypto'
 import fs from 'node:fs'
 import path from 'node:path'
 import { PassThrough } from 'node:stream'
@@ -27,6 +28,10 @@ export async function reconnectDocker() {
   return found
 }
 const LABEL = 'codenoms'
+const desktopNamespace = process.versions.electron
+  ? createHash('sha256').update(WS_ROOT).digest('hex').slice(0, 12)
+  : null
+const containerLabel = desktopNamespace ? `codenoms.desktop.${desktopNamespace}` : LABEL
 const IDLE_MS = 20 * 60_000
 
 // Kod w piaskownicy nie działa jako root. Na Linuksie kontener dostaje UID/GID użytkownika,
@@ -295,7 +300,8 @@ export function deletePath(wsId, rel) {
 const lastUsed = new Map()
 
 function containerName(wsId) {
-  return `codenoms-${safeId(wsId)}`
+  const prefix = desktopNamespace ? `codenoms-desktop-${desktopNamespace}` : 'codenoms'
+  return `${prefix}-${safeId(wsId)}`
 }
 
 export async function ensureContainer(wsId, lang, onProgress) {
@@ -322,7 +328,7 @@ export async function ensureContainer(wsId, lang, onProgress) {
     Cmd: ['sleep', 'infinity'],
     WorkingDir: '/workspace',
     Tty: false,
-    Labels: { [LABEL]: '1', 'codenoms.ws': wsId, 'codenoms.hardened': '1' },
+    Labels: { [containerLabel]: '1', 'codenoms.ws': wsId, 'codenoms.hardened': '1' },
     User: SANDBOX_USER,
     Env: ['TERM=xterm-256color', `HOME=${SANDBOX_HOME}`],
     HostConfig: {
@@ -416,10 +422,10 @@ export async function stopWorkspace(wsId) {
   } catch {}
 }
 
-/** Usuwa wszystkie kontenery Codenoms (start/stop serwera). */
+/** Usuwa kontenery piaskownicy należące do tej instancji aplikacji. */
 export async function cleanupAll() {
   try {
-    const list = await docker.listContainers({ all: true, filters: { label: [`${LABEL}=1`] } })
+    const list = await docker.listContainers({ all: true, filters: { label: [`${containerLabel}=1`] } })
     await Promise.all(list.map((c) => docker.getContainer(c.Id).remove({ force: true }).catch(() => {})))
   } catch {}
 }
