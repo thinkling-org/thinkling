@@ -22,7 +22,7 @@ angielski, a nowe odpowiedzi AI powstają w zapisanym języku. Zmienisz go w **U
 
 ## Wymagania
 
-- Node.js 22.12+ do instalacji zależności i budowania ze źródeł. Instalator Windows zawiera środowisko uruchomieniowe.
+- Node.js 24.15.0 lub nowszy do instalacji zależności i budowania ze źródeł. Wersję deweloperską Node.js 24 LTS wskazuje plik [`.nvmrc`](.nvmrc). Instalator Windows zawiera środowisko uruchomieniowe.
 - Zalogowane **Claude Code** (`claude`) **lub** **Codex** (`codex`). Aplikacja sama szuka binarki w PATH,
   `~/.local/bin`, rozszerzeniach VS Code/Cursor i w instalacji Codex. Ścieżkę możesz też podać w Ustawieniach.
 - Opcjonalnie: **Docker** (piaskownica z terminalem) oraz **Python 3.10–3.13** (dyktowanie).

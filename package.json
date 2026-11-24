@@ -62,6 +62,6 @@
     "win": { "target": "nsis" }
   },
   "engines": {
-    "node": ">=20.3"
+    "node": ">=24.15.0"
   }
 }

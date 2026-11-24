@@ -24,7 +24,7 @@ Use English source messages in `t()` and add their Polish translations in [`src/
 
 ## Requirements
 
-- Node.js 22.12+ to install dependencies and build from source. The Windows installer includes the runtime.
+- Node.js 24.15.0 or newer to install dependencies and build from source. The [`.nvmrc`](.nvmrc) file pins Node.js 24 LTS for development. The Windows installer includes the runtime.
 - **Claude Code** (`claude`) **or** **Codex** (`codex`), logged in. The app looks for the binary in `PATH`,
   `~/.local/bin`, VS Code/Cursor extensions and the Codex install directory. You can also set the path in Settings.
 - Optional: **Docker** (sandbox with a terminal) and **Python 3.10–3.13** (dictation).
