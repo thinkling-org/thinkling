@@ -1,9 +1,10 @@
 <script setup>
 import { t } from '../lib/i18n.js'
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { nextTick, onBeforeUnmount, onMounted, useTemplateRef, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useApp } from '../stores/app.js'
-import { RATINGS, formatDelay, schedule } from '../lib/srs.js'
+import { RATINGS } from '../lib/srs.js'
+import { useFlashcardReview } from '../composables/useFlashcardReview.js'
 import { play } from '../lib/sfx.js'
 import Icon from '../components/Icon.vue'
 import Gem from '../components/Gem.vue'
@@ -13,45 +14,13 @@ const app = useApp()
 const router = useRouter()
 const route = useRoute()
 
-// "?all=1" → ćwicz całą talię, nawet jeśli nic nie jest "due"
-const queue = ref(
-  (route.query.all ? [...app.flashcards] : [...app.dueCards])
-    .sort((a, b) => a.due - b.due)
-    .slice(0, 30)
-    .map((c) => c.id),
-)
-const total = ref(queue.value.length)
-const doneCount = ref(0)
-const revealed = ref(false)
-const stats = ref({ again: 0, hard: 0, good: 0, easy: 0 })
-const startedAt = Date.now()
-
-const card = computed(() => app.flashcards.find((c) => c.id === queue.value[0]))
-const finished = computed(() => !queue.value.length)
-
-const previews = computed(() => {
-  if (!card.value) return {}
-  const now = Date.now()
-  return Object.fromEntries(RATINGS.map((r) => [r.id, formatDelay(schedule(card.value, r.id, now).due - now)]))
-})
-
-function rate(rating) {
-  if (!card.value || !revealed.value) return
-  const id = card.value.id
-  ;({ again: () => play('pop', 0.7), hard: () => play('almost'), good: () => play('correct'), easy: () => play('correct') })[rating]()
-  if (queue.value.length === 1 && rating !== 'again') setTimeout(() => play('complete'), 350)
-  app.rateCard(id, rating)
-  stats.value[rating]++
-  queue.value.shift()
-  if (rating === 'again') queue.value.push(id) // wraca jeszcze w tej sesji
-  else doneCount.value++
-  revealed.value = false
-}
+const { total, doneCount, revealed, stats, card, finished, previews, rate } = useFlashcardReview({ reviewAll: !!route.query.all })
+const ratingPanel = useTemplateRef('ratingPanel')
 
 watch(revealed, (r) => {
   if (!r) return
   play('flip')
-  nextTick(() => document.querySelector('.rate')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }))
+  nextTick(() => ratingPanel.value?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }))
 })
 
 function onKey(e) {
@@ -62,64 +31,61 @@ function onKey(e) {
     return
   }
   const n = Number(e.key)
-  if (revealed.value && n >= 1 && n <= 4) rate(RATINGS[n - 1].id)
+  if (revealed.value && n >= 1 && n <= RATINGS.length) rate(RATINGS[n - 1].id)
 }
 
 onMounted(() => window.addEventListener('keydown', onKey))
-onBeforeUnmount(() => {
-  window.removeEventListener('keydown', onKey)
-  if (doneCount.value) app.addTime(Math.min((Date.now() - startedAt) / 1000, 3600))
-})
+onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
 </script>
 
 <template>
   <div class="review">
     <header class="rh">
-      <button class="x" :aria-label="t('Zamknij')" @click="router.back()"><Icon name="x" :size="26" :stroke="2.8" /></button>
+      <button class="x" :aria-label="t('Close')" @click="router.back()"><Icon name="x" :size="26" :stroke="2.8" /></button>
       <div class="bar"><div :style="{ width: `${total ? (doneCount / total) * 100 : 100}%` }" /></div>
       <span class="count">{{ doneCount }} / {{ total }}</span>
     </header>
 
     <main v-if="!total" class="center">
       <Gem :index="3" :size="96" glow />
-      <h1>{{ t('Brak fiszek do powtórki') }}</h1>
-      <p class="sub">{{ t('Fiszki dodają się po lekcjach i z twoich błędów. Wróć później!') }}</p>
+      <h1>{{ t('No flashcards due') }}</h1>
+      <p class="sub">{{ t('Flashcards are added after lessons and from your mistakes. Check back later.') }}</p>
       <div class="row">
-        <RouterLink to="/path" class="btn">{{ t('Do ścieżki') }}</RouterLink>
-        <RouterLink v-if="app.flashcards.length" :to="{ path: '/review', query: { all: 1 } }" class="btn btn-primary">{{ t('Ćwicz całą talię') }}</RouterLink>
+        <RouterLink to="/path" class="btn">{{ t('Go to the learning path') }}</RouterLink>
+        <RouterLink v-if="app.flashcards.length" :to="{ path: '/review', query: { all: 1 } }" class="btn btn-primary">{{ t('Practice the entire deck') }}</RouterLink>
       </div>
     </main>
 
     <main v-else-if="finished" class="center">
       <Gem :index="2" :size="110" glow class="pop" />
-      <h1 class="done">{{ t('Powtórka zrobiona!') }}</h1>
+      <h1 class="done">{{ t('Review complete!') }}</h1>
       <div class="sum">
-        <span class="tag tag-red">{{ t('Znowu:') }} {{ stats.again }}</span>
-        <span class="tag tag-yellow">{{ t('Trudne:') }} {{ stats.hard }}</span>
-        <span class="tag tag-green">{{ t('Dobrze:') }} {{ stats.good }}</span>
-        <span class="tag tag-purple">{{ t('Łatwe:') }} {{ stats.easy }}</span>
+        <span class="tag tag-red">{{ t('Again:') }} {{ stats.again }}</span>
+        <span class="tag tag-yellow">{{ t('Hard:') }} {{ stats.hard }}</span>
+        <span class="tag tag-green">{{ t('Good:') }} {{ stats.good }}</span>
+        <span class="tag tag-purple">{{ t('Easy:') }} {{ stats.easy }}</span>
       </div>
-      <RouterLink to="/path" class="btn btn-primary btn-lg" style="margin-top: 16px">{{ t('Dalej') }}</RouterLink>
+      <RouterLink to="/path" class="btn btn-primary btn-lg" style="margin-top: 16px">{{ t('Continue') }}</RouterLink>
     </main>
 
     <main v-else-if="card" class="stage">
       <div class="inner">
         <div class="meta">
           <span v-if="card.source" class="tag" :class="/bł[ąę]d/.test(card.source) ? 'tag-red' : 'tag-purple'">{{ card.source }}</span>
-          <span v-if="card.lapses" class="muted small">{{ t('pomyłki:') }} {{ card.lapses }}</span>
+          <span v-if="card.lapses" class="muted small">{{ t('mistakes:') }} {{ card.lapses }}</span>
         </div>
         <div class="stack">
           <div aria-hidden="true" class="ghost g2" />
           <div aria-hidden="true" class="ghost g1" />
           <article class="fc card" :key="card.id">
             <div class="side">
-              <span class="label">{{ t('Pytanie') }}</span>
+              <span class="label">{{ t('Question') }}</span>
               <Markdown class="front" :src="card.front" />
             </div>
             <template v-if="revealed">
               <div class="sep" />
               <div class="side">
-                <span class="label" style="color: var(--green)">{{ t('Odpowiedź') }}</span>
+                <span class="label" style="color: var(--green)">{{ t('Answer') }}</span>
                 <Markdown class="back" :src="card.back" />
               </div>
             </template>
@@ -127,11 +93,11 @@ onBeforeUnmount(() => {
         </div>
 
         <div v-if="!revealed" class="reveal">
-          <button class="btn btn-primary btn-lg btn-block" @click="revealed = true">{{ t('Pokaż odpowiedź') }}</button>
-          <span class="muted small">{{ t('Spacja') }}</span>
+          <button class="btn btn-primary btn-lg btn-block" @click="revealed = true">{{ t('Show answer') }}</button>
+          <span class="muted small">{{ t('Space') }}</span>
         </div>
-        <div v-else class="rate">
-          <span class="rq">{{ t('Jak dobrze to pamiętałeś?') }}</span>
+        <div v-else ref="ratingPanel" class="rate">
+          <span class="rq">{{ t('How well did you remember?') }}</span>
           <div class="rgrid">
             <button v-for="(r, i) in RATINGS" :key="r.id" class="rbtn" :class="r.tone" @click="rate(r.id)">
               <span class="rl">{{ t(r.label) }}</span>

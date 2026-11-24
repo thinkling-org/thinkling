@@ -11,6 +11,8 @@ The interface supports **English and Polish**. On first launch, Codenoms saves y
 on desktop or your browser language on the web. Other languages use the English interface. New AI responses use
 your saved language. You can change it under **Settings → Language**.
 
+Use English source messages in `t()` and add their Polish translations in [`src/locales/pl.js`](src/locales/pl.js).
+
 - Describe your situation and the model builds a plan: modules, lessons and a skill assessment (the plan streams in live as it is generated).
 - A learning path with lessons, XP, daily streaks, a daily goal and a 0–1000 score.
 - Exercises:

@@ -12,7 +12,7 @@ const props = defineProps({
   issues: { type: Array, default: () => [] }, // [{line, severity, message, replacement}]
   readOnly: Boolean,
   providerName: { type: String, default: 'Claude' },
-  keepModel: Boolean, // nie usuwaj modelu przy odmontowaniu (zachowuje historię undo przy przełączaniu plików)
+  keepModel: Boolean, // Retain undo history when switching files.
 })
 const emit = defineEmits(['update:modelValue', 'cursor', 'apply', 'dismiss', 'submit', 'save'])
 
@@ -112,13 +112,13 @@ function buildNode(issue, idx) {
   if (issue.replacement && !props.readOnly) {
     const apply = document.createElement('button')
     apply.className = 'dl-zone-apply'
-    apply.textContent = t('Zastosuj: {0}', [issue.replacement.trim().slice(0, 60)])
+    apply.textContent = t('Apply: {0}', [issue.replacement.trim().slice(0, 60)])
     apply.onclick = () => applyFix(issue, idx)
     actions.appendChild(apply)
   }
   const dismiss = document.createElement('button')
   dismiss.className = 'dl-zone-dismiss'
-  dismiss.textContent = issue.replacement ? t('Sam poprawię') : 'OK'
+  dismiss.textContent = issue.replacement ? t('I\'ll fix it myself') : 'OK'
   dismiss.onclick = () => emit('dismiss', idx)
   actions.appendChild(dismiss)
   node.appendChild(actions)

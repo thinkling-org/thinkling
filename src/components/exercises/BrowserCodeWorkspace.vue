@@ -64,13 +64,13 @@ defineExpose({ runAll, showReview })
 </script>
 
 <template>
-  <section class="ide" :aria-label="t('Edytor kodu')">
+  <section class="ide" :aria-label="t('Code editor')">
     <div class="tabs" role="tablist">
       <button role="tab" :aria-selected="tab === 'file'" class="ftab" :class="{ on: tab === 'file' }" @click="tab = 'file'">
         <span class="ext">{{ ext.toUpperCase() }}</span>{{ fileName }}
       </button>
       <button role="tab" :aria-selected="tab === 'tests'" class="ftab" :class="{ on: tab === 'tests' }" @click="tab = 'tests'">
-        <span class="ext">{{ runnable ? 'JS' : 'MD' }}</span>{{ runnable ? testFile : t('przypadki testowe') }}
+        <span class="ext">{{ runnable ? 'JS' : 'MD' }}</span>{{ runnable ? testFile : t('test cases') }}
       </button>
     </div>
 
@@ -98,10 +98,10 @@ defineExpose({ runAll, showReview })
     <div class="panel">
       <div class="ptabs" role="tablist">
         <button role="tab" :aria-selected="panel === 'tests'" :class="{ on: panel === 'tests' }" @click="panel = 'tests'">
-          {{ t('Testy') }} <template v-if="total">{{ passed }}/{{ total }}</template>
+          {{ t('Tests') }} <template v-if="total">{{ passed }}/{{ total }}</template>
         </button>
         <button role="tab" :aria-selected="panel === 'console'" :class="{ on: panel === 'console' }" @click="panel = 'console'">
-          {{ t('Konsola') }} <template v-if="run?.logs?.length">({{ run.logs.length }})</template>
+          {{ t('Console') }} <template v-if="run?.logs?.length">({{ run.logs.length }})</template>
         </button>
         <button role="tab" :aria-selected="panel === 'review'" :class="{ on: panel === 'review' }" @click="panel = 'review'">
           Review {{ providerName }}
@@ -109,40 +109,40 @@ defineExpose({ runAll, showReview })
         <span
           v-if="exercise.testsStatus === 'verified'"
           class="tstat ok"
-          :title="exercise.testsFixNote || t('Wzorcowe rozwiązanie przechodzi wszystkie testy, a szablon je oblewa.')"
-        >{{ t('✓ testy zweryfikowane') }}{{ exercise.testsFixNote ? t(' (poprawione)') : '' }}</span>
+          :title="exercise.testsFixNote || t('The reference solution passes all tests and the starter code fails at least one.')"
+        >{{ t('✓ tests verified') }}{{ exercise.testsFixNote ? t(' (repaired)') : '' }}</span>
         <span
           v-else-if="exercise.testsStatus === 'unverified'"
           class="tstat warn"
-          :title="t('Wzorcowe rozwiązanie nie przeszło testów nawet po poprawce. O zaliczeniu decyduje review.')"
-        >{{ t('⚠ testy niepewne — decyduje review') }}</span>
+          :title="t('The reference solution still fails after repair. Grading relies on code review.')"
+        >{{ t('⚠ unverified tests — grading relies on review') }}</span>
         <button v-if="runnable" class="run" :disabled="running" @click="runAll">
           <span v-if="running" class="spinner" style="width: 14px; height: 14px; border-width: 2px" />
-          {{ t('▶ Uruchom testy') }}
+          {{ t('▶ Run tests') }}
         </button>
       </div>
       <div class="pbody">
         <template v-if="panel === 'tests'">
-          <span v-if="!runnable" class="muted">{{ t('Testy w') }} {{ languageLabel }} {{ t('sprawdza') }} {{ providerName }} {{ t('podczas review (bez uruchamiania).') }}</span>
-          <span v-else-if="running" class="muted">{{ t('Uruchamiam…') }}</span>
-          <span v-else-if="!run" class="muted">{{ t('Kliknij „Uruchom testy” albo od razu „Sprawdź z') }} {{ providerName }}”.</span>
+          <span v-if="!runnable" class="muted">{{ t('Tests in') }} {{ languageLabel }} {{ t('are checked by') }} {{ providerName }} {{ t('during review without running them.') }}</span>
+          <span v-else-if="running" class="muted">{{ t('Running…') }}</span>
+          <span v-else-if="!run" class="muted">{{ t('Click “Run tests” or go straight to “Check with') }} {{ providerName }}”.</span>
           <template v-else>
             <span v-if="run.compileError" class="bad">✗ {{ run.compileError }}</span>
             <TestDiagnosis :run="run" :code="solution" />
             <span v-for="(r, i) in run.results" :key="i" :class="r.ok ? 'good' : 'bad'">
               {{ r.ok ? '✓' : '✗' }} {{ r.name }}<template v-if="!r.ok"> — {{ r.error }}</template>
             </span>
-            <span v-if="!run.compileError && !run.results.length" class="muted">{{ t('Brak testów do uruchomienia.') }}</span>
+            <span v-if="!run.compileError && !run.results.length" class="muted">{{ t('There are no tests to run.') }}</span>
           </template>
         </template>
         <template v-else-if="panel === 'console'">
-          <span v-if="!run?.logs?.length" class="muted">{{ t('Brak logów. Użyj console.log w kodzie i uruchom testy.') }}</span>
+          <span v-if="!run?.logs?.length" class="muted">{{ t('No logs. Add console.log to your code and run the tests.') }}</span>
           <span v-for="(l, i) in run?.logs || []" :key="i" :class="l.level === 'error' ? 'bad' : l.level === 'warn' ? 'warn' : ''">{{ l.text }}</span>
         </template>
         <template v-else>
-          <span v-if="busy" class="muted">{{ providerName }} {{ t('robi review…') }}</span>
+          <span v-if="busy" class="muted">{{ providerName }} {{ t('is reviewing…') }}</span>
           <Markdown v-else-if="review?.summary" :src="review.summary" class="review" />
-          <span v-else class="muted">{{ t('Review pojawi się po „Sprawdź z') }} {{ providerName }}”.</span>
+          <span v-else class="muted">{{ t('Review appears after you choose “Check with') }} {{ providerName }}”.</span>
         </template>
       </div>
     </div>

@@ -1,14 +1,14 @@
 import { t } from './i18n.js'
-// Uproszczone powtórki rozłożone w czasie (w duchu SM-2).
+// A simplified spaced repetition scheduler based on SM-2.
 
 const MIN = 60_000
 const DAY = 24 * 60 * MIN
 
 export const RATINGS = [
-  { id: 'again', label: 'Znowu', tone: 'red' },
-  { id: 'hard', label: 'Trudne', tone: 'yellow' },
-  { id: 'good', label: 'Dobrze', tone: 'green' },
-  { id: 'easy', label: 'Łatwe', tone: 'blue' },
+  { id: 'again', label: 'Again', tone: 'red' },
+  { id: 'hard', label: 'Hard', tone: 'yellow' },
+  { id: 'good', label: 'Good', tone: 'green' },
+  { id: 'easy', label: 'Easy', tone: 'blue' },
 ]
 
 export function newCard({ front, back, source = '' }) {
@@ -19,14 +19,14 @@ export function newCard({ front, back, source = '' }) {
     source,
     created: Date.now(),
     due: Date.now(),
-    interval: 0, // dni
+    interval: 0, // days
     ease: 2.5,
     reps: 0,
     lapses: 0,
   }
 }
 
-/** Zwraca { due, interval, ease } po ocenie — bez mutacji. */
+/** Compute the next review schedule without mutating the card. */
 export function schedule(card, rating, now = Date.now()) {
   let { interval, ease } = card
   switch (rating) {
@@ -48,8 +48,8 @@ export function schedule(card, rating, now = Date.now()) {
 
 export function formatDelay(ms) {
   if (ms < 60 * MIN) return `${Math.max(1, Math.round(ms / MIN))} min`
-  if (ms < DAY) return t('{0} godz.', [Math.round(ms / (60 * MIN))])
+  if (ms < DAY) return t('{0} h', [Math.round(ms / (60 * MIN))])
   const d = Math.round(ms / DAY)
-  if (d < 31) return d === 1 ? t('1 dzień') : t('{0} dni', [d])
-  return t('{0} mies.', [Math.round(d / 30)])
+  if (d < 31) return d === 1 ? t('1 day') : t('{0} days', [d])
+  return t('{0} mo', [Math.round(d / 30)])
 }

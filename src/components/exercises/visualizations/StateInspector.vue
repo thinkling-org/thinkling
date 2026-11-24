@@ -16,7 +16,7 @@ watch(index, () => { picked.value = null })
 
 const step = computed(() => props.config.steps[index.value])
 const isStack = computed(() => props.config.layout === 'stack')
-// Stos: aktywny element jest na górze, więc rysujemy od końca.
+// Render the stack from the end so the active frame appears at the top.
 const items = computed(() => {
   const all = step.value.items.map((item, position) => ({ ...item, position }))
   return isStack.value ? all.reverse() : all
@@ -27,20 +27,20 @@ const selected = computed(() => {
   return step.value.items[position] ? position : null
 })
 const detail = computed(() => (selected.value === null ? null : step.value.items[selected.value]))
-const hint = { stack: t('góra = aktywne'), queue: t('pierwszy wychodzi'), list: '' }
+const hint = { stack: t('top = active'), queue: t('first in, first out'), list: '' }
 </script>
 
 <template>
-  <section class="card viz inspector" :aria-label="t('Podgląd stanu')">
+  <section class="card viz inspector" :aria-label="t('State inspector')">
     <Markdown v-if="config.instruction" class="instruction" :src="config.instruction" />
     <div class="layout" :class="{ solo: !config.code }">
-      <CodeBlock v-if="config.code" :code="config.code" :language="codeLanguage" :file-name="t('przykład')" :active-line="step.line" />
+      <CodeBlock v-if="config.code" :code="config.code" :language="codeLanguage" :file-name="t('example')" :active-line="step.line" />
       <div class="panel">
         <div class="panel-head label">
           <span>{{ config.label }}</span><span v-if="hint[config.layout]" class="hint">{{ hint[config.layout] }}</span>
         </div>
         <div class="items" :class="config.layout" role="group" :aria-label="config.label">
-          <p v-if="!items.length" class="empty">{{ t('Pusto') }}</p>
+          <p v-if="!items.length" class="empty">{{ t('Empty') }}</p>
           <button
             v-for="item in items"
             :key="`${index}-${item.position}`"

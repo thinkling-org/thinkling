@@ -8,14 +8,14 @@ const step = defineModel({ type: Number, default: 0 })
 
 <template>
   <div class="step-controls" @keydown.enter.stop>
-    <button type="button" class="btn btn-ghost btn-sm" :disabled="step === 0" :aria-label="t('Poprzedni krok')" @click="step--">
+    <button type="button" class="btn btn-ghost btn-sm" :disabled="step === 0" :aria-label="t('Previous step')" @click="step--">
       <Icon name="arrow-left" :size="16" :stroke="2.6" />
     </button>
     <button type="button" class="btn btn-primary btn-sm" :disabled="step >= total - 1" @click="step++">
-      {{ t('Następny krok') }}<Icon name="arrow-right" :size="16" :stroke="2.6" />
+      {{ t('Next step') }}<Icon name="arrow-right" :size="16" :stroke="2.6" />
     </button>
-    <button v-if="step > 0" type="button" class="btn btn-ghost btn-sm" @click="step = 0">{{ t('Od początku') }}</button>
-    <span class="counter" aria-live="polite">{{ t('Krok') }} {{ step + 1 }} / {{ total }}</span>
+    <button v-if="step > 0" type="button" class="btn btn-ghost btn-sm" @click="step = 0">{{ t('From the start') }}</button>
+    <span class="counter" aria-live="polite">{{ t('Step') }} {{ step + 1 }} / {{ total }}</span>
   </div>
 </template>
 

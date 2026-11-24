@@ -4,54 +4,54 @@ import { t } from './i18n.js'
 export const activeTerm = shallowRef(null)
 
 const terms = [
-  ['TDZ', ['TDZ', 'temporal dead zone'], 'Okres od wejścia do zakresu do zainicjalizowania deklaracji let, const lub class. Próba odczytu wiązania w tym czasie powoduje ReferenceError.'],
-  ['Hoisting', ['hoisting', 'hoistingu'], 'Silnik przygotowuje wiązania deklaracji przed wykonaniem kodu w danym zakresie. Na przykład var ma początkowo wartość undefined, a let i const pozostają w TDZ do inicjalizacji.'],
-  ['Closure (domknięcie)', ['closure', 'closures', 'domknięcie', 'domknięcia'], 'Funkcja zachowuje dostęp do wiązań z zakresu, w którym powstała, także po zakończeniu tego zakresu. Przy wywołaniu odczytuje aktualną wartość przechwyconego wiązania.'],
-  ['Zakres leksykalny', ['zakres leksykalny', 'lexical scope'], 'O dostępności nazw decyduje miejsce, w którym kod został zapisany. Funkcja może szukać nazw w swoim zakresie i w zakresach go otaczających.'],
-  ['Przesłanianie', ['shadowing', 'przesłanianie'], 'Deklaracja w wewnętrznym zakresie może mieć tę samą nazwę co deklaracja zewnętrzna. Odwołanie w zakresie wewnętrznym wybiera bliższe wiązanie.'],
-  ['Kontekst wykonania', ['execution context', 'kontekst wykonania', 'kontekstu wykonania'], 'Stan, którego silnik używa podczas wykonywania danego kodu. Obejmuje między innymi informacje potrzebne do rozwiązywania nazw i ustalenia wartości this.'],
-  ['Event loop', ['event loop', 'pętla zdarzeń'], 'Mechanizm, który pozwala środowisku wykonywać kolejne zadania. Po zakończeniu zadania środowisko opróżnia kolejkę mikrozadań przed przejściem do następnego zadania.'],
-  ['Mikrozadanie', ['microtask', 'microtasks', 'mikrozadanie', 'mikrozadania', 'mikrozadań'], 'Zadanie wykonywane podczas opróżniania kolejki mikrozadań. Do tej kolejki trafiają między innymi reakcje na rozstrzygnięcie Promise.'],
-  ['Makrozadanie', ['macrotask', 'macrotasks', 'makrozadanie', 'makrozadania', 'makrozadań'], 'Potoczna nazwa zadania w pętli zdarzeń. Przykładem jest wywołanie funkcji przekazanej do setTimeout, kiedy środowisko wybierze to zadanie do wykonania.'],
-  ['ReferenceError', ['ReferenceError'], 'Błąd oznaczający, że silnik nie może odczytać wskazanego wiązania, na przykład dla nieznanej nazwy lub nazwy znajdującej się jeszcze w TDZ.'],
-  ['TypeError', ['TypeError'], 'Błąd oznaczający, że dana wartość nie obsługuje wykonywanej operacji, na przykład gdy próbujesz wywołać liczbę jak funkcję.'],
+  ['TDZ', ['TDZ', 'temporal dead zone'], 'The period between entering a scope and initializing a let, const, or class declaration. Reading the binding in this period throws a ReferenceError.'],
+  ['Hoisting', ['hoisting', 'hoistingu'], 'The engine prepares declaration bindings before running code in a scope. For example, var starts as undefined, while let and const remain in the TDZ until initialization.'],
+  ['Closure', ['closure', 'closures', 'domknięcie', 'domknięcia'], 'A function retains access to bindings from the scope where it was created, even after that scope exits. Calling it reads the current value of the captured binding.'],
+  ['Lexical scope', ['zakres leksykalny', 'lexical scope'], 'Where the code is written determines which names are accessible. A function can look up names in its own scope and enclosing scopes.'],
+  ['Shadowing', ['shadowing', 'przesłanianie'], 'An inner declaration can have the same name as an outer one. References in the inner scope resolve to the nearer binding.'],
+  ['Execution context', ['execution context', 'kontekst wykonania', 'kontekstu wykonania'], 'The state the engine uses to run a piece of code, including information needed to resolve names and determine this.'],
+  ['Event loop', ['event loop', 'pętla zdarzeń'], 'The mechanism by which the runtime runs successive tasks. After a task completes, the runtime drains the microtask queue before running the next task.'],
+  ['Microtask', ['microtask', 'microtasks', 'mikrozadanie', 'mikrozadania', 'mikrozadań'], 'A task run while draining the microtask queue. Promise reactions are one example.'],
+  ['Macrotask', ['macrotask', 'macrotasks', 'makrozadanie', 'makrozadania', 'makrozadań'], 'An informal name for an event-loop task. A callback given to setTimeout runs as one when the runtime selects it.'],
+  ['ReferenceError', ['ReferenceError'], 'An error thrown when the engine cannot read a binding, for example because a name is unknown or is still in the TDZ.'],
+  ['TypeError', ['TypeError'], 'An error thrown when a value does not support the operation, such as trying to call a number as a function.'],
 ]
 
 const definitions = new Map(terms.flatMap(([title, aliases, definition]) =>
   aliases.map((alias) => [alias.toLowerCase(), { title, definition }]),
 ))
 const pythonFunctions = {
-  print: 'Wypisuje podane wartości. Domyślnie oddziela je spacjami i kończy znakem nowej linii.',
-  input: 'Czyta jedną linię wpisaną przez użytkownika i zwraca ją jako tekst.',
-  len: 'Zwraca liczbę elementów, na przykład znaków w tekście albo elementów listy.',
-  range: 'Tworzy zakres liczb całkowitych. Wartość końcowa jest wyłączona z zakresu.',
-  int: 'Zamienia wartość na liczbę całkowitą. Przy konwersji liczby ułamkowej odcina część ułamkową.',
-  float: 'Zamienia liczbę lub tekst na liczbę zmiennoprzecinkową.',
-  str: 'Zwraca tekstową reprezentację przekazanej wartości.',
-  bool: 'Sprawdza wartość w kontekście logicznym i zwraca True albo False.',
-  type: 'Wywołane z jednym argumentem zwraca jego typ.',
-  round: 'Zaokrągla liczbę. Opcjonalny drugi argument określa liczbę miejsc po przecinku.',
-  abs: 'Zwraca wartość bezwzględną liczby. Dla liczby zespolonej zwraca jej moduł.',
-  sum: 'Dodaje wartości z przekazanej kolekcji, na przykład liczby z listy.',
-  min: 'Zwraca najmniejszą z wartości.',
-  max: 'Zwraca największą z wartości.',
-  list: 'Tworzy listę, na przykład z elementów zakresu albo napisu.',
-  dict: 'Tworzy słownik przechowujący pary klucz i wartość.',
-  set: 'Tworzy zbiór unikalnych elementów.',
-  tuple: 'Tworzy krotkę, czyli uporządkowaną kolekcję, której elementów nie można podmieniać.',
-  sorted: 'Zwraca nową, posortowaną listę elementów.',
-  enumerate: 'Podczas iteracji zwraca pary zawierające numer i element. Numeracja domyślnie zaczyna się od zera.',
-  zip: 'Podczas iteracji łączy elementy z tych samych pozycji w krotki. Domyślnie kończy na najkrótszym wejściu.',
-  map: 'Podczas iteracji stosuje funkcję do kolejnych elementów i zwraca jej wyniki.',
-  filter: 'Podczas iteracji przepuszcza elementy, dla których podana funkcja zwraca wartość prawdziwą.',
-  any: 'Zwraca True, jeśli przynajmniej jeden element ma wartość prawdziwą.',
-  all: 'Zwraca True, jeśli każdy element ma wartość prawdziwą. Dla pustego wejścia także zwraca True.',
+  print: 'Prints the supplied values. By default it separates them with spaces and ends with a newline.',
+  input: 'Reads one line of user input and returns it as text.',
+  len: 'Returns the number of items, such as characters in a string or elements in a list.',
+  range: 'Creates a range of integers. The end value is excluded.',
+  int: 'Converts a value to an integer. It truncates the fractional part.',
+  float: 'Converts a number or string to a floating-point number.',
+  str: 'Returns the string representation of a value.',
+  bool: 'Evaluates a value in a Boolean context and returns True or False.',
+  type: 'With one argument, returns its type.',
+  round: 'Rounds a number. An optional second argument specifies decimal places.',
+  abs: 'Returns the absolute value. For a complex number, returns its magnitude.',
+  sum: 'Adds the values from an iterable, such as a list.',
+  min: 'Returns the smallest value.',
+  max: 'Returns the largest value.',
+  list: 'Creates a list, for example from a range or string.',
+  dict: 'Creates a dictionary of key-value pairs.',
+  set: 'Creates a set of unique items.',
+  tuple: 'Creates a tuple, an ordered collection whose elements cannot be reassigned.',
+  sorted: 'Returns a new sorted list.',
+  enumerate: 'Yields pairs of an index and an item. The index starts at zero by default.',
+  zip: 'Combines items at matching positions into tuples. It stops at the shortest input by default.',
+  map: 'Applies a function to each item and yields its result.',
+  filter: 'Yields only items for which the supplied function returns a truthy value.',
+  any: 'Returns True if at least one item is truthy.',
+  all: 'Returns True if every item is truthy. Also returns True for empty input.',
 }
 const javascriptFunctions = {
-  'console.log': 'Wypisuje podane wartości w konsoli. Przydaje się do podglądania danych podczas działania kodu.',
-  parseInt: 'Czyta początek tekstu jako liczbę całkowitą. Drugi argument może wskazać podstawę systemu liczbowego.',
-  parseFloat: 'Czyta początek tekstu jako liczbę, również z częścią ułamkową.',
-  isNaN: 'Najpierw próbuje zamienić argument na liczbę, a potem sprawdza, czy wynikiem jest NaN.',
+  'console.log': 'Prints values to the console for inspection while the program runs.',
+  parseInt: 'Parses an integer from the start of a string. A second argument can specify the radix.',
+  parseFloat: 'Parses a number, including a fractional part, from the start of a string.',
+  isNaN: 'Converts the argument to a number and then checks whether it is NaN.',
 }
 const codeDefinitions = new Map(
   Object.entries({ python: pythonFunctions, javascript: javascriptFunctions }).flatMap(([language, entries]) =>
@@ -127,11 +127,11 @@ export function linkGlossaryTerms(html) {
 }
 
 const CONSTRUCTS = {
-  python: [[/\bf(["'])/, 'f"...{x}..."', 'f-string: wstawia wartości zmiennych w nawiasach klamrowych do tekstu.']],
-  javascript: [[/`[^`]*\$\{/, '`...${x}...`', 'Template literal: wstawia wartości wyrażeń do tekstu.']],
+  python: [[/\bf(["'])/, 'f"...{x}..."', 'f-string: inserts variable values in braces into the string.']],
+  javascript: [[/`[^`]*\$\{/, '`...${x}...`', 'Template literal: inserts expression values into the string.']],
 }
 
-/** Narzędzia użyte we wzorcowym rozwiązaniu, gdy lekcja nie ma własnej listy "toolbox". */
+/** Infer toolbox entries from the reference solution when a lesson has none. */
 export function suggestTools(code, language) {
   const scope = language === 'typescript' ? 'javascript' : language
   const known = { python: pythonFunctions, javascript: javascriptFunctions }[scope]

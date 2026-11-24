@@ -29,7 +29,7 @@ export function useLessonExamples(exercise) {
     const state = (traceState[current.id] = reactive({ loading: true, chars: 0, error: null }))
     try {
       const data = await ai('trace', { exercise: current, chosenIndex }, { onProgress: (p) => (state.chars = p.chars) })
-      if (!data?.steps?.length) throw new Error(t('Model nie zwrócił kroków'))
+      if (!data?.steps?.length) throw new Error(t('The model returned no steps'))
       current.trace = data
     } catch (err) {
       state.error = err.message

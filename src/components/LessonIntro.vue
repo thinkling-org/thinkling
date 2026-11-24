@@ -12,9 +12,9 @@ const props = defineProps({
 const level = defineModel('level', { type: Number, default: 0 })
 
 const isTest = computed(() => props.meta.kind === 'test')
-const lessonNo = computed(() => t('Lekcja {0} z {1}', [props.meta.lessonIndex + 1, props.meta.module?.lessons?.length || 1]))
+const lessonNo = computed(() => t('Lesson {0} of {1}', [props.meta.lessonIndex + 1, props.meta.module?.lessons?.length || 1]))
 const summary = computed(() => props.intro?.summary || (props.intro?.outcome ? '' : props.meta.focus) || '')
-// Starsze lekcje mają tylko jedno zdanie "outcome" zamiast listy umiejętności.
+// Older lessons provide a single outcome instead of a list of skills.
 const outcomes = computed(() => {
   const list = (props.intro?.outcomes || []).filter((item) => item?.trim())
   if (list.length) return list.slice(0, 3)
@@ -41,13 +41,13 @@ const current = computed(() => props.levels[level.value] || props.levels[0])
     </div>
 
     <div class="head">
-      <span class="label kicker">{{ isTest ? t('Sprawdzian modułu') : lessonNo }}</span>
+      <span class="label kicker">{{ isTest ? t('Module assessment') : lessonNo }}</span>
       <Markdown tag="h1" fit-heading inline class="title" :src="meta.title" />
       <Markdown v-if="summary" class="summary" glossary :src="summary" />
     </div>
 
     <div v-if="outcomes.length" class="outcomes" :class="`n${outcomes.length}`">
-      <h2 class="sr-only">{{ isTest ? t('Co przećwiczysz') : t('Czego się nauczysz') }}</h2>
+      <h2 class="sr-only">{{ isTest ? t('What you\'ll practice') : t('What you\'ll learn') }}</h2>
       <div v-for="(item, k) in outcomes" :key="k" class="outcome">
         <Icon name="check" :size="26" :stroke="2.8" class="tick" />
         <Markdown tag="span" inline glossary :src="item" />
@@ -56,15 +56,15 @@ const current = computed(() => props.levels[level.value] || props.levels[0])
 
     <div v-if="intro?.relevance" class="banner goal">
       <Icon name="target" :size="26" :stroke="2.4" />
-      <p><strong>{{ t('Krok w stronę twojego celu:') }}</strong> <Markdown tag="span" inline glossary :src="intro.relevance" /></p>
+      <p><strong>{{ t('A step toward your goal:') }}</strong> <Markdown tag="span" inline glossary :src="intro.relevance" /></p>
     </div>
     <div v-if="intro?.focus" class="banner focus">
       <Icon name="bulb" :size="24" :stroke="2.4" />
-      <p><strong>{{ t('Na co patrzeć:') }}</strong> <Markdown tag="span" inline glossary :src="intro.focus" /></p>
+      <p><strong>{{ t('What to watch:') }}</strong> <Markdown tag="span" inline glossary :src="intro.focus" /></p>
     </div>
 
     <div v-if="levels.length > 1" class="levels">
-      <span id="level-question" class="question">{{ t('Ile już o tym wiesz?') }}</span>
+      <span id="level-question" class="question">{{ t('How familiar are you with this?') }}</span>
       <div class="options" role="radiogroup" aria-labelledby="level-question">
         <button
           v-for="(item, k) in levels"
@@ -75,11 +75,11 @@ const current = computed(() => props.levels[level.value] || props.levels[0])
           :class="{ on: k === level }"
           :aria-checked="k === level"
           @click="level = k"
-        >{{ item.label }}</button>
+        >{{ t(item.label) }}</button>
       </div>
       <div :key="level" class="plan" aria-live="polite">
         <svg class="mascot" aria-hidden="true" width="36" height="36" viewBox="0 0 64 64"><polygon points="32,4 56,18 56,46 32,60 8,46 8,18" fill="#7C5CFF" /><polygon points="32,4 56,18 32,30 8,18" fill="#A08BFF" /><ellipse cx="23" cy="36" rx="6.5" ry="7.5" fill="#fff" /><ellipse cx="41" cy="36" rx="6.5" ry="7.5" fill="#fff" /><circle cx="21" cy="37" r="3.4" fill="#15181B" /><circle cx="39" cy="37" r="3.4" fill="#15181B" /></svg>
-        <span class="bubble">{{ current.plan }}</span>
+        <span class="bubble">{{ t(current.plan) }}</span>
       </div>
     </div>
   </div>

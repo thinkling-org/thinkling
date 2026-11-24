@@ -1,6 +1,6 @@
 import { t } from './locale.js'
 // Wykrywanie i uruchamianie lokalnych CLI (Claude Code / Codex).
-// Oba działają w ramach Twojej subskrypcji — nie potrzebujemy kluczy API.
+// Both CLIs use the user’s subscription.
 import { spawn, execFileSync } from 'node:child_process'
 import fs from 'node:fs'
 import os from 'node:os'
@@ -58,8 +58,8 @@ function scanDirs(dirs, prefix, relCandidates) {
 }
 
 /**
- * Zamienia ścieżkę do binarki na komendę do spawn().
- * Shimy npm na Windows (.cmd) rozwiązujemy do pliku JS, żeby uniknąć cmd.exe i problemów z cudzysłowami.
+ * Convert the binary path into a spawn command.
+ * Resolve Windows npm shims (.cmd) to their JS entrypoints to avoid cmd.exe quoting issues.
  */
 function toCommand(p, npmScripts) {
   if (!p) return null
@@ -117,7 +117,7 @@ const resolveCache = new Map()
 
 function resolveProvider(id, overridePath) {
   const def = PROVIDERS[id]
-  if (!def) throw new Error(t('Nieznany dostawca: {0}', [id]))
+  if (!def) throw new Error(t('Unknown provider: {0}', [id]))
   const key = `${id}|${overridePath || ''}`
   const cached = resolveCache.get(key)
   if (cached && Date.now() - cached.at < 60_000 && (!cached.cmd || exists(cached.cmd.path))) return cached.cmd
@@ -134,7 +134,7 @@ function resolveProvider(id, overridePath) {
 function cleanEnv(id, cmd) {
   const env = { ...process.env }
   if (cmd.nodeScript && process.versions.electron) env.ELECTRON_RUN_AS_NODE = '1'
-  // Wymuszamy logowanie subskrypcją, a nie płatnym kluczem API.
+  // Use the subscription login instead of API key billing.
   if (id === 'claude') {
     delete env.ANTHROPIC_API_KEY
     delete env.CLAUDECODE
@@ -169,7 +169,7 @@ export async function providerStatus(id, overridePath) {
 }
 
 const EFFORTS = ['low', 'medium', 'high', 'xhigh', 'max']
-const EFFORT_LABELS = { low: 'Niski', medium: 'Średni', high: 'Wysoki', xhigh: 'Bardzo wysoki', max: 'Maksymalny' }
+const EFFORT_LABELS = { low: 'Low', medium: 'Medium', high: 'High', xhigh: 'Very high', max: 'Maximum' }
 
 function safeEffort(effort) {
   return EFFORTS.includes(effort) ? effort : ''
@@ -194,7 +194,7 @@ function runQuiet(cmd, args, id, timeout = 20_000) {
 
 const authCache = new Map()
 
-/** Czy CLI jest zalogowane subskrypcją. `null` = nie wiadomo (stara wersja CLI). */
+/** Check the CLI subscription login. Older CLIs may return null when the status is unknown. */
 export async function providerAuth(id, overridePath) {
   const cmd = resolveProvider(id, overridePath)
   if (!cmd) return { loggedIn: false, method: null }
@@ -225,22 +225,22 @@ export function clearProviderCaches() {
 }
 
 const CLAUDE_MODELS = [
-  { id: 'fable', label: 'Fable', description: t('Najmocniejszy model, najlepsza jakość lekcji i ocen.') },
-  { id: 'opus', label: 'Opus', description: t('Bardzo dobra jakość, szybszy od Fable.') },
-  { id: 'sonnet', label: 'Sonnet', description: t('Balans jakości i szybkości.') },
-  { id: 'haiku', label: 'Haiku', description: t('Najszybszy i najtańszy w limitach subskrypcji.') },
+  { id: 'fable', label: 'Fable', description: t('Most capable model for lessons and feedback.') },
+  { id: 'opus', label: 'Opus', description: t('Strong quality, faster than Fable.') },
+  { id: 'sonnet', label: 'Sonnet', description: t('Balance of quality and speed.') },
+  { id: 'haiku', label: 'Haiku', description: t('Fastest option and lowest subscription usage.') },
 ].map((m) => ({ ...m, efforts: EFFORTS }))
 
 const modelsCache = new Map()
 
-/** Lista modeli i poziomów effortu, które obsługuje dane CLI. */
+/** List the models and effort levels supported by the CLI. */
 export async function providerModels(id, overridePath) {
   const effortList = (list) => list.filter((e) => EFFORTS.includes(e)).map((e) => ({ id: e, label: t(EFFORT_LABELS[e]) }))
   if (id === 'claude') {
     return {
       models: CLAUDE_MODELS.map((m) => ({ ...m, efforts: effortList(m.efforts) })),
       efforts: effortList(EFFORTS),
-      defaultLabel: t('Domyślny z CLI'),
+      defaultLabel: t('CLI default'),
     }
   }
   const cmd = resolveProvider(id, overridePath)
@@ -270,13 +270,13 @@ export async function providerModels(id, overridePath) {
       defaultEffort: m.default_reasoning_level || '',
       efforts: effortList((m.supported_reasoning_levels || []).map((l) => l.effort)),
     }))
-  const value = { models, efforts: effortList(EFFORTS), defaultLabel: t('Domyślny z ~/.codex/config.toml') }
+  const value = { models, efforts: effortList(EFFORTS), defaultLabel: t('Default from ~/.codex/config.toml') }
   if (models.length) modelsCache.set(key, { at: Date.now(), value })
   return value
 }
 
 /**
- * Uruchamia jedno zapytanie do modelu.
+ * Run one model request.
  * @returns {Promise<{data:any,text:string}>}
  */
 export function runAI({ provider = 'claude', model, effort, binPath, system, prompt, schema, onProgress, signal, timeoutMs = 6 * 60_000 }) {
@@ -285,8 +285,8 @@ export function runAI({ provider = 'claude', model, effort, binPath, system, pro
     return Promise.reject(
       new Error(
         provider === 'claude'
-          ? t('Nie znaleziono Claude Code CLI. Zainstaluj go (https://claude.com/claude-code) albo podaj ścieżkę w Ustawieniach.')
-          : t('Nie znaleziono Codex CLI. Zainstaluj go (npm i -g @openai/codex) albo podaj ścieżkę w Ustawieniach.'),
+          ? t('Claude Code CLI not found. Install it from https://claude.com/claude-code or set its path in Settings.')
+          : t('Codex CLI not found. Install it with npm i -g @openai/codex or set its path in Settings.'),
       ),
     )
   }
@@ -408,17 +408,17 @@ function runClaude({ cmd, model, effort, system, prompt, schema, onProgress, sig
     child.stderr.on('data', (d) => (stderr += d))
     child.on('error', (err) => reject(err))
     child.on('close', (code) => {
-      if (signal?.aborted) return reject(new Error(t('Przerwano')))
-      if (timedOut) return reject(new Error(t('Przekroczono limit czasu odpowiedzi modelu')))
+      if (signal?.aborted) return reject(new Error(t('Cancelled')))
+      if (timedOut) return reject(new Error(t('The model response timed out')))
       if (!final) {
-        return reject(new Error(t('Claude CLI zakończył się bez wyniku (kod {0}). {1}', [code, stderr.slice(-800)]).trim()))
+        return reject(new Error(t('Claude CLI exited without a result (code {0}). {1}', [code, stderr.slice(-800)]).trim()))
       }
       if (final.is_error) {
-        return reject(new Error(String(final.result || final.subtype || t('Błąd Claude CLI'))))
+        return reject(new Error(String(final.result || final.subtype || t('Claude CLI error'))))
       }
       const resultText = typeof final.result === 'string' ? final.result : text
       const data = schema ? final.structured_output ?? tryParseJson(resultText) : resultText
-      if (schema && !data) return reject(new Error(t('Model nie zwrócił poprawnego JSON-a')))
+      if (schema && !data) return reject(new Error(t('The model did not return valid JSON')))
       resolve({ data, text: resultText })
     })
     child.stdin.end(prompt)
@@ -472,11 +472,11 @@ function runCodex({ cmd, model, effort, system, prompt, schema, onProgress, sign
         out = fs.readFileSync(outFile, 'utf8')
       } catch {}
       cleanup()
-      if (signal?.aborted) return reject(new Error(t('Przerwano')))
-      if (timedOut) return reject(new Error(t('Przekroczono limit czasu odpowiedzi modelu')))
-      if (!out.trim()) return reject(new Error(t('Codex CLI nie zwrócił odpowiedzi (kod {0}). {1}', [code, stderr.slice(-800)]).trim()))
+      if (signal?.aborted) return reject(new Error(t('Cancelled')))
+      if (timedOut) return reject(new Error(t('The model response timed out')))
+      if (!out.trim()) return reject(new Error(t('Codex CLI did not return a response (code {0}). {1}', [code, stderr.slice(-800)]).trim()))
       const data = schema ? tryParseJson(out) : out.trim()
-      if (schema && !data) return reject(new Error(t('Model nie zwrócił poprawnego JSON-a')))
+      if (schema && !data) return reject(new Error(t('The model did not return valid JSON')))
       resolve({ data, text: out })
     })
     const full = [

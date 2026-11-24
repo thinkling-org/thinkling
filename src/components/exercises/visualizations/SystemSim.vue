@@ -11,8 +11,8 @@ const W = 320
 const H = 140
 const PAD = { left: 8, right: 8, top: 10, bottom: 10 }
 const PLAY_FRAMES = 300
-const ALGORITHM_LABEL = { fixed: t('stałe okno'), sliding: t('przesuwane okno'), token: 'token bucket', leaky: 'leaky bucket' }
-const MODE_LABEL = { open: t('przepuszcza wszystko'), closed: t('odrzuca wszystko'), local: t('limit lokalny') }
+const ALGORITHM_LABEL = { fixed: t('fixed window'), sliding: t('sliding window'), token: 'token bucket', leaky: 'leaky bucket' }
+const MODE_LABEL = { open: t('allow all'), closed: t('reject all'), local: t('local limit') }
 const number = numberFormatter({ maximumFractionDigits: 1 })
 const compact = numberFormatter({ notation: 'compact', maximumSignificantDigits: 3 })
 
@@ -90,7 +90,7 @@ const failureBands = computed(() => props.config.failures.map((f) => ({
 const charts = computed(() => goals.value.filter((goal) => goal.metric !== 'cost').map((goal) => {
   const series = goalSeries(props.config, result.value, goal)
   const peak = Math.max(0, ...series.filter((v) => v != null))
-  // Oś sięga najwyżej 4× progu, żeby próg był czytelny także przy ogromnych wartościach.
+  // Cap the axis at four times the threshold to keep it visible for very large values.
   const yMax = goal.value > 0 ? Math.max(goal.value * 1.6, Math.min(peak * 1.05, goal.value * 4)) : Math.max(peak * 1.05, 1)
   const py = (v) => H - PAD.bottom - Math.min(v, yMax) / yMax * (H - PAD.top - PAD.bottom)
   const points = []
@@ -120,37 +120,37 @@ function nodeView(id) {
   const view = { id, label: node.label, kind: node.kind, lines: [], state: 'idle' }
   if (node.kind === 'limiter') {
     view.lines.push(`${ALGORITHM_LABEL[node.algorithm]} · ${number(node.limit)} / ${node.window} s`)
-    if (node.store) view.lines.push(t('licznik: {0}', [nodes.value.get(node.store).label]))
-    else if (node.copies > 1) view.lines.push(t('liczniki lokalne ×{0}', [node.copies]))
+    if (node.store) view.lines.push(t('counter: {0}', [nodes.value.get(node.store).label]))
+    else if (node.copies > 1) view.lines.push(t('local counters ×{0}', [node.copies]))
     if (mode !== 'normal') {
       view.state = 'alert'
-      view.lines.push(t('awaria: {0}', [MODE_LABEL[mode]]))
+      view.lines.push(t('outage: {0}', [MODE_LABEL[mode]]))
     } else view.state = 'active'
     return view
   }
   if (mode === 'down') {
     view.state = 'down'
-    view.lines.push(t('nie działa'))
+    view.lines.push(t('not running'))
     return view
   }
   if (node.kind === 'cache') {
     view.state = 'active'
-    view.lines.push(t('trafienia {0}%', [Math.round(node.hitRate * 100)]))
+    view.lines.push(t('{0}% hits', [Math.round(node.hitRate * 100)]))
     return view
   }
   if (node.kind === 'store' && !usedStores.value.has(id)) {
-    view.lines.push(t('×{0} · nieużywany', [node.instances]))
+    view.lines.push(t('×{0} · unused', [node.instances]))
     return view
   }
   view.state = utilization > 100 ? 'alert' : 'active'
-  view.lines.push(t('×{0} · obciążenie {1}%', [node.instances, Math.round(utilization)]))
+  view.lines.push(t('×{0} · load {1}%', [node.instances, Math.round(utilization)]))
   return view
 }
 
 const usedStores = computed(() => new Set([...nodes.value.values()]
   .filter((n) => n.kind === 'limiter' && n.store)
   .map((n) => n.store)))
-// Magazyn rysujemy pod limiterem, który go używa. Nieużywany wisi pod pierwszym limiterem.
+// Place each store under the limiter that uses it. Put unused stores under the first limiter.
 const firstLimiter = computed(() => props.config.path.find((id) => nodes.value.get(id).kind === 'limiter'))
 const stages = computed(() => props.config.path.map((id) => {
   const node = nodes.value.get(id)
@@ -163,26 +163,26 @@ const sources = computed(() => props.config.sources.map((source, k) => ({
   rate: result.value.perClass[k].offered[time.value],
 })))
 
-// ---------------------------------------------------------------- podpowiedź
+// ---------------------------------------------------------------- hints
 
 function showHint() {
   const failing = evaluate(props.config, result.value, last.value).find((goal) => !goal.ok)
-  if (!started.value) hint.value = t('Uruchom symulację i obserwuj wykresy. Czerwone pasy to czas awarii.')
-  else if (failing) hint.value = failing.hint || t('Ten cel nie przechodzi: {0}.', [failing.label])
-  else if (!finished.value) hint.value = t('Na razie wygląda dobrze. Puść symulację do końca.')
+  if (!started.value) hint.value = t('Run the simulation and watch the charts. Red bands mark outages.')
+  else if (failing) hint.value = failing.hint || t('This goal failed: {0}.', [failing.label])
+  else if (!finished.value) hint.value = t('Looking good so far. Run the simulation to the end.')
   else hint.value = ''
 }
 </script>
 
 <template>
-  <section class="card viz sim" :aria-label="t('Symulacja systemu')">
+  <section class="card viz sim" :aria-label="t('System simulation')">
     <Markdown class="instruction" :src="config.instruction" />
 
     <div class="player">
       <button type="button" class="btn btn-sm" :class="playing ? 'btn-ghost' : 'btn-primary'" @click="toggle">
-        <Icon :name="playing ? 'pause' : 'play'" :size="16" />{{ playing ? t('Pauza') : finished ? t('Jeszcze raz') : t('Uruchom') }}
+        <Icon :name="playing ? 'pause' : 'play'" :size="16" />{{ playing ? t('Pause') : finished ? t('Replay') : t('Run') }}
       </button>
-      <button type="button" class="btn btn-ghost btn-sm icon-only" :aria-label="t('Od początku')" @click="stop(); time = 0">
+      <button type="button" class="btn btn-ghost btn-sm icon-only" :aria-label="t('From the start')" @click="stop(); time = 0">
         <Icon name="refresh" :size="16" />
       </button>
       <input
@@ -191,7 +191,7 @@ function showHint() {
         min="0"
         :max="last"
         step="1"
-        :aria-label="t('Czas symulacji')"
+        :aria-label="t('Simulation time')"
         :aria-valuetext="clock"
         @input="stop"
       />
@@ -201,9 +201,9 @@ function showHint() {
 
     <div class="layout">
       <div class="main">
-        <div class="arch" :aria-label="t('Architektura')">
+        <div class="arch" :aria-label="t('Architecture')">
           <div class="node sources">
-            <strong>{{ t('Ruch') }}</strong>
+            <strong>{{ t('Traffic') }}</strong>
             <span v-for="s in sources" :key="s.label" class="line">{{ s.label }}: {{ compact(s.rate) }}/s</span>
           </div>
           <template v-for="stage in stages" :key="stage.main.id">
@@ -230,7 +230,7 @@ function showHint() {
               <span>{{ chart.goal.label }}</span>
               <span class="now" :class="{ bad: chart.bad }">{{ chart.now }}</span>
             </figcaption>
-            <svg :viewBox="`0 0 ${W} ${H}`" role="img" :aria-label="t('Wykres: {0}. Teraz {1}.', [chart.goal.label, chart.now])">
+            <svg :viewBox="`0 0 ${W} ${H}`" role="img" :aria-label="t('Chart: {0}. Current value: {1}.', [chart.goal.label, chart.now])">
               <rect v-for="(band, i) in failureBands" :key="i" class="band" :x="band.x" :y="PAD.top" :width="band.width" :height="H - PAD.top - PAD.bottom" />
               <line class="base" :x1="PAD.left" :x2="W - PAD.right" :y1="H - PAD.bottom" :y2="H - PAD.bottom" />
               <line class="limit" :x1="PAD.left" :x2="W - PAD.right" :y1="chart.threshold" :y2="chart.threshold" />
@@ -238,18 +238,18 @@ function showHint() {
               <polyline class="series" :points="chart.points" />
               <line class="cursor" :x1="px(time)" :x2="px(time)" :y1="PAD.top" :y2="H - PAD.bottom" />
             </svg>
-            <span v-if="chart.clipped" class="clip-note">{{ t('Wartości powyżej skali są przycięte.') }}</span>
+            <span v-if="chart.clipped" class="clip-note">{{ t('Values above the scale are clipped.') }}</span>
           </figure>
         </div>
 
-        <ul class="goals" :aria-label="t('Cele')">
+        <ul class="goals" :aria-label="t('Goals')">
           <li v-for="goal in goals" :key="goal.label" :class="goal.status">
             <span class="mark" aria-hidden="true">
               <Icon v-if="goal.status !== 'todo'" :name="goal.status === 'ok' ? 'check' : 'x'" :size="14" :stroke="3" />
             </span>
             <span class="goal-text">{{ goal.label }}</span>
             <span v-if="goal.status !== 'todo'" class="goal-value">{{ format(goal.current, goal) }}</span>
-            <span class="sr-only">{{ goal.status === 'ok' ? t('spełniony') : goal.status === 'bad' ? t('niespełniony') : t('jeszcze nie sprawdzony') }}</span>
+            <span class="sr-only">{{ goal.status === 'ok' ? t('met') : goal.status === 'bad' ? t('not met') : t('not checked yet') }}</span>
           </li>
         </ul>
       </div>
@@ -268,22 +268,22 @@ function showHint() {
             @click="pick(i, k)"
           >
             <strong>{{ option.label }}</strong>
-            <span v-if="option.detail || option.cost">{{ option.detail }}<template v-if="option.cost"> {{ t('· koszt') }} {{ number(option.cost) }}</template></span>
+            <span v-if="option.detail || option.cost">{{ option.detail }}<template v-if="option.cost"> {{ t('· cost') }} {{ number(option.cost) }}</template></span>
           </button>
         </div>
       </aside>
     </div>
 
     <p v-if="solved" class="result ok" aria-live="polite">
-      {{ t('Wszystkie cele spełnione przez cały przebieg.') }}
+      {{ t('All goals met throughout the run.') }}
       <template v-if="otherSolutions > 0">
-        {{ t('Istnieje jeszcze') }} {{ otherSolutions === 1 ? t('jedno inne ustawienie') : t('{0} inne ustawienia', [otherSolutions]) }}{{ t(', które też przechodzi. Znajdź je i zastanów się, czym się różnią.') }}
+        {{ t('There is also') }} {{ otherSolutions === 1 ? t('one other configuration') : t('{0} other configurations', [otherSolutions]) }}{{ t('that passes. Find the other options and compare them.') }}
       </template>
     </p>
     <div v-else class="hint-row">
       <p v-if="hint" class="result hint" aria-live="polite">{{ hint }}</p>
       <button v-else type="button" class="btn btn-ghost btn-sm" @click="showHint">
-        <Icon name="bulb" :size="16" />{{ t('Podpowiedź') }}
+        <Icon name="bulb" :size="16" />{{ t('Hint') }}
       </button>
     </div>
   </section>

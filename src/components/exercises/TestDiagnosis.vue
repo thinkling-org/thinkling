@@ -9,7 +9,7 @@ const props = defineProps({
 })
 const diagnosis = computed(() => diagnoseRun(props.run, props.code))
 
-// Fragment wokół różnicy: kilkanaście znaków przed nią, zaznaczona różnica, kilkanaście po.
+// Show a short excerpt on either side of the highlighted difference.
 function window(text, start, length) {
   const from = Math.max(0, start - 24)
   const to = Math.min(text.length, start + length + 16)
@@ -24,8 +24,8 @@ const rows = computed(() => {
   if (!d) return []
   const { start, missing, extra } = d.diff
   return [
-    { label: t('Oczekiwano'), kind: 'want', ...window(d.expected, start, missing.length) },
-    { label: t('Twój wynik'), kind: 'got', ...window(d.got, start, extra.length) },
+    { label: t('Expected'), kind: 'want', ...window(d.expected, start, missing.length) },
+    { label: t('Your result'), kind: 'got', ...window(d.got, start, extra.length) },
   ]
 })
 </script>
@@ -42,13 +42,13 @@ const rows = computed(() => {
     <dl class="diff">
       <div v-for="row in rows" :key="row.kind" :class="row.kind">
         <dt>{{ row.label }}</dt>
-        <dd><code>{{ row.before }}<mark v-if="row.mark">{{ row.mark }}</mark><mark v-else class="gap" :aria-label="t('tu nic nie ma')">‸</mark>{{ row.after }}</code></dd>
+        <dd><code>{{ row.before }}<mark v-if="row.mark">{{ row.mark }}</mark><mark v-else class="gap" :aria-label="t('nothing here')">‸</mark>{{ row.after }}</code></dd>
       </div>
     </dl>
     <p v-if="diagnosis.location" class="where">
-      {{ t('Najpewniej linia') }} {{ diagnosis.location.line }}: <code>{{ diagnosis.location.text }}</code>
+      {{ t('Likely line') }} {{ diagnosis.location.line }}: <code>{{ diagnosis.location.text }}</code>
     </p>
-    <p class="test-name">{{ t('Test:') }} {{ diagnosis.name }} {{ t('· ↵ oznacza znak nowej linii') }}</p>
+    <p class="test-name">{{ t('Test:') }} {{ diagnosis.name }} {{ t('· ↵ marks a newline') }}</p>
   </div>
 </template>
 

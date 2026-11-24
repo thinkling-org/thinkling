@@ -2,8 +2,8 @@ const escape = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 const word = /[\p{L}\p{N}_$]/u
 
 /**
- * Owija wystąpienia tokenów w podświetlonym HTML jednej linii kodu przyciskami,
- * żeby uczeń mógł najechać na fragment i zobaczyć jego definicję.
+ * Wrap matching tokens in a line of highlighted code HTML with buttons,
+ * so learners can open their definitions.
  */
 export function markCodeTokens(html, tokens, activeIndex = -1) {
   if (!tokens?.length) return html

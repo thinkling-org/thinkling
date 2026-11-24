@@ -28,7 +28,7 @@ function connect() {
   sock.onmessage = (e) => term.write(typeof e.data === 'string' ? e.data : '')
   sock.onclose = () => {
     status.value = 'closed'
-    term?.write(t('\r\n[90m[sesja zakończona — kliknij „Połącz ponownie”][0m\r\n'))
+    term?.write(t('\r\n\u001b[90m[session ended — click “Reconnect”]\u001b[0m\r\n'))
   }
 }
 
@@ -40,7 +40,7 @@ function doFit() {
   } catch {}
 }
 
-/** Wpisuje komendę do terminala (np. z przycisku "Uruchom testy w terminalu"). */
+/** Send a command to the terminal, for example from the Run tests button. */
 function run(cmd) {
   send({ t: 'i', d: cmd + '\r' })
   term?.focus()
@@ -105,7 +105,7 @@ defineExpose({ run })
 <template>
   <div class="term-wrap">
     <div ref="el" class="term" />
-    <button v-if="status === 'closed'" class="btn btn-sm reconnect" @click="term.clear(); connect()">{{ t('Połącz ponownie') }}</button>
+    <button v-if="status === 'closed'" class="btn btn-sm reconnect" @click="term.clear(); connect()">{{ t('Reconnect') }}</button>
   </div>
 </template>
 

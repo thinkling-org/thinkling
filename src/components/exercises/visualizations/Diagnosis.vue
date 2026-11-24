@@ -20,12 +20,12 @@ function measure(index) {
 </script>
 
 <template>
-  <section class="card viz diagnosis" :aria-label="t('Diagnoza i pomiar')">
+  <section class="card viz diagnosis" :aria-label="t('Diagnosis and measurement')">
     <div class="head">
       <Markdown class="instruction" :src="config.instruction" />
-      <span class="count">{{ t('Pomiary:') }} <strong>{{ measured.size }}</strong> / {{ config.checks.length }}</span>
+      <span class="count">{{ t('Checks:') }} <strong>{{ measured.size }}</strong> / {{ config.checks.length }}</span>
     </div>
-    <p class="symptom"><span class="label">{{ t('Objaw') }}</span> {{ config.symptom }}</p>
+    <p class="symptom"><span class="label">{{ t('Symptom') }}</span> {{ config.symptom }}</p>
     <ol class="checks">
       <li v-for="(check, k) in config.checks" :key="check.name" :class="measured.has(k) && (check.ok ? 'ok' : 'bad')">
         <strong>{{ check.name }}</strong>
@@ -35,8 +35,8 @@ function measure(index) {
       </li>
     </ol>
     <div class="diagnose">
-      <span class="label">{{ t('Twoja diagnoza') }}</span>
-      <div class="options" role="radiogroup" :aria-label="t('Diagnoza')">
+      <span class="label">{{ t('Your diagnosis') }}</span>
+      <div class="options" role="radiogroup" :aria-label="t('Diagnosis')">
         <button
           v-for="(option, k) in config.options"
           :key="option.text"
@@ -51,7 +51,7 @@ function measure(index) {
       </div>
       <p v-if="choice" class="feedback" :class="{ ok: solved }" aria-live="polite">{{ choice.why }}</p>
       <p v-else class="tip">
-        {{ measured.size < 2 ? t('Mierz po kolei i wykluczaj. Każdy poprawny wynik zawęża miejsce awarii.') : t('Który pomiar tłumaczy objaw? Wybierz diagnozę.') }}
+        {{ measured.size < 2 ? t('Run the checks in order. Each normal result narrows down the fault.') : t('Which check explains the symptom? Choose a diagnosis.') }}
       </p>
     </div>
   </section>

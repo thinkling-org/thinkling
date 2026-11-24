@@ -48,7 +48,7 @@ export function useLessonAssessment({ currentExercise, title, editor, onFeedback
     onFeedback('.explain')
     if (exercise.stage === 'challenge') return
     if (exercise.warmup) {
-      // rozgrzewka przed kartą wiedzy — bez kary, bez fiszki
+      // The warm-up before a concept card does not count toward the score or create a flashcard.
       xp.value += ok ? 5 : 2
       return
     }
@@ -56,7 +56,7 @@ export function useLessonAssessment({ currentExercise, title, editor, onFeedback
     if (ok) xp.value += 10
     else {
       const front = `${exercise.prompt}${exercise.code ? `\n\n\`\`\`${exercise.codeLanguage || ''}\n${exercise.code}\n\`\`\`` : ''}`
-      app.addFlashcards([{ front, back: `**${exercise.options[exercise.correctIndex]}**\n\n${exercise.explanation}` }], t('błąd w lekcji: {0}', [title()]))
+      app.addFlashcards([{ front, back: `**${exercise.options[exercise.correctIndex]}**\n\n${exercise.explanation}` }], t('mistake from lesson: {0}', [title()]))
     }
   }
 
@@ -74,7 +74,7 @@ export function useLessonAssessment({ currentExercise, title, editor, onFeedback
       results[exercise.id] = { status, data }
       app.recordAnswer({ score: (data.score || 0) / 10, weakSpot: data.weakSpot })
       xp.value += Math.max(1, data.score || 0)
-      if (data.flashcard?.front) app.addFlashcards([data.flashcard], t('z błędu w lekcji: {0}', [title()]))
+      if (data.flashcard?.front) app.addFlashcards([data.flashcard], t('from a mistake in lesson: {0}', [title()]))
     } catch (err) {
       results[exercise.id] = { status: 'error', error: err.message }
     } finally {
@@ -92,7 +92,7 @@ export function useLessonAssessment({ currentExercise, title, editor, onFeedback
       if (exercise.runtime === 'docker') payload.files = await editor.value.getFiles()
       else payload.code = answers[exercise.id]
       const data = await ai('reviewCode', payload)
-      // przy niezweryfikowanych testach decyduje review modelu
+      // Use the model’s review when tests have not been verified.
       const testsOk = !run || allTestsPassed(run) || exercise.testsStatus === 'unverified'
       const status = data.passed && testsOk ? 'correct' : data.score >= 5 ? 'almost' : 'wrong'
       const prev = results[exercise.id]?.status
@@ -101,7 +101,7 @@ export function useLessonAssessment({ currentExercise, title, editor, onFeedback
       if (!prev || prev === 'error') {
         app.recordAnswer({ score: (data.score || 0) / 10, weakSpot: data.weakSpot })
         xp.value += status === 'correct' ? 20 : status === 'almost' ? 10 : 3
-        if (data.flashcard?.front) app.addFlashcards([data.flashcard], t('z zadania: {0}', [exercise.title]))
+        if (data.flashcard?.front) app.addFlashcards([data.flashcard], t('from exercise: {0}', [exercise.title]))
       } else if (status === 'correct' && prev !== 'correct') {
         xp.value += 5 // poprawka po review
       }
@@ -143,12 +143,12 @@ export function useLessonAssessment({ currentExercise, title, editor, onFeedback
     if (!exercise.warmup) app.recordAnswer({ score: 0 })
   }
 
-  /** Pytanie otwarte: uczciwe "nie wiem" — pokazujemy wzorcową odpowiedź i dodajemy ją do fiszek. */
+  /** Show the reference answer and add a flashcard when the learner skips an open question. */
   function dontKnow() {
     const exercise = currentExercise.value
     results[exercise.id] = { status: 'unknown' }
     app.recordAnswer({ score: 0 })
-    app.addFlashcards([{ front: exercise.prompt, back: exercise.referenceAnswer }], t('„nie wiem” w lekcji: {0}', [title()]))
+    app.addFlashcards([{ front: exercise.prompt, back: exercise.referenceAnswer }], t('“I don\'t know” in lesson: {0}', [title()]))
     onFeedback('.feedback')
   }
 

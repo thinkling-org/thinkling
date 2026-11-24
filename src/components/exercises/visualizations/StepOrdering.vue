@@ -6,7 +6,7 @@ import Icon from '../../Icon.vue'
 
 const props = defineProps({ config: { type: Object, required: true } })
 
-// Stałe, ale nietrywialne przetasowanie: ta sama lekcja zawsze pokazuje klocki w tej samej kolejności.
+// Shuffle deterministically so the same lesson always starts with the same order.
 function shuffle(count, seedText) {
   let seed = [...seedText].reduce((hash, char) => (hash * 31 + char.charCodeAt(0)) >>> 0, 7)
   const random = () => ((seed = (seed * 1664525 + 1013904223) >>> 0) / 2 ** 32)
@@ -51,10 +51,10 @@ function reset() {
 </script>
 
 <template>
-  <section class="card viz ordering" :aria-label="t('Układanie kroków')">
+  <section class="card viz ordering" :aria-label="t('Put the steps in order')">
     <Markdown class="instruction" :src="config.instruction" />
     <div class="layout">
-      <ol class="slots" :aria-label="t('Twoja kolejność')">
+      <ol class="slots" :aria-label="t('Your order')">
         <li v-for="(slot, k) in slots" :key="k">
           <span class="no" aria-hidden="true">{{ k + 1 }}</span>
           <button
@@ -63,18 +63,18 @@ function reset() {
             class="piece placed"
             :class="checked && (slot.ok ? 'ok' : 'bad')"
             :disabled="checked"
-            :aria-label="checked ? `${slot.text}: ${slot.ok ? t('dobre miejsce') : t('złe miejsce')}` : t('Cofnij: {0}', [slot.text])"
+            :aria-label="checked ? `${slot.text}: ${slot.ok ? t('right position') : t('wrong position')}` : t('Undo: {0}', [slot.text])"
             @click="remove(k)"
           >
             <span :style="{ paddingLeft: `${slot.indent * 18}px` }">{{ slot.text }}</span>
             <Icon :name="checked ? (slot.ok ? 'check' : 'x') : 'x'" :size="16" :stroke="2.8" />
           </button>
-          <span v-else class="empty" :aria-label="t('Puste miejsce')" />
+          <span v-else class="empty" :aria-label="t('Empty slot')" />
         </li>
       </ol>
       <div class="bank-wrap">
-        <span class="label">{{ t('Klocki · kliknij, żeby dodać') }}</span>
-        <div class="bank" role="group" :aria-label="t('Klocki do ułożenia')">
+        <span class="label">{{ t('Blocks · click to add') }}</span>
+        <div class="bank" role="group" :aria-label="t('Blocks to arrange')">
           <button
             v-for="id in bank"
             :key="id"
@@ -86,16 +86,16 @@ function reset() {
           >{{ config.steps[id].text }}</button>
         </div>
         <div class="actions">
-          <button type="button" class="btn btn-ghost btn-sm" @click="reset">{{ t('Od nowa') }}</button>
-          <button v-if="checked && !solved" type="button" class="btn btn-ghost-yellow btn-sm" @click="retry">{{ t('Popraw') }}</button>
-          <button v-else type="button" class="btn btn-primary btn-sm" :disabled="!full || checked" @click="checked = true">{{ t('Sprawdź') }}</button>
+          <button type="button" class="btn btn-ghost btn-sm" @click="reset">{{ t('Start over') }}</button>
+          <button v-if="checked && !solved" type="button" class="btn btn-ghost-yellow btn-sm" @click="retry">{{ t('Revise') }}</button>
+          <button v-else type="button" class="btn btn-primary btn-sm" :disabled="!full || checked" @click="checked = true">{{ t('Check') }}</button>
         </div>
       </div>
     </div>
     <p class="note" :class="checked && (solved ? 'success' : 'warn')" aria-live="polite">
-      <template v-if="!checked">{{ full ? t('Gotowe? Kliknij Sprawdź.') : t('Kliknij klocek, żeby dodać go na koniec. Kliknij ułożony, żeby go cofnąć.') }}</template>
-      <template v-else-if="solved">{{ config.success || t('Dobrze, wszystkie kroki są na swoim miejscu.') }}</template>
-      <template v-else>{{ good }} {{ t('z') }} {{ config.steps.length }} {{ t('na swoim miejscu.') }} {{ config.hint }}</template>
+      <template v-if="!checked">{{ full ? t('Ready? Click Check.') : t('Click a block to append it. Click a placed block to undo it.') }}</template>
+      <template v-else-if="solved">{{ config.success || t('Good work. Every step is in the right position.') }}</template>
+      <template v-else>{{ good }} {{ t('of') }} {{ config.steps.length }} {{ t('in the right position.') }} {{ config.hint }}</template>
     </p>
   </section>
 </template>

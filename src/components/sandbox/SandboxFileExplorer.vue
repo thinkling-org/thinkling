@@ -23,11 +23,11 @@ const visibleFiles = computed(() => {
 </script>
 
 <template>
-  <aside class="tree" :aria-label="t('Pliki')">
+  <aside class="tree" :aria-label="t('Files')">
     <div class="tree-h">
-      <span>{{ t('Pliki') }}</span>
-      <button type="button" class="tb" :title="t('Nowy plik')" :aria-label="t('Nowy plik')" @click="emit('create')">+</button>
-      <button type="button" class="tb" :title="t('Odśwież')" :aria-label="t('Odśwież')" @click="emit('refresh')"><Icon name="refresh" :size="13" :stroke="2.6" /></button>
+      <span>{{ t('Files') }}</span>
+      <button type="button" class="tb" :title="t('New file')" :aria-label="t('New file')" @click="emit('create')">+</button>
+      <button type="button" class="tb" :title="t('Refresh')" :aria-label="t('Refresh')" @click="emit('refresh')"><Icon name="refresh" :size="13" :stroke="2.6" /></button>
     </div>
     <button
       v-for="entry in visibleFiles"

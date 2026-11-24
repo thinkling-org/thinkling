@@ -1,10 +1,10 @@
-// Weryfikacja wygenerowanych testów: wzorcowe rozwiązanie musi przechodzić wszystkie testy,
-// a szablon startowy musi oblać przynajmniej jeden. Przy problemie — jedna prośba do modelu o poprawkę.
+// Verify generated tests against the reference solution and starter code.
+// The reference must pass every test and the starter must fail at least one. Request one repair on failure.
 import { allTestsPassed, RUNNABLE, runTests } from './runner.js'
 import { ai } from './api.js'
 import { sandbox, mergeFiles } from './sandbox.js'
 
-/** Weryfikacja w kontenerze: pliki + rozwiązanie + testy vs pliki startowe + testy. */
+/** Run the test suite in a container with the solution and the starter files. */
 async function verifyDocker(ex, language, onStage) {
   let cur = { files: ex.files, testFiles: ex.testFiles, solutionFiles: ex.solutionFiles, testCommand: ex.testCommand }
   let note = ''

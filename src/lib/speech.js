@@ -1,3 +1,4 @@
+import { t } from './i18n.js'
 const recordings = new Map()
 let activeAudio
 
@@ -38,7 +39,7 @@ async function generateRecording(chunks, design) {
     })
     if (!response.ok) {
       const { error } = await response.json().catch(() => ({}))
-      throw new Error(error || 'Nie udało się wygenerować nagrania.')
+      throw new Error(error || t('Could not generate the recording.'))
     }
 
     // ZONOS returns 16-bit mono PCM with a 44-byte RIFF header.
@@ -48,7 +49,7 @@ async function generateRecording(chunks, design) {
       || partHeader.getUint32(40, true) !== wav.byteLength - 44
       || partHeader.getUint16(20, true) !== 1 || partHeader.getUint16(22, true) !== 1
       || partHeader.getUint16(34, true) !== 16 || wav.byteLength % 2 !== 0) {
-      throw new Error('ZONOS3-Mini zwrócił nieprawidłowe nagranie.')
+      throw new Error(t('ZONOS3-Mini returned an invalid recording.'))
     }
     const sampleRate = partHeader.getUint32(24, true)
     const blockAlign = partHeader.getUint16(32, true)

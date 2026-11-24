@@ -1,14 +1,14 @@
 <script setup>
+import { t, uiLocale } from '../lib/i18n.js'
 import { computed, ref } from 'vue'
 import { useApp } from '../stores/app.js'
-import { putJSON } from '../lib/api.js'
 import { DEFAULT_VOICE_DESIGN, normalizeVoiceDesign, VOICE_CONTROLS } from '../lib/voice-design.js'
 import Icon from './Icon.vue'
 import SpeechPlayer from './SpeechPlayer.vue'
 
 const app = useApp()
 const draft = ref({ ...DEFAULT_VOICE_DESIGN, ...app.settings.voiceDesign })
-const phrase = ref('Każde wywołanie funkcji tworzy kontekst wykonania. Najpierw silnik przygotowuje deklaracje, a potem wykonuje kod linia po linii.')
+const phrase = ref(t('Each function call creates an execution context. The engine prepares declarations first, then runs the code line by line.'))
 const status = ref('')
 const error = ref('')
 const saving = ref(false)
@@ -31,11 +31,11 @@ async function saveVoice(voiceDesign) {
   status.value = ''
   error.value = ''
   try {
-    await putJSON('/api/state', app.persisted())
-    status.value = voiceDesign ? 'Projekt ustawiony jako głos lekcji.' : 'Przywrócono domyślny głos lekcji.'
+    await app.saveNow()
+    status.value = voiceDesign ? t('Voice design saved for lessons.') : t('Default lesson voice restored.')
   } catch {
     app.settings.voiceDesign = previous
-    error.value = 'Nie udało się zapisać głosu.'
+    error.value = t('Could not save the voice.')
   } finally {
     saving.value = false
   }
@@ -44,31 +44,31 @@ async function saveVoice(voiceDesign) {
 
 <template>
   <section class="voice-design">
-    <h2>Projektowanie głosu</h2>
+    <h2>{{ t('Voice design') }}</h2>
     <div class="card design-card">
       <div class="voice-header">
         <div>
-          <strong>Głos syntetyczny</strong>
-          <p class="muted">Dobierz brzmienie, odsłuchaj próbkę i zapisz głos do lekcji.</p>
+          <strong>{{ t('Synthetic voice') }}</strong>
+          <p class="muted">{{ t('Adjust the voice, preview a sample and save it for lessons.') }}</p>
         </div>
         <button class="btn btn-ghost btn-sm" type="button" @click="randomize">
-          <Icon name="refresh" :size="16" />Losuj głos
+          <Icon name="refresh" :size="16" />{{ t('Randomize voice') }}
         </button>
       </div>
 
       <div class="voice-controls">
         <label v-for="control in VOICE_CONTROLS" :key="control.key" class="voice-control">
           <span class="control-name">
-            <span>{{ control.label }}</span>
-            <output>{{ draft[control.key].toLocaleString('pl') }}</output>
+            <span>{{ t(control.label) }}</span>
+            <output>{{ draft[control.key].toLocaleString(uiLocale()) }}</output>
           </span>
           <input v-model.number="draft[control.key]" type="range" :min="control.min" :max="control.max" step="0.1" />
-          <span class="control-ends"><span>{{ control.low }}</span><span>{{ control.high }}</span></span>
+          <span class="control-ends"><span>{{ t(control.low) }}</span><span>{{ t(control.high) }}</span></span>
         </label>
       </div>
 
       <label class="preview-field">
-        <span class="label">Tekst próbki</span>
+        <span class="label">{{ t('Sample text') }}</span>
         <textarea v-model="phrase" class="field" rows="3" maxlength="450" />
       </label>
       <SpeechPlayer
@@ -76,14 +76,14 @@ async function saveVoice(voiceDesign) {
         :key="previewKey"
         :get-text="() => [phrase.trim()]"
         :voice-design="design"
-        label="Odsłuchaj próbkę"
+        :label="t('Play sample')"
       />
       <div class="voice-actions">
         <button class="btn btn-primary btn-sm" type="button" :disabled="active || saving" @click="saveVoice(design)">
-          {{ active ? 'Głos używany w lekcjach' : 'Ustaw w lekcjach' }}
+          {{ active ? t('Voice used in lessons') : t('Use in lessons') }}
         </button>
         <button v-if="app.settings.voiceDesign" class="btn btn-ghost btn-sm" type="button" :disabled="saving" @click="saveVoice(null)">
-          Przywróć domyślny
+          {{ t('Restore default voice') }}
         </button>
       </div>
       <p v-if="status" class="muted" role="status">{{ status }}</p>

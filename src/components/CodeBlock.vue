@@ -10,7 +10,7 @@ const props = defineProps({
   fileName: { type: String, default: '' },
   lineNumbers: { type: Boolean, default: true },
   activeLine: { type: Number, default: null },
-  // Fragmenty kodu z własną definicją z lekcji; zastępują wbudowany słowniczek.
+  // Lesson-specific definitions override the built-in glossary for these snippets.
   tokens: { type: Array, default: () => [] },
   activeToken: { type: Number, default: -1 },
 })

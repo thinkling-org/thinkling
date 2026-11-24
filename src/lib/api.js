@@ -33,7 +33,7 @@ export async function requestStream(url, payload, { onProgress, signal } = {}) {
   return readNdjson(res, onProgress)
 }
 
-/** Czyta strumień NDJSON: {type:'progress'|'done'|'error'}. */
+/** Read a stream of NDJSON progress, completion and error events. */
 async function readNdjson(res, onProgress) {
   const reader = res.body.getReader()
   const decoder = new TextDecoder()
@@ -52,7 +52,7 @@ async function readNdjson(res, onProgress) {
         else if (ev.type === 'done') return ev.data
         else if (ev.type === 'error') throw new Error(ev.message)
       }
-      if (done) throw new Error(t('Połączenie z serwerem zostało przerwane'))
+      if (done) throw new Error(t('The connection to the server was interrupted'))
     }
   } finally {
     reader.cancel().catch(() => {})

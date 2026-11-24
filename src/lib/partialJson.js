@@ -1,4 +1,4 @@
-// Parsuje niekompletny JSON (strumień od modelu), domykając otwarte struktury.
+// Close open structures when parsing partial JSON from the model stream.
 
 function closers(s) {
   const stack = []
@@ -31,7 +31,7 @@ export function parsePartialJson(input) {
     const c = closers(t)
     if (c.inStr) t = (c.esc ? t.slice(0, -1) : t) + '"'
     t = t.replace(/[\s,:]+$/, '')
-    // usuń wiszący klucz bez wartości:  ,"klucz"   albo  {"klucz"
+    // Discard a trailing key without a value.
     t = t.replace(/([{,])\s*"[^"]*"$/, '$1').replace(/,$/, '')
     try {
       return JSON.parse(t + closers(t).tail)

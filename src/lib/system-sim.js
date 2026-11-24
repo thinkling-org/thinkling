@@ -1,10 +1,10 @@
 import { t } from './i18n.js'
-// Symulacja architektury systemu dla ćwiczeń z system designu.
+// Simulate architectures for system design exercises.
 //
-// Model LLM opisuje tylko scenariusz (ruch, węzły, awarie, przełączniki, cele).
-// Liczby na wykresach liczy ten silnik, więc są spójne niezależnie od scenariusza.
-// Model jest "płynny": co sekundę każda klasa ruchu to strumień zapytań/s,
-// który przechodzi przez kolejne węzły ścieżki.
+// The model defines the scenario: traffic, nodes, failures, controls and goals.
+// The simulator computes consistent chart values from those inputs.
+// Each traffic class is represented as a request rate evaluated once per second
+// as it flows through successive nodes.
 
 export const NODE_KINDS = ['limiter', 'cache', 'service', 'queue', 'store']
 export const ALGORITHMS = ['token', 'fixed', 'sliding', 'leaky']
@@ -62,7 +62,7 @@ function readNode(node) {
   }
 }
 
-/** Zamienia tekstową wartość przełącznika na wartość parametru albo undefined, gdy jest błędna. */
+/** Parse a control option into a parameter value, or return undefined if invalid. */
 function readParamValue(param, raw, storeIds) {
   const text = String(raw ?? '').trim()
   if (NUMERIC_PARAMS.includes(param)) {
@@ -77,31 +77,31 @@ function readParamValue(param, raw, storeIds) {
 
 /**
  * Sprawdza scenariusz od modelu. Zwraca { scenario } albo { error } z powodem odrzucenia.
- * Poprawny scenariusz ma co najmniej jedno ustawienie spełniające wszystkie cele,
- * a ustawienie startowe (pierwsze opcje) ich nie spełnia.
+ * A valid scenario has at least one configuration that satisfies every goal.
+ * The starting configuration, which uses the first options, must miss at least one goal.
  */
 export function checkScenario(raw) {
-  if (!hasText(raw?.instruction)) return { error: t('brak instrukcji') }
+  if (!hasText(raw?.instruction)) return { error: t('missing instructions') }
   const duration = clamp(Math.round(finite(raw.duration, 600)), 30, 1800)
 
   const sources = list(raw.sources).map(readSource).filter(Boolean).slice(0, 5)
-  if (!sources.length) return { error: t('brak źródeł ruchu') }
-  if (new Set(sources.map((s) => s.id)).size !== sources.length) return { error: t('powtórzone id źródła') }
+  if (!sources.length) return { error: t('missing traffic sources') }
+  if (new Set(sources.map((s) => s.id)).size !== sources.length) return { error: t('duplicate source ID') }
 
   const nodes = list(raw.nodes).map(readNode).filter(Boolean).slice(0, 8)
   const byId = new Map(nodes.map((n) => [n.id, n]))
-  if (byId.size !== nodes.length) return { error: t('powtórzone id węzła') }
+  if (byId.size !== nodes.length) return { error: t('duplicate node ID') }
   const storeIds = new Set(nodes.filter((n) => n.kind === 'store').map((n) => n.id))
   for (const node of nodes) {
-    if (node.kind === 'limiter' && node.store && !storeIds.has(node.store)) return { error: t('nieznany magazyn {0}', [node.store]) }
+    if (node.kind === 'limiter' && node.store && !storeIds.has(node.store)) return { error: t('unknown store {0}', [node.store]) }
   }
 
   const path = list(raw.path).filter((id) => byId.has(id) && byId.get(id).kind !== 'store')
-  if (!path.length || new Set(path).size !== path.length) return { error: t('pusta albo powtórzona ścieżka') }
+  if (!path.length || new Set(path).size !== path.length) return { error: t('empty or repeated path') }
 
   const failures = list(raw.failures)
     .filter((f) => byId.has(f?.node) && Number.isFinite(f.from) && Number.isFinite(f.to) && f.to > f.from)
-    .map((f) => ({ node: f.node, from: Math.max(0, Math.round(f.from)), to: Math.min(duration, Math.round(f.to)), label: hasText(f.label) ? f.label.trim() : t('{0} nie działa', [byId.get(f.node).label]) }))
+    .map((f) => ({ node: f.node, from: Math.max(0, Math.round(f.from)), to: Math.min(duration, Math.round(f.to)), label: hasText(f.label) ? f.label.trim() : t('{0} is unavailable', [byId.get(f.node).label]) }))
     .slice(0, 4)
 
   const controls = []
@@ -113,16 +113,16 @@ export function checkScenario(raw) {
       const set = []
       for (const change of list(option.set)) {
         const node = byId.get(change?.node)
-        if (!node || !PARAMS.includes(change.param)) return { error: t('zła zmiana w opcji "{0}"', [option.label]) }
+        if (!node || !PARAMS.includes(change.param)) return { error: t('invalid change in option "{0}"', [option.label]) }
         const value = readParamValue(change.param, change.value, storeIds)
-        if (value === undefined) return { error: t('zła wartość {0}="{1}" w opcji "{2}"', [change.param, change.value, option.label]) }
+        if (value === undefined) return { error: t('invalid {0}="{1}" in option "{2}"', [change.param, change.value, option.label]) }
         set.push({ node: node.id, param: change.param, value })
       }
       options.push({ label: option.label.trim(), detail: hasText(option.detail) ? option.detail.trim() : '', cost: Math.max(0, finite(option.cost)), set })
     }
     if (options.length >= 2) controls.push({ label: control.label.trim(), options })
   }
-  if (!controls.length) return { error: t('brak przełączników') }
+  if (!controls.length) return { error: t('missing controls') }
 
   const targets = new Set([...sources.map((s) => s.id), ...nodes.map((n) => n.id)])
   const goals = list(raw.goals).filter((goal) => {
@@ -139,7 +139,7 @@ export function checkScenario(raw) {
     window: Math.max(1, Math.round(finite(goal.window, 60))),
     hint: hasText(goal.hint) ? goal.hint.trim() : '',
   })).slice(0, 5)
-  if (!goals.length) return { error: t('brak celów') }
+  if (!goals.length) return { error: t('missing goals') }
 
   const scenario = {
     type: 'system-sim',
@@ -150,11 +150,11 @@ export function checkScenario(raw) {
   }
 
   const combinations = controls.reduce((total, c) => total * c.options.length, 1)
-  if (combinations > MAX_COMBINATIONS) return { error: t('za dużo kombinacji przełączników') }
+  if (combinations > MAX_COMBINATIONS) return { error: t('too many control combinations') }
   const start = controls.map(() => 0)
-  if (passes(scenario, start)) return { error: t('ustawienie startowe już spełnia cele') }
+  if (passes(scenario, start)) return { error: t('the initial configuration already meets all goals') }
   const solutions = allPicks(controls).filter((picks) => passes(scenario, picks))
-  if (!solutions.length) return { error: t('żadne ustawienie nie spełnia celów') }
+  if (!solutions.length) return { error: t('no configuration meets all goals') }
   return { scenario: { ...scenario, solutions } }
 }
 
@@ -192,7 +192,7 @@ function rateAt(source, t) {
 const capacityOf = (node) => (node.capacity > 0 ? node.capacity * node.instances : Infinity)
 const queueFactor = (u) => Math.min(MAX_LATENCY_FACTOR, 1 / (1 - Math.min(u, 0.9)))
 
-/** Ile z napływu `flow` przepuści limiter dla jednej klasy w tej sekundzie. Zwraca [przepuszczone, czas oczekiwania ms]. */
+/** Apply one second of rate limiting to a traffic class. Return accepted requests and wait time in ms. */
 function limit(node, state, flow, effectiveLimit, t) {
   const rate = effectiveLimit / node.window
   switch (node.algorithm) {
@@ -230,7 +230,7 @@ function limit(node, state, flow, effectiveLimit, t) {
   }
 }
 
-/** Kolejka przed węzłem o ograniczonej przepustowości. Zmienia `flows` w miejscu, zwraca opóźnienie i zrzucone zapytania. */
+/** Queue requests before a capacity-limited node. Update flows in place and return delay and drops. */
 function serve(node, state, flows) {
   const capacity = capacityOf(node)
   const incoming = flows.reduce((sum, f) => sum + f, 0)
@@ -252,8 +252,8 @@ function serve(node, state, flows) {
 }
 
 /**
- * Liczy cały przebieg dla wybranych opcji. Wynik to szeregi czasowe:
- * na klasę ruchu (oferowane, obsłużone, błędy, średnie opóźnienie) i na węzeł (obciążenie, awaria).
+ * Simulate the selected configuration and return time series for each traffic class
+ * (offered requests, served requests, errors and mean latency) and node (load and failures).
  */
 export function simulate(scenario, picks) {
   const { nodes, cost } = configure(scenario, picks)
@@ -347,8 +347,8 @@ export function simulate(scenario, picks) {
 
     for (const node of nodes.values()) {
       if (node.kind !== 'store') continue
-      // Magazyn nie leży na ścieżce: każde sprawdzenie limitu to jedna operacja,
-      // a nadmiar operacji czeka w kolejce i wydłuża kolejne sprawdzenia.
+      // The store is off the main request path. Each limit check consumes one operation,
+      // and queued operations add delay to later checks.
       const nodeState = state.get(node.id)
       if (isDown(node.id, t)) {
         modes.set(node.id, 'down')
@@ -385,7 +385,7 @@ export function simulate(scenario, picks) {
 
 // ---------------------------------------------------------------- cele
 
-/** Szereg czasowy, którym mierzony jest cel (do wykresu). Brak szeregu dla kosztu. */
+/** Return the time series for a goal. Cost has no time series. */
 export function goalSeries(scenario, result, goal) {
   if (goal.metric === 'cost') return null
   if (goal.metric === 'utilization') return result.perNode.get(goal.target).utilization
@@ -395,7 +395,7 @@ export function goalSeries(scenario, result, goal) {
   if (goal.metric === 'errorRate') {
     return series.offered.map((o, t) => (o > 0 ? series.errors[t] / o * 100 : null))
   }
-  // passedPerWindow: suma obsłużonych zapytań w oknie kończącym się w t
+  // passedPerWindow: total requests served in the window ending at t
   const sums = []
   let running = 0
   series.completed.forEach((c, t) => {
@@ -406,7 +406,7 @@ export function goalSeries(scenario, result, goal) {
   return sums
 }
 
-/** Wartość celu policzona od początku do sekundy `upto` włącznie. */
+/** Compute the goal value from the start through second upto, inclusive. */
 function goalValue(scenario, result, goal, upto) {
   if (goal.metric === 'cost') return result.cost
   if (goal.metric === 'errorRate') {

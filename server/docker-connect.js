@@ -1,5 +1,5 @@
-// Wykrywanie, gdzie nasłuchuje Docker. Domyślne /var/run/docker.sock nie istnieje m.in. przy
-// Docker Desktop na Linuksie, Dockerze bez roota (rootless), Colimie, OrbStacku i części instalacji na macOS.
+// Detect where Docker is listening. The default /var/run/docker.sock may be absent with
+// Docker Desktop for Linux, rootless Docker, Colima, OrbStack, and some macOS setups.
 import { execFileSync } from 'node:child_process'
 import fs from 'node:fs'
 import os from 'node:os'
@@ -17,7 +17,7 @@ function socketExists(p) {
   }
 }
 
-/** Zamienia adres w stylu DOCKER_HOST (unix://, npipe://, tcp://) na opcje dockerode. */
+/** Convert a DOCKER_HOST URL (unix://, npipe://, tcp://) to dockerode options. */
 function fromHost(host) {
   if (!host) return null
   try {
@@ -31,7 +31,7 @@ function fromHost(host) {
   return null
 }
 
-/** Adres z aktywnego kontekstu `docker context` (tego samego, którego używa CLI). */
+/** Read the endpoint from the active Docker CLI context. */
 function contextEndpoint() {
   try {
     const out = execFileSync('docker', ['context', 'inspect', '--format', '{{.Endpoints.docker.Host}}'], {
@@ -46,7 +46,7 @@ function contextEndpoint() {
   }
 }
 
-/** Kandydaci w kolejności: DOCKER_HOST, kontekst CLI, znane gniazda. */
+/** Try DOCKER_HOST first, then the CLI context, then known sockets. */
 export function dockerCandidates() {
   const list = []
   const push = (o, label) => o && !list.some((x) => JSON.stringify(x.opts) === JSON.stringify(o)) && list.push({ opts: o, label })
@@ -59,7 +59,7 @@ export function dockerCandidates() {
   } else {
     const runtime = process.env.XDG_RUNTIME_DIR || (process.getuid ? `/run/user/${process.getuid()}` : null)
     const sockets = [
-      ['/var/run/docker.sock', 'systemowy Docker'],
+      ['/var/run/docker.sock', 'system Docker'],
       [path.join(home, '.docker', 'desktop', 'docker.sock'), 'Docker Desktop'],
       [path.join(home, '.docker', 'run', 'docker.sock'), 'Docker Desktop'],
       runtime && [path.join(runtime, 'docker.sock'), 'Docker rootless'],
@@ -72,13 +72,13 @@ export function dockerCandidates() {
   return list
 }
 
-/** Pierwszy kandydat bez sprawdzania połączenia (do natychmiastowego użycia przy starcie). */
+/** Get the first candidate immediately, without checking connectivity. */
 export function initialDocker() {
   const first = dockerCandidates()[0]
   return { docker: new Docker(first?.opts), endpoint: first || null }
 }
 
-/** Próbuje kolejnych kandydatów i zwraca pierwszego, który odpowiada. */
+/** Find the first Docker endpoint that responds. */
 export async function findWorkingDocker() {
   let denied = null
   for (const c of dockerCandidates()) {
@@ -87,8 +87,8 @@ export async function findWorkingDocker() {
       await d.version()
       return { docker: new Docker(c.opts), endpoint: c }
     } catch (err) {
-      // EACCES: Docker jest, ale brak uprawnień. Szukamy dalej (np. gniazda rootless), a gdy nic nie działa,
-      // zwracamy ten, żeby kreator mógł podpowiedzieć dodanie do grupy „docker”.
+      // Keep trying other sockets after EACCES. If none connect, return the permission
+      // issue so setup can suggest adding the user to the docker group.
       if (!denied && (err.code === 'EACCES' || err.code === 'EPERM')) denied = { docker: new Docker(c.opts), endpoint: c, permission: true }
     }
   }

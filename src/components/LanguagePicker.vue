@@ -34,14 +34,14 @@ async function change(event) {
 <template>
   <div class="language-picker">
     <label class="language-field">
-      <span class="label">{{ t('Język') }}</span>
+      <span class="label">{{ t('Language') }}</span>
       <select class="input" :value="selected" :disabled="saving" @change="change">
         <option v-for="option in options" :key="option.value" :value="option.value">{{ option.label }}</option>
       </select>
     </label>
-    <p v-if="failed" class="language-error" role="alert">{{ t('Nie udało się zapisać języka. Spróbuj ponownie.') }}</p>
-    <p v-if="props.explain" class="muted">{{ t('Język interfejsu i nowych odpowiedzi AI. Zapisane lekcje i fiszki są wyświetlane w języku, w którym powstały.') }}</p>
-    <p v-if="props.explain && selected !== uiLocale()" class="muted">{{ t('Dla tego języka interfejs jest wyświetlany po angielsku.') }}</p>
+    <p v-if="failed" class="language-error" role="alert">{{ t('Couldn\'t save the language. Try again.') }}</p>
+    <p v-if="props.explain" class="muted">{{ t('Language for the interface and new AI responses. Saved lessons and flashcards stay in the language in which they were created.') }}</p>
+    <p v-if="props.explain && selected !== uiLocale()" class="muted">{{ t('The interface is displayed in English for this language.') }}</p>
   </div>
 </template>
 

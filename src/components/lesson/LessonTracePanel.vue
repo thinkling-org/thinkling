@@ -13,20 +13,20 @@ const emit = defineEmits(['close', 'retry'])
 </script>
 
 <template>
-  <section :aria-label="t('Przebieg kodu')">
+  <section :aria-label="t('Code trace')">
     <button type="button" class="link-btn back" @click="emit('close')">
       <Icon name="arrow-left" :size="16" />
-      {{ exercise.type === 'learn' ? t('Wróć do karty wiedzy') : t('Wróć do pytania') }}
+      {{ exercise.type === 'learn' ? t('Back to the knowledge card') : t('Back to the question') }}
     </button>
     <CodeTrace v-if="exercise.trace" :exercise="exercise" :trace="exercise.trace" :chosen-index="chosenIndex" />
     <div v-else-if="progress?.error" class="card trace-status">
-      <strong class="error" role="alert">{{ t('Nie udało się przygotować prześledzenia') }}</strong>
+      <strong class="error" role="alert">{{ t('Couldn\'t prepare the code trace') }}</strong>
       <span class="error-details">{{ progress.error }}</span>
-      <button type="button" class="btn btn-sm btn-primary" @click="emit('retry')">{{ t('Spróbuj ponownie') }}</button>
+      <button type="button" class="btn btn-sm btn-primary" @click="emit('retry')">{{ t('Try again') }}</button>
     </div>
     <div v-else class="card trace-status" role="status">
       <span class="spinner" aria-hidden="true" />
-      <span>{{ providerName }} {{ t('śledzi wykonanie kodu…') }} {{ progress?.chars || 0 }} {{ t('zn') }}</span>
+      <span>{{ providerName }} {{ t('is tracing the code…') }} {{ progress?.chars || 0 }} {{ t('chars') }}</span>
     </div>
   </section>
 </template>

@@ -1,7 +1,7 @@
 import { t } from './locale.js'
-// Piaskownica: prawdziwe środowiska uruchomieniowe w kontenerach Dockera.
-// Każde zadanie ma własny workspace (katalog na dysku podmontowany jako /workspace)
-// i własny kontener bez sieci, z limitami pamięci / CPU / procesów.
+// Run sandbox code in Docker containers.
+// Each exercise has its own workspace mounted at /workspace and a dedicated container
+// with no network access and limits on memory, CPU and process count.
 import { initialDocker, findWorkingDocker } from './docker-connect.js'
 import tar from 'tar-stream'
 import { createHash } from 'node:crypto'
@@ -16,10 +16,10 @@ const DATA_DIR = path.resolve(process.env.CODENOMS_DATA || path.join(ROOT, 'data
 const WS_ROOT = path.join(DATA_DIR, 'workspaces')
 fs.mkdirSync(WS_ROOT, { recursive: true })
 
-// `let`, bo po instalacji / uruchomieniu Dockera adres może się zmienić (reconnectDocker).
+// The endpoint can change when Docker is installed or started. See reconnectDocker().
 export let { docker, endpoint: dockerEndpoint } = initialDocker()
 
-/** Szuka działającego Dockera wśród znanych gniazd i przełącza na niego połączenie. */
+/** Probe known endpoints and reconnect to a running Docker daemon. */
 export async function reconnectDocker() {
   const found = await findWorkingDocker()
   if (found) {
@@ -35,18 +35,18 @@ const desktopNamespace = process.versions.electron
 const containerLabel = desktopNamespace ? `codenoms.desktop.${desktopNamespace}` : LABEL
 const IDLE_MS = 20 * 60_000
 
-// Kod w piaskownicy nie działa jako root. Na Linuksie kontener dostaje UID/GID użytkownika,
-// który uruchomił serwer, więc pliki w workspace mają właściwego właściciela na dysku.
-// Docker Desktop (Windows, macOS) sam mapuje uprawnienia podmontowanych katalogów.
+// Run sandbox code as an unprivileged user. On Linux, use the server user’s UID and GID
+// so files created in the workspace have the correct owner on the host.
+// Docker Desktop maps permissions on mounted directories on Windows and macOS.
 const hostUid = process.platform === 'linux' ? process.getuid?.() : undefined
 const SANDBOX_UID = hostUid || 1000
 const SANDBOX_GID = hostUid ? process.getgid() : 1000
 export const SANDBOX_USER = `${SANDBOX_UID}:${SANDBOX_GID}`
-// Katalog domowy w /tmp, który jest zapisywalny dla wszystkich.
+// Use a writable home directory in /tmp.
 const SANDBOX_HOME = '/tmp'
 
-// Obrazy budują się lokalnie, więc od razu dostają wpis w /etc/passwd dla UID piaskownicy
-// (bez niego m.in. .NET nie tworzy nazwanych mutexów). Istniejący wpis (np. „node”) zostaje.
+// Add an /etc/passwd entry for the sandbox UID during the local build so tools such as
+// .NET can create named mutexes. Keep existing entries such as node.
 const COMMON = `ARG SANDBOX_UID=1000
 ARG SANDBOX_GID=1000
 RUN grep -q "^[^:]*:[^:]*:\${SANDBOX_GID}:" /etc/group || echo "codenoms:x:\${SANDBOX_GID}:" >> /etc/group; \\
@@ -56,7 +56,7 @@ WORKDIR /workspace
 ENV TERM=xterm-256color LANG=C.UTF-8 PS1='\\[\\e[1;35m\\]codenoms\\[\\e[0m\\]:\\[\\e[1;34m\\]\\w\\[\\e[0m\\]$ '
 `
 
-/** Środowiska per język. Obrazy budowane lokalnie przy pierwszym użyciu. */
+/** Runtime definitions by programming language. Each image builds locally on first use. */
 export const ENVS = {
   php: {
     label: 'PHP 8.3',
@@ -109,8 +109,8 @@ export const ENVS = {
   csharp: {
     label: '.NET 8',
     image: 'codenoms/dotnet:2',
-    // bin/ i obj/ poza workspace: na Docker Desktop (Windows) użytkownik bez roota nie może mapować
-    // (mmap) plików w podmontowanym katalogu o długiej ścieżce, a build .NET tego wymaga.
+    // Put bin/ and obj/ outside the workspace. On Docker Desktop for Windows, .NET builds
+    // require mmap, which unprivileged users cannot use on some long mounted paths.
     dockerfile: `FROM mcr.microsoft.com/dotnet/sdk:8.0-alpine\nRUN apk add --no-cache bash\nENV DOTNET_CLI_TELEMETRY_OPTOUT=1 DOTNET_NOLOGO=1 UseArtifactsOutput=true ArtifactsPath=/tmp/dotnet-artifacts\n${COMMON}`,
     testExample: 'dotnet run --project tests',
   },
@@ -148,7 +148,7 @@ export async function dockerStatus() {
     return {
       available: false,
       code: found?.permission ? 'EACCES' : err.code,
-      error: found?.permission ? t('Brak uprawnień do Dockera (dodaj konto do grupy „docker”)') : err.code === 'ENOENT' ? t('Docker nie działa (uruchom Docker Desktop)') : err.message,
+      error: found?.permission ? t('Docker access denied. Add your account to the docker group.') : err.code === 'ENOENT' ? t('Docker isn\'t running. Start Docker Desktop.') : err.message,
     }
   }
 }
@@ -166,11 +166,11 @@ const building = new Map()
 
 export function ensureImage(lang, onProgress) {
   const env = envFor(lang)
-  if (!env) return Promise.reject(new Error(t('Brak środowiska dla języka: {0}', [lang])))
+  if (!env) return Promise.reject(new Error(t('No environment for language: {0}', [lang])))
   if (building.has(env.image)) return building.get(env.image)
   const p = (async () => {
     if (await imageExists(env.image)) return env
-    onProgress?.(t('Buduję środowisko {0} (jednorazowo)…', [env.label]))
+    onProgress?.(t('Building {0} (one-time setup)…', [env.label]))
     const pack = tar.pack()
     pack.entry({ name: 'Dockerfile' }, env.dockerfile)
     pack.finalize()
@@ -198,11 +198,11 @@ export function ensureImage(lang, onProgress) {
   return p
 }
 
-// --------------------------------------------------------------- workspace na dysku
+// --------------------------------------------------------------- workspace files
 
 export function safeId(id) {
   const s = String(id || '')
-  if (!/^[A-Za-z0-9_-]{1,80}$/.test(s)) throw new Error(t('Nieprawidłowy identyfikator workspace'))
+  if (!/^[A-Za-z0-9_-]{1,80}$/.test(s)) throw new Error(t('Invalid workspace ID'))
   return s
 }
 
@@ -225,11 +225,11 @@ export function readMeta(wsId) {
 function resolveInWs(wsId, rel) {
   const base = wsDir(wsId)
   const p = path.resolve(base, String(rel || '').replace(/^[/\\]+/, ''))
-  if (p !== base && !p.startsWith(base + path.sep)) throw new Error(t('Ścieżka poza workspace'))
+  if (p !== base && !p.startsWith(base + path.sep)) throw new Error(t('Path is outside the workspace'))
   return p
 }
 
-/** Zapisuje pliki do workspace. `reset` czyści katalog przed zapisem. */
+/** Write workspace files. Clear the directory first when reset is enabled. */
 export function seedWorkspace(wsId, files, { lang, reset = false } = {}) {
   const dir = wsDir(wsId)
   if (reset) fs.rmSync(dir, { recursive: true, force: true })
@@ -279,7 +279,7 @@ export function listFiles(wsId) {
 export function readFile(wsId, rel) {
   const p = resolveInWs(wsId, rel)
   const st = fs.statSync(p)
-  if (st.size > 1_000_000) throw new Error(t('Plik za duży do edycji (>1 MB)'))
+  if (st.size > 1_000_000) throw new Error(t('File is too large to edit (>1 MB)'))
   return { content: fs.readFileSync(p, 'utf8'), mtime: st.mtimeMs }
 }
 
@@ -292,7 +292,7 @@ export function writeFile(wsId, rel, content) {
 
 export function deletePath(wsId, rel) {
   const p = resolveInWs(wsId, rel)
-  if (p === wsDir(wsId)) throw new Error(t('Nie można usunąć katalogu głównego'))
+  if (p === wsDir(wsId)) throw new Error(t('Cannot delete the workspace root'))
   fs.rmSync(p, { recursive: true, force: true })
 }
 
@@ -312,7 +312,7 @@ export async function ensureContainer(wsId, lang, onProgress) {
   const existing = docker.getContainer(name)
   try {
     const info = await existing.inspect()
-    // Kontenery sprzed utwardzenia (root, pełne uprawnienia) tworzymy od nowa.
+    // Recreate containers from before the switch to unprivileged execution.
     if (info.Config.Image !== env.image || info.Config.Labels?.['codenoms.hardened'] !== '1') {
       await existing.remove({ force: true })
     } else {
@@ -320,7 +320,7 @@ export async function ensureContainer(wsId, lang, onProgress) {
       return existing
     }
   } catch {
-    /* nie istnieje */
+    /* The container does not exist. */
   }
   fs.mkdirSync(wsDir(wsId), { recursive: true })
   const c = await docker.createContainer({
@@ -348,7 +348,7 @@ export async function ensureContainer(wsId, lang, onProgress) {
   return c
 }
 
-/** Wykonuje komendę w kontenerze (bez TTY) z limitem czasu. */
+/** Run a command without a TTY, with a timeout. */
 export async function execIn(wsId, lang, cmd, { timeoutSec = 60, onProgress } = {}) {
   const c = await ensureContainer(wsId, lang, onProgress)
   const exec = await c.exec({
@@ -378,10 +378,10 @@ export async function execIn(wsId, lang, cmd, { timeoutSec = 60, onProgress } = 
   return { exitCode, output, timedOut: exitCode === 137 }
 }
 
-/** Interaktywna powłoka (TTY) podpięta do WebSocketu. */
+/** Connect an interactive shell to a WebSocket. */
 export async function attachShell(wsId, ws) {
   const meta = readMeta(wsId)
-  if (!meta?.lang) throw new Error(t('Workspace nie istnieje'))
+  if (!meta?.lang) throw new Error(t('Workspace does not exist'))
   const c = await ensureContainer(wsId, meta.lang)
   const exec = await c.exec({
     Cmd: ['bash', '-i'],
@@ -423,7 +423,7 @@ export async function stopWorkspace(wsId) {
   } catch {}
 }
 
-/** Usuwa kontenery piaskownicy należące do tej instancji aplikacji. */
+/** Remove sandbox containers owned by this instance. */
 export async function cleanupAll() {
   try {
     const list = await docker.listContainers({ all: true, filters: { label: [`${containerLabel}=1`] } })
@@ -442,11 +442,11 @@ setInterval(async () => {
   }
 }, 60_000).unref()
 
-// --------------------------------------------------------------- testy
+// --------------------------------------------------------------- tests
 
 /**
- * Protokół testów: każda linia "PASS <nazwa>" albo "FAIL <nazwa> :: <opis>".
- * Dodatkowo rozumiemy format `go test -v` ("--- PASS: TestX").
+ * Test protocol: each line contains "PASS <name>" or "FAIL <name> :: <description>".
+ * Also accept output from `go test -v` ("--- PASS: TestX").
  */
 export function parseTestOutput(output, exitCode) {
   const results = []
@@ -454,21 +454,21 @@ export function parseTestOutput(output, exitCode) {
     const line = raw.replace(/\x1b\[[0-9;]*m/g, '').trim()
     let m = line.match(/^(PASS|FAIL)\s+(.+?)(?:\s+::\s+(.*))?$/)
     if (m) {
-      results.push({ name: m[2], ok: m[1] === 'PASS', error: m[3] || (m[1] === 'FAIL' ? t('test nie przeszedł') : undefined) })
+      results.push({ name: m[2], ok: m[1] === 'PASS', error: m[3] || (m[1] === 'FAIL' ? t('test failed') : undefined) })
       continue
     }
     m = line.match(/^---\s+(PASS|FAIL):\s+(\S+)/)
-    if (m) results.push({ name: m[2], ok: m[1] === 'PASS', error: m[1] === 'FAIL' ? t('test nie przeszedł') : undefined })
+    if (m) results.push({ name: m[2], ok: m[1] === 'PASS', error: m[1] === 'FAIL' ? t('test failed') : undefined })
   }
   const tail = String(output).split(/\r?\n/).slice(-40).join('\n').trim()
-  const compileError = !results.length && exitCode !== 0 ? tail || t('kod wyjścia {0}', [exitCode]) : undefined
+  const compileError = !results.length && exitCode !== 0 ? tail || t('exit code {0}', [exitCode]) : undefined
   if (results.length && exitCode !== 0 && results.every((r) => r.ok)) {
-    results.push({ name: t('(proces)'), ok: false, error: t('zakończył się kodem {0}', [exitCode]) })
+    results.push({ name: t('(process)'), ok: false, error: t('exited with code {0}', [exitCode]) })
   }
   return { results, compileError, logs: [{ level: 'log', text: output }], exitCode }
 }
 
-/** Jednorazowe uruchomienie testów na zestawie plików (weryfikacja zadania). */
+/** Run tests once against a supplied set of files. */
 export async function verifyRun({ language, files, testCommand, onProgress }) {
   const lang = String(language).toLowerCase()
   const verifyWs = `verify-${lang}`
@@ -483,7 +483,7 @@ export async function verifyRun({ language, files, testCommand, onProgress }) {
     fs.writeFileSync(p, f.content ?? '')
   }
   try {
-    // Osobny katalog artefaktów .NET na każde uruchomienie (kontener weryfikacji jest współdzielony).
+    // Use a separate .NET artifact directory per run because the verification container is shared.
     const r = await execIn(verifyWs, lang, `cd /workspace/${sub} && export ArtifactsPath=/tmp/dotnet-artifacts/${sub} && ${testCommand}`, { timeoutSec: 90, onProgress })
     return parseTestOutput(r.output, r.exitCode)
   } finally {

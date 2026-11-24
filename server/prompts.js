@@ -1,6 +1,6 @@
-// Prompty i schematy JSON dla każdego zadania.
-// Schematy są w trybie "strict" (wszystkie pola wymagane, brak dodatkowych),
-// bo tego wymaga Codex (--output-schema); Claude (--json-schema) przyjmuje je bez zmian.
+// Prompts and JSON schemas for each AI task.
+// Strict schemas require all fields and disallow additional properties.
+// Codex requires this format. Claude accepts the same schemas unchanged.
 
 const str = { type: 'string' }
 const int = { type: 'integer' }
@@ -140,7 +140,7 @@ Return the complete revised plan.`,
   }
 }
 
-// ---------------------------------------------------------------- lekcja
+// ---------------------------------------------------------------- lesson
 
 const num = { type: 'number' }
 const namedValue = obj({ name: str, value: str })

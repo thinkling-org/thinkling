@@ -1,9 +1,14 @@
 <script setup>
 import { t } from '../lib/i18n.js'
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, shallowRef } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useApp } from '../stores/app.js'
-import { ai, getJSON, putJSON } from '../lib/api.js'
+import { useProviderSettings } from '../composables/useProviderSettings.js'
+import { useSetupJobs } from '../composables/useSetupJobs.js'
+import { AI_PROVIDERS, getAiProvider } from '../lib/ai-providers.js'
+import { DOCKER_SETUP_JOBS, SETUP_STEPS } from '../lib/setup-options.js'
+import CopyCommand from '../components/setup/CopyCommand.vue'
+import ProviderConnectionTest from '../components/ProviderConnectionTest.vue'
 import Logo from '../components/Logo.vue'
 import Icon from '../components/Icon.vue'
 import ModelPicker from '../components/ModelPicker.vue'
@@ -14,131 +19,25 @@ const app = useApp()
 const router = useRouter()
 const route = useRoute()
 
-const STEPS = [
-  { id: 'welcome', title: 'Witaj' },
-  { id: 'ai', title: 'Silnik AI' },
-  { id: 'docker', title: 'Docker' },
-  { id: 'dictation', title: 'Dyktowanie' },
-  { id: 'done', title: 'Gotowe' },
-]
-const POPULAR = ['python', 'javascript', 'cpp', 'go', 'java']
-
-const step = ref(Math.max(0, STEPS.findIndex((s) => s.id === route.query.step)))
-const status = ref(null)
-const jobs = ref({})
-const loading = ref(false)
-const copied = ref('')
-const startError = ref('')
-const languages = ref([])
-const testing = ref(false)
-const testResult = ref(null)
-let poll = null
-
-const current = computed(() => STEPS[step.value].id)
+const { status, loading, startError, languages, anyRunning, recheck, startJob, job, running, toggleLang } = useSetupJobs()
+const { chooseProvider, testConnection, testing, testResult } = useProviderSettings()
+const step = shallowRef(Math.max(0, SETUP_STEPS.findIndex((item) => item.id === route.query.step)))
+const current = computed(() => SETUP_STEPS[step.value].id)
 const docker = computed(() => status.value?.docker)
 const providers = computed(() => status.value?.providers || {})
+const providerName = computed(() => getAiProvider(app.settings.provider).name)
 const activeProvider = computed(() => providers.value[app.settings.provider])
 const providerReady = computed(() => !!activeProvider.value?.available && activeProvider.value?.auth?.loggedIn !== false)
-const anyRunning = computed(() => Object.values(jobs.value).some((j) => j?.status === 'running'))
-
-async function loadStatus() {
-  loading.value = true
-  try {
-    status.value = await getJSON('/api/setup/status')
-    jobs.value = status.value.jobs || {}
-    if (status.value.sandbox && !languages.value.length) {
-      languages.value = POPULAR.filter((l) => status.value.sandbox[l] && !status.value.sandbox[l].ready)
-    }
-  } finally {
-    loading.value = false
-  }
-  if (anyRunning.value) startPolling()
-}
-
-async function recheck() {
-  await fetch('/api/setup/refresh', { method: 'POST' }).catch(() => {})
-  await loadStatus()
-  app.refreshStatus()
-}
-
-function startPolling() {
-  if (poll) return
-  poll = setInterval(async () => {
-    const before = anyRunning.value
-    try {
-      jobs.value = await getJSON('/api/setup/jobs')
-    } catch {}
-    if (before && !anyRunning.value) {
-      clearInterval(poll)
-      poll = null
-      await recheck()
-    }
-  }, 1000)
-}
-
-async function startJob(kind, body) {
-  startError.value = ''
-  try {
-    const res = await fetch(`/api/setup/jobs/${kind}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body || {}),
-    })
-    const data = await res.json()
-    if (!res.ok) throw new Error(data.error || res.status)
-    jobs.value = { ...jobs.value, [kind]: data }
-    startPolling()
-  } catch (err) {
-    startError.value = err.message
-  }
-}
-
-const job = (kind) => jobs.value?.[kind] || null
-const running = (kind) => job(kind)?.status === 'running'
-
-async function copy(text) {
-  try {
-    await navigator.clipboard.writeText(text)
-    copied.value = text
-    setTimeout(() => copied.value === text && (copied.value = ''), 1500)
-  } catch {}
-}
-
-async function chooseProvider(id) {
-  app.switchProvider(id)
-  testResult.value = null
-  await putJSON('/api/state', app.persisted())
-  app.refreshStatus()
-}
-
-async function test() {
-  testing.value = true
-  testResult.value = null
-  const t0 = Date.now()
-  try {
-    await putJSON('/api/state', app.persisted())
-    const data = await ai('ping', {})
-    testResult.value = { ok: true, text: `${data.message} (${((Date.now() - t0) / 1000).toFixed(1)} s)` }
-  } catch (err) {
-    testResult.value = { ok: false, text: err.message }
-  } finally {
-    testing.value = false
-  }
-}
-
-function toggleLang(l) {
-  languages.value = languages.value.includes(l) ? languages.value.filter((x) => x !== l) : [...languages.value, l]
-}
 
 function next() {
-  if (step.value < STEPS.length - 1) step.value++
+  if (step.value < SETUP_STEPS.length - 1) step.value++
 }
 function back() {
   if (step.value > 0) step.value--
 }
 async function finish() {
   app.settings.setupDone = true
-  await putJSON('/api/state', app.persisted())
+  await app.saveNow()
   await app.refreshStatus()
   router.push(app.plan ? '/path' : '/start')
 }
@@ -149,31 +48,28 @@ const summary = computed(() => {
   const p = activeProvider.value
   return [
     {
-      label: t('Silnik AI: {0}{1}{2}', [app.settings.provider === 'codex' ? 'Codex' : 'Claude Code', app.settings.model ? ` · ${app.settings.model}` : '', app.settings.effort ? ` · ${app.settings.effort}` : '']),
+      label: t('AI provider: {0}{1}{2}', [providerName.value, app.settings.model ? ` · ${app.settings.model}` : '', app.settings.effort ? ` · ${app.settings.effort}` : '']),
       ok: providerReady.value,
-      note: !p?.available ? t('nie znaleziono CLI') : p?.auth?.loggedIn === false ? t('niezalogowane') : '',
+      note: !p?.available ? t('CLI not installed') : p?.auth?.loggedIn === false ? t('signed out') : '',
     },
-    { label: t('Docker (piaskownica z terminalem)'), ok: !!s.docker?.running, note: s.docker?.running ? '' : t('zadania w PHP, C++ itd. oceni tylko model') },
-    { label: t('Dyktowanie (Faster Whisper)'), ok: !!s.dictation?.installed, note: s.dictation?.installed ? '' : t('możesz zainstalować później w Ustawieniach') },
+    { label: t('Docker (sandbox with terminal)'), ok: !!s.docker?.running, note: s.docker?.running ? '' : t('tasks in PHP, C++ and similar languages will be graded by the model') },
+    { label: t('Dictation (Faster Whisper)'), ok: !!s.dictation?.installed, note: s.dictation?.installed ? '' : t('you can install it later from Settings') },
   ]
 })
-
-onMounted(loadStatus)
-onBeforeUnmount(() => clearInterval(poll))
 </script>
 
 <template>
   <div class="page">
     <header class="head">
       <Logo />
-      <span class="label">{{ t('Konfiguracja · krok') }} {{ step + 1 }} / {{ STEPS.length }}</span>
+      <span class="label">{{ t('Setup · step') }} {{ step + 1 }} / {{ SETUP_STEPS.length }}</span>
     </header>
 
     <main class="wrap">
       <div class="col">
-        <nav class="dots" :aria-label="t('Kroki konfiguracji')">
+        <nav class="dots" :aria-label="t('Setup steps')">
           <button
-            v-for="(s, i) in STEPS"
+            v-for="(s, i) in SETUP_STEPS"
             :key="s.id"
             class="dot"
             :class="{ on: i === step, past: i < step }"
@@ -186,68 +82,63 @@ onBeforeUnmount(() => clearInterval(poll))
         </nav>
 
         <div v-if="!status && current !== 'welcome'" class="card box center">
-          <span class="spinner" /> {{ t('Sprawdzam, co jest zainstalowane…') }}
+          <span class="spinner" /> {{ t('Checking what\'s installed…') }}
         </div>
 
-        <!-- ------------------------------------------------------- powitanie -->
+        <!-- Welcome -->
         <section v-else-if="current === 'welcome'" class="card box">
-          <h1>{{ t('Cześć! Przygotujmy Codenoms') }}</h1>
+          <h1>{{ t('Welcome! Let\'s set up Codenoms') }}</h1>
           <LanguagePicker />
           <p class="lead">
-            {{ t('Codenoms działa w całości na Twoim komputerze. Zanim zaczniesz, kreator sprawdzi kilka rzeczy i pomoże doinstalować brakujące elementy:') }}
+            {{ t('Codenoms runs on your computer. The setup wizard checks the following and helps you install what\'s missing:') }}
           </p>
           <ul class="list">
-            <li><strong>{{ t('Silnik AI') }}</strong>{{ t(': Claude Code albo Codex, zalogowany Twoją subskrypcją (wymagany).') }}</li>
-            <li><strong>Docker</strong>{{ t(': prawdziwe środowiska z terminalem dla PHP, C++, Pythona, Go i innych (zalecany).') }}</li>
-            <li><strong>{{ t('Dyktowanie') }}</strong>{{ t(': odpowiedzi mówione do mikrofonu, rozpoznawane lokalnie (opcjonalne, ok. 0,5 GB).') }}</li>
+            <li><strong>{{ t('AI provider') }}</strong>{{ t(': Claude Code or Codex, signed in with your subscription (required).') }}</li>
+            <li><strong>Docker</strong>{{ t(': containerized environments with a terminal for PHP, C++, Python, Go and more (recommended).') }}</li>
+            <li><strong>{{ t('Dictation') }}</strong>{{ t(': record spoken answers and transcribe them locally (optional, about 0.5 GB).') }}</li>
           </ul>
-          <p class="muted">{{ t('Każdy krok możesz pominąć i wrócić do niego później w Ustawieniach.') }}</p>
+          <p class="muted">{{ t('You can skip steps and return to them later from Settings.') }}</p>
         </section>
 
-        <!-- ------------------------------------------------------- silnik AI -->
+        <!-- AI provider -->
         <section v-else-if="current === 'ai'" class="card box">
-          <h1>{{ t('Silnik AI') }}</h1>
-          <p class="lead">{{ t('Wybierz, z którego CLI ma korzystać Codenoms. Używana jest Twoja subskrypcja, więc nie płacisz za tokeny API.') }}</p>
+          <h1>{{ t('AI provider') }}</h1>
+          <p class="lead">{{ t('Choose which CLI Codenoms uses. It runs through your subscription, without API token charges.') }}</p>
           <div class="providers">
             <button
-              v-for="id in ['claude', 'codex']"
-              :key="id"
+              v-for="provider in AI_PROVIDERS"
+              :key="provider.id"
               class="card prov"
-              :class="{ on: app.settings.provider === id }"
-              :aria-pressed="app.settings.provider === id"
-              @click="chooseProvider(id)"
+              :class="{ on: app.settings.provider === provider.id }"
+              :aria-pressed="app.settings.provider === provider.id"
+              @click="chooseProvider(provider.id)"
             >
               <div class="ph">
-                <strong>{{ id === 'claude' ? 'Claude Code' : 'Codex' }}</strong>
-                <span v-if="!providers[id]?.available" class="tag tag-red">{{ t('brak CLI') }}</span>
-                <span v-else-if="providers[id].auth?.loggedIn === false" class="tag tag-yellow">{{ t('niezalogowane') }}</span>
-                <span v-else class="tag tag-green">{{ t('gotowe') }}</span>
+                <strong>{{ provider.name }}</strong>
+                <span v-if="!providers[provider.id]?.available" class="tag tag-red">{{ t('CLI missing') }}</span>
+                <span v-else-if="providers[provider.id].auth?.loggedIn === false" class="tag tag-yellow">{{ t('signed out') }}</span>
+                <span v-else class="tag tag-green">{{ t('ready') }}</span>
               </div>
-              <span class="pd">{{ id === 'claude' ? t('Subskrypcja Claude Pro / Max') : t('Konto ChatGPT (Plus / Pro / Business)') }}</span>
-              <code v-if="providers[id]?.version" class="pv">{{ providers[id].version }}</code>
+              <span class="pd">{{ t(provider.subscription) }}</span>
+              <code v-if="providers[provider.id]?.version" class="pv">{{ providers[provider.id].version }}</code>
             </button>
           </div>
 
           <div v-if="activeProvider && !activeProvider.available" class="hint">
-            <strong>{{ t('Zainstaluj') }} {{ app.settings.provider === 'claude' ? 'Claude Code' : 'Codex' }}</strong> {{ t('w terminalu, a potem kliknij „Sprawdź ponownie”:') }}
-            <div class="cmd"><code>{{ activeProvider.install }}</code><button class="btn btn-sm" @click="copy(activeProvider.install)">{{ copied === activeProvider.install ? t('Skopiowano') : t('Kopiuj') }}</button></div>
-            <span class="muted small">{{ t('Jeśli CLI jest zainstalowane w nietypowym miejscu, podasz ścieżkę później w Ustawieniach.') }}</span>
+            <strong>{{ t('Install') }} {{ providerName }}</strong> {{ t('in a terminal, then click “Check again”:') }}
+            <CopyCommand :command="activeProvider.install" />
+            <span class="muted small">{{ t('If the CLI is installed in an unusual location, set its path later in Settings.') }}</span>
           </div>
           <div v-else-if="activeProvider?.auth?.loggedIn === false" class="hint">
-            <strong>{{ t('Zaloguj się') }}</strong> {{ t('w terminalu (otworzy się przeglądarka), a potem kliknij „Sprawdź ponownie”:') }}
-            <div class="cmd"><code>{{ activeProvider.login }}</code><button class="btn btn-sm" @click="copy(activeProvider.login)">{{ copied === activeProvider.login ? t('Skopiowano') : t('Kopiuj') }}</button></div>
+            <strong>{{ t('Sign in') }}</strong> {{ t('in a terminal (a browser will open), then click “Check again”:') }}
+            <CopyCommand :command="activeProvider.login" />
           </div>
 
           <ModelPicker v-if="activeProvider?.available" :key="app.settings.provider" />
 
           <div class="row">
-            <button class="btn btn-sm" :disabled="loading" @click="recheck"><Icon name="refresh" :size="16" /> {{ t('Sprawdź ponownie') }}</button>
-            <button v-if="activeProvider?.available" class="btn btn-primary btn-sm" :disabled="testing" @click="test">
-              <span v-if="testing" class="spinner sm" /> {{ t('Testuj połączenie') }}
-            </button>
-            <span v-if="testResult" class="tr" :class="testResult.ok ? 'ok' : 'bad'">
-              <Icon :name="testResult.ok ? 'check' : 'x'" :size="18" :stroke="3" />{{ testResult.text }}
-            </span>
+            <button class="btn btn-sm" :disabled="loading" @click="recheck"><Icon name="refresh" :size="16" /> {{ t('Check again') }}</button>
+            <ProviderConnectionTest v-if="activeProvider?.available" :testing="testing" :result="testResult" @test="testConnection" />
           </div>
         </section>
 
@@ -255,43 +146,45 @@ onBeforeUnmount(() => clearInterval(poll))
         <section v-else-if="current === 'docker'" class="card box">
           <h1>Docker</h1>
           <p class="lead">
-            {{ t('Dzięki Dockerowi zadania w PHP, C++, Pythonie, Go, Ruście, Javie, C#, Ruby i SQL uruchamiają się w prawdziwych, odizolowanych kontenerach z terminalem.') }}
+            {{ t('Docker runs PHP, C++, Python, Go, Rust, Java, C#, Ruby and SQL exercises in isolated containers with a terminal.') }}
           </p>
 
           <div class="statusline">
             <span class="tag" :class="docker.running ? 'tag-green' : 'tag-red'">
-              {{ docker.running ? t('Docker działa · {0}{1}', [docker.version, docker.endpoint ? ` · ${t(docker.endpoint)}` : '']) : docker.problem === 'permission' ? t('brak uprawnień') : docker.installed ? t('zainstalowany, ale nie działa') : t('nie zainstalowany') }}
+              {{ docker.running ? t('Docker is running · {0}{1}', [docker.version, docker.endpoint ? ` · ${t(docker.endpoint)}` : '']) : docker.problem === 'permission' ? t('permission denied') : docker.installed ? t('installed but not running') : t('not installed') }}
             </span>
           </div>
 
           <template v-if="!docker.running">
             <div v-if="docker.problem === 'permission'" class="hint">
-              <strong>{{ t('Docker działa, ale Twoje konto nie ma do niego dostępu.') }}</strong> {{ t('Wykonaj w terminalu:') }}
-              <div v-for="c in docker.help.permission" :key="c" class="cmd"><code>{{ t(c) }}</code><button v-if="!c.startsWith('Wyloguj')" class="btn btn-sm" @click="copy(c)">{{ copied === c ? t('Skopiowano') : t('Kopiuj') }}</button></div>
+              <strong>{{ t('Docker is running, but your account can\'t access it.') }}</strong> {{ t('Run this in a terminal:') }}
+              <CopyCommand v-for="command in docker.help.permission" :key="command" :command="command" />
+              <p v-if="docker.help.permissionHint" class="muted">{{ t(docker.help.permissionHint) }}</p>
             </div>
             <div v-else-if="!docker.installed" class="hint">
-              <strong>{{ t('Zainstaluj Dockera.') }}</strong>
+              <strong>{{ t('Install Docker.') }}</strong>
               <template v-if="docker.help.autoInstall">
-                {{ t('Codenoms może zrobić to za Ciebie. System poprosi o hasło administratora.') }}
-                <button class="btn btn-primary btn-sm self" :disabled="anyRunning" @click="startJob('docker-install')">{{ t('Zainstaluj Dockera') }}</button>
-                <span class="muted small">{{ t('Albo ręcznie, w terminalu:') }}</span>
+                {{ t('Codenoms can install it for you. Your system will request an administrator password.') }}
+                <button class="btn btn-primary btn-sm self" :disabled="anyRunning" @click="startJob('docker-install')">{{ t('Install Docker') }}</button>
+                <span class="muted small">{{ t('Or manually, in a terminal:') }}</span>
               </template>
-              <template v-else>{{ t('Wykonaj w terminalu:') }}</template>
-              <div v-for="c in docker.help.install" :key="c" class="cmd"><code>{{ c }}</code><button class="btn btn-sm" @click="copy(c)">{{ copied === c ? t('Skopiowano') : t('Kopiuj') }}</button></div>
-              <a class="link small" :href="docker.help.link" target="_blank" rel="noopener">{{ t('Oficjalna instrukcja instalacji ↗') }}</a>
+              <template v-else>{{ t('Run this in a terminal:') }}</template>
+              <CopyCommand v-for="command in docker.help.install" :key="command" :command="command" />
+              <a class="link small" :href="docker.help.link" target="_blank" rel="noopener">{{ t('Official installation guide ↗') }}</a>
             </div>
             <div v-else class="hint">
-              <strong>{{ t('Uruchom Dockera.') }}</strong>
-              <button v-if="docker.help.autoStart" class="btn btn-primary btn-sm self" :disabled="anyRunning" @click="startJob('docker-start')">{{ t('Uruchom Dockera') }}</button>
-              <div v-for="c in docker.help.start" :key="c" class="cmd"><code>{{ t(c) }}</code><button v-if="!c.startsWith('Uruchom')" class="btn btn-sm" @click="copy(c)">{{ copied === c ? t('Skopiowano') : t('Kopiuj') }}</button></div>
+              <strong>{{ t('Start Docker.') }}</strong>
+              <button v-if="docker.help.autoStart" class="btn btn-primary btn-sm self" :disabled="anyRunning" @click="startJob('docker-start')">{{ t('Start Docker') }}</button>
+              <CopyCommand v-for="command in docker.help.start" :key="command" :command="command" />
+              <p v-if="docker.help.startHint" class="muted">{{ t(docker.help.startHint) }}</p>
             </div>
           </template>
 
-          <JobLog v-for="k in ['docker-install', 'docker-start']" :key="k" :job="job(k)" />
+          <JobLog v-for="k in DOCKER_SETUP_JOBS" :key="k" :job="job(k)" />
 
           <template v-if="docker.running && status.sandbox">
-            <span class="label">{{ t('Przygotuj środowiska z góry (opcjonalnie)') }}</span>
-            <span class="muted small">{{ t('Inaczej obraz danego języka zbuduje się przy pierwszej lekcji, co zajmuje 1–3 min.') }}</span>
+            <span class="label">{{ t('Prepare environments in advance (optional)') }}</span>
+            <span class="muted small">{{ t('Otherwise each language image builds during its first lesson, which takes 1–3 minutes.') }}</span>
             <div class="seg">
               <button
                 v-for="(env, l) in status.sandbox"
@@ -307,32 +200,32 @@ onBeforeUnmount(() => clearInterval(poll))
               class="btn btn-sm self"
               :disabled="!languages.length || running('sandbox')"
               @click="startJob('sandbox', { languages })"
-            >{{ t('Pobierz wybrane (') }}{{ languages.length }})</button>
+            >{{ t('Download selected (') }}{{ languages.length }})</button>
             <JobLog :job="job('sandbox')" />
           </template>
 
           <div class="row">
-            <button class="btn btn-sm" :disabled="loading" @click="recheck"><Icon name="refresh" :size="16" /> {{ t('Sprawdź ponownie') }}</button>
+            <button class="btn btn-sm" :disabled="loading" @click="recheck"><Icon name="refresh" :size="16" /> {{ t('Check again') }}</button>
           </div>
         </section>
 
-        <!-- ------------------------------------------------------- dyktowanie -->
+        <!-- Dictation -->
         <section v-else-if="current === 'dictation'" class="card box">
-          <h1>{{ t('Dyktowanie') }}</h1>
+          <h1>{{ t('Dictation') }}</h1>
           <p class="lead">
-            {{ t('Wolisz mówić niż pisać? Z dyktowaniem odpowiesz na pytania otwarte głosem (mikrofon przy polu tekstowym albo') }} <kbd>Alt+Shift+M</kbd>{{ t('). Mowę rozpoznaje lokalnie') }} <strong>Faster Whisper</strong>.
+            {{ t('Prefer speaking to typing? Use dictation to answer open questions aloud (the microphone next to the field or') }} <kbd>Alt+Shift+M</kbd>{{ t('). Speech is recognized locally by') }} <strong>Faster Whisper</strong>.
           </p>
           <ul class="list small">
-            <li>{{ t('Pobranie: ok.') }} {{ status.dictation.downloadMB }} {{ t('MB (model „small” + biblioteki Pythona).') }}</li>
+            <li>{{ t('Download size: about') }} {{ status.dictation.downloadMB }} {{ t('MB (the small model and Python libraries).') }}</li>
             <li>
-              {{ t('Wymaga Pythona 3.10–3.13:') }}
-              <span v-if="status.dictation.python && status.dictation.pythonTested" class="ok-text">{{ t('znaleziono') }} {{ status.dictation.python }}</span>
-              <span v-else-if="status.dictation.python" class="warn-text">{{ t('znaleziono') }} {{ status.dictation.python }}{{ t(': nowsza wersja niż sprawdzone, instalacja może się nie udać (wtedy doinstaluj Pythona 3.12 lub 3.13)') }}</span>
-              <span v-else class="bad-text">{{ t('nie znaleziono, zainstaluj z') }} <a class="link" href="https://www.python.org/downloads/" target="_blank" rel="noopener">python.org</a></span>
+              {{ t('Requires Python 3.10–3.13:') }}
+              <span v-if="status.dictation.python && status.dictation.pythonTested" class="ok-text">{{ t('found') }} {{ status.dictation.python }}</span>
+              <span v-else-if="status.dictation.python" class="warn-text">{{ t('found') }} {{ status.dictation.python }}{{ t(': newer than tested. Installation may fail. Install Python 3.12 or 3.13 if needed.') }}</span>
+              <span v-else class="bad-text">{{ t('not found. Get it from') }} <a class="link" href="https://www.python.org/downloads/" target="_blank" rel="noopener">python.org</a></span>
             </li>
           </ul>
           <div class="statusline">
-            <span class="tag" :class="status.dictation.installed ? 'tag-green' : 'tag-yellow'">{{ status.dictation.installed ? t('Dyktowanie gotowe') : t('Nie zainstalowane') }}</span>
+            <span class="tag" :class="status.dictation.installed ? 'tag-green' : 'tag-yellow'">{{ status.dictation.installed ? t('Dictation ready') : t('Not installed') }}</span>
           </div>
           <div class="row">
             <button
@@ -342,35 +235,35 @@ onBeforeUnmount(() => clearInterval(poll))
               @click="startJob('dictation')"
             >
               <span v-if="running('dictation')" class="spinner sm" />
-              {{ running('dictation') ? t('Instaluję…') : job('dictation')?.status === 'error' ? t('Spróbuj ponownie') : t('Tak, zainstaluj dyktowanie') }}
+              {{ running('dictation') ? t('Installing…') : job('dictation')?.status === 'error' ? t('Try again') : t('Install dictation') }}
             </button>
-            <button v-if="!status.dictation.installed && !running('dictation')" class="btn" @click="next">{{ t('Nie teraz') }}</button>
+            <button v-if="!status.dictation.installed && !running('dictation')" class="btn" @click="next">{{ t('Not now') }}</button>
           </div>
           <JobLog :job="job('dictation')" />
         </section>
 
-        <!-- ------------------------------------------------------- gotowe -->
+        <!-- ------------------------------------------------------- complete -->
         <section v-else class="card box">
-          <h1>{{ t('Wszystko gotowe') }}</h1>
+          <h1>{{ t('You\'re ready') }}</h1>
           <ul class="summary">
             <li v-for="s in summary" :key="s.label">
               <Icon :name="s.ok ? 'check' : 'x'" :size="18" :stroke="3" :class="s.ok ? 'ok-text' : 'bad-text'" />
               <span>{{ s.label }}<span v-if="s.note" class="muted"> · {{ s.note }}</span></span>
             </li>
           </ul>
-          <div v-if="anyRunning" class="hint">{{ t('Instalacja wciąż trwa w tle. Możesz już zacząć naukę, a funkcja włączy się, gdy instalacja się skończy.') }}</div>
-          <div v-if="!providerReady" class="hint warn">{{ t('Bez działającego silnika AI Codenoms nie ułoży planu ani lekcji. Wróć do kroku „Silnik AI”.') }}</div>
+          <div v-if="anyRunning" class="hint">{{ t('Installation is still running in the background. You can start learning now and use the feature once it finishes.') }}</div>
+          <div v-if="!providerReady" class="hint warn">{{ t('Codenoms needs a working AI provider to create a plan or lessons. Return to “AI provider”.') }}</div>
         </section>
 
         <p v-if="startError" class="tr bad">{{ startError }}</p>
 
         <footer v-if="status || current === 'welcome'" class="nav">
-          <button v-if="step > 0" class="btn" @click="back"><Icon name="arrow-left" :size="18" /> {{ t('Wstecz') }}</button>
+          <button v-if="step > 0" class="btn" @click="back"><Icon name="arrow-left" :size="18" /> {{ t('Back') }}</button>
           <span class="grow" />
           <button v-if="current !== 'done'" class="btn btn-primary" @click="next">
-            {{ current === 'welcome' ? t('Zaczynamy') : t('Dalej') }} <Icon name="arrow-right" :size="18" />
+            {{ current === 'welcome' ? t('Get started') : t('Continue') }} <Icon name="arrow-right" :size="18" />
           </button>
-          <button v-else class="btn btn-green btn-lg" :disabled="!providerReady" @click="finish">{{ t('Przejdź do nauki') }}</button>
+          <button v-else class="btn btn-green btn-lg" :disabled="!providerReady" @click="finish">{{ t('Continue to learning') }}</button>
         </footer>
       </div>
     </main>
@@ -534,23 +427,6 @@ h1 {
   border-color: var(--yellow-border);
   color: var(--yellow-light);
 }
-.cmd {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  background: var(--bg-deep);
-  border: 2px solid var(--border);
-  border-radius: 10px;
-  padding: 6px 6px 6px 12px;
-}
-.cmd code {
-  flex: 1;
-  font-family: var(--mono);
-  font-size: 13px;
-  color: var(--code-ink);
-  overflow-x: auto;
-  white-space: nowrap;
-}
 .self {
   align-self: flex-start;
 }
@@ -595,7 +471,6 @@ h1 {
   font-weight: 700;
   margin: 0;
 }
-.tr.ok,
 .ok-text {
   color: var(--green-light);
 }

@@ -13,7 +13,7 @@ const index = ref(0)
 watch(() => props.config, () => { index.value = 0 })
 const step = computed(() => props.config.steps[index.value])
 
-// Zmienne znane do tego kroku: ostatnia wartość, czy zmieniła się teraz i historia wartości.
+// Track each variable’s current value, whether it changed in this step and its history.
 const variables = computed(() => {
   const known = new Map()
   let previous = new Map()
@@ -34,19 +34,19 @@ const variables = computed(() => {
 </script>
 
 <template>
-  <section class="card viz trace" :aria-label="t('Przebieg krok po kroku')">
+  <section class="card viz trace" :aria-label="t('Step-by-step trace')">
     <Markdown v-if="config.instruction" class="instruction" :src="config.instruction" />
     <div class="layout">
-      <CodeBlock :code="config.code" :language="codeLanguage" :file-name="t('przykład')" :active-line="step.line" />
+      <CodeBlock :code="config.code" :language="codeLanguage" :file-name="t('example')" :active-line="step.line" />
       <div class="state">
         <div v-if="variables.length" class="vars">
           <div v-for="v in variables" :key="v.name" class="var" :class="{ changed: v.changed }">
             <span class="name">{{ v.name }}</span>
             <span :key="v.value" class="value">{{ v.value }}</span>
-            <span v-if="v.history.length > 1" class="history" :aria-label="t('Historia {0}', [v.name])">{{ v.history.join(' → ') }}</span>
+            <span v-if="v.history.length > 1" class="history" :aria-label="t('{0} history', [v.name])">{{ v.history.join(' → ') }}</span>
           </div>
         </div>
-        <div v-if="step.output || config.steps.some((s) => s.output)" class="console" :aria-label="t('Wyjście programu')">
+        <div v-if="step.output || config.steps.some((s) => s.output)" class="console" :aria-label="t('Program output')">
           <span class="prompt" aria-hidden="true">›</span><span class="out">{{ step.output }}</span>
         </div>
       </div>

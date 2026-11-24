@@ -27,10 +27,10 @@ const cards = computed(() => {
 const learned = computed(() => app.flashcards.filter((c) => c.interval >= 4).length)
 function dueText(c) {
   const d = c.due - Date.now()
-  return d <= 0 ? t('teraz') : t('za {0}', [formatDelay(d)])
+  return d <= 0 ? t('now') : t('in {0}', [formatDelay(d)])
 }
 function firstLine(md) {
-  return md.replace(/```[\s\S]*?```/g, t('[kod]')).split('\n').find((l) => l.trim()) || ''
+  return md.replace(/```[\s\S]*?```/g, t('[code]')).split('\n').find((l) => l.trim()) || ''
 }
 </script>
 
@@ -40,33 +40,33 @@ function firstLine(md) {
       <section class="hero card">
         <Gem :index="3" :size="64" />
         <div class="ht">
-          <h1>{{ t('Fiszki') }}</h1>
-          <p>{{ t('Powtórki rozłożone w czasie: pojęcia z lekcji i twoje błędy wracają, zanim zdążysz je zapomnieć.') }}</p>
+          <h1>{{ t('Flashcards') }}</h1>
+          <p>{{ t('Spaced repetition brings back lesson concepts and mistakes before you forget them.') }}</p>
         </div>
         <div class="kpis">
-          <div><div class="k" style="color: var(--red-light)">{{ app.dueCards.length }}</div><div class="label">{{ t('Do powtórki') }}</div></div>
-          <div><div class="k">{{ app.flashcards.length }}</div><div class="label">{{ t('W talii') }}</div></div>
-          <div><div class="k" style="color: var(--green)">{{ learned }}</div><div class="label">{{ t('Utrwalone') }}</div></div>
+          <div><div class="k" style="color: var(--red-light)">{{ app.dueCards.length }}</div><div class="label">{{ t('Due for review') }}</div></div>
+          <div><div class="k">{{ app.flashcards.length }}</div><div class="label">{{ t('In the deck') }}</div></div>
+          <div><div class="k" style="color: var(--green)">{{ learned }}</div><div class="label">{{ t('Learned') }}</div></div>
         </div>
         <div class="acts">
           <RouterLink to="/review" class="btn btn-primary btn-lg" :class="{ disabled: !app.dueCards.length }">
-            {{ app.dueCards.length ? t('Powtórz {0}', [app.dueCards.length]) : t('Nic do powtórki') }}
+            {{ app.dueCards.length ? t('Review {0}', [app.dueCards.length]) : t('Nothing to review') }}
           </RouterLink>
-          <RouterLink v-if="app.flashcards.length" :to="{ path: '/review', query: { all: 1 } }" class="btn">{{ t('Ćwicz wszystkie') }}</RouterLink>
+          <RouterLink v-if="app.flashcards.length" :to="{ path: '/review', query: { all: 1 } }" class="btn">{{ t('Practice all') }}</RouterLink>
         </div>
       </section>
 
       <div class="toolbar">
-        <div class="seg" role="group" :aria-label="t('Filtr')">
-          <button class="chip" :aria-pressed="filter === 'all'" @click="filter = 'all'">{{ t('Wszystkie') }}</button>
-          <button class="chip" :aria-pressed="filter === 'due'" @click="filter = 'due'">{{ t('Do powtórki') }}</button>
-          <button class="chip" :aria-pressed="filter === 'hard'" @click="filter = 'hard'">{{ t('Trudne') }}</button>
+        <div class="seg" role="group" :aria-label="t('Filter')">
+          <button class="chip" :aria-pressed="filter === 'all'" @click="filter = 'all'">{{ t('All') }}</button>
+          <button class="chip" :aria-pressed="filter === 'due'" @click="filter = 'due'">{{ t('Due for review') }}</button>
+          <button class="chip" :aria-pressed="filter === 'hard'" @click="filter = 'hard'">{{ t('Hard') }}</button>
         </div>
-        <input v-model="q" class="input search" :placeholder="t('Szukaj…')" :aria-label="t('Szukaj fiszek')" />
+        <input v-model="q" class="input search" :placeholder="t('Search…')" :aria-label="t('Search flashcards')" />
       </div>
 
       <div v-if="!cards.length" class="empty card-dashed">
-        {{ app.flashcards.length ? t('Brak fiszek dla tego filtra.') : t('Talia jest pusta — fiszki pojawią się po pierwszej lekcji.') }}
+        {{ app.flashcards.length ? t('No flashcards match this filter.') : t('Your deck is empty. Flashcards will appear after your first lesson.') }}
       </div>
 
       <div class="list">
@@ -81,8 +81,8 @@ function firstLine(md) {
             <div class="sep" />
             <Markdown :src="c.back" class="back" />
             <div class="ifoot">
-              <span class="muted small">{{ c.source }} {{ t('· powtórki:') }} {{ c.reps }} {{ t('· pomyłki:') }} {{ c.lapses }}</span>
-              <button class="btn btn-sm btn-ghost-red" @click="app.deleteCard(c.id)"><Icon name="trash" :size="16" />{{ t('Usuń') }}</button>
+              <span class="muted small">{{ c.source }} {{ t('· reviews:') }} {{ c.reps }} {{ t('· mistakes:') }} {{ c.lapses }}</span>
+              <button class="btn btn-sm btn-ghost-red" @click="app.deleteCard(c.id)"><Icon name="trash" :size="16" />{{ t('Delete') }}</button>
             </div>
           </div>
         </div>

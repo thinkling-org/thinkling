@@ -1,4 +1,4 @@
-// Klient API piaskownicy (kontenery Docker na lokalnym serwerze).
+// Client for the local Docker sandbox API.
 import { getJSON, requestStream } from './api.js'
 
 async function post(url, body, method = 'POST') {
@@ -28,7 +28,7 @@ export function wsIdFor(id) {
   return String(id).replace(/[^A-Za-z0-9_-]/g, '_').slice(0, 80)
 }
 
-/** Nakłada pliki `over` na `base` (po ścieżce). */
+/** Merge over into base by file path. */
 export function mergeFiles(base, ...over) {
   const map = new Map((base || []).map((f) => [f.path, f]))
   for (const list of over) for (const f of list || []) map.set(f.path, f)

@@ -2,13 +2,13 @@
 import { t } from '../lib/i18n.js'
 import { useId } from 'vue'
 
-// Każda instancja potrzebuje własnego id maski (logo bywa na stronie kilka razy).
+// Give each instance a unique SVG mask ID.
 const maskId = `logo-mask-${useId()}`
 </script>
 
 <template>
-  <RouterLink to="/" class="logo" :aria-label="t('Codenoms — strona główna')">
-    <!-- Znak „Nadgryziony”: heks z ugryzieniem w rogu, oczy jako wycięcia. -->
+  <RouterLink to="/" class="logo" :aria-label="t('Codenoms home')">
+    <!-- Hexagonal mark with a bitten corner and cutouts for the eyes. -->
     <svg aria-hidden="true" width="36" height="36" viewBox="0 0 120 120">
       <defs>
         <mask :id="maskId" maskUnits="userSpaceOnUse" x="0" y="0" width="120" height="120">
@@ -38,7 +38,7 @@ const maskId = `logo-mask-${useId()}`
 .logo:hover {
   color: var(--text);
 }
-/* „code” krojem kodu, „noms” w kolorze marki: zmiana kroju rozdziela słowo. */
+/* Distinguish the two parts of the wordmark with a typeface and color change. */
 .wordmark {
   letter-spacing: -0.01em;
   white-space: nowrap;

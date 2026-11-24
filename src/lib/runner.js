@@ -22,7 +22,7 @@ export async function runTests({ code, tests, language }) {
     const worker = new Worker(new URL('./runner.worker.js', import.meta.url), { type: 'module' })
     const timer = setTimeout(() => {
       worker.terminate()
-      resolve({ results: [], logs: [], compileError: t('Przekroczono limit 10 s — nieskończona pętla?'), timedOut: true })
+      resolve({ results: [], logs: [], compileError: t('The 10 s limit expired. Check for an infinite loop.'), timedOut: true })
     }, 10_000)
     worker.onmessage = (e) => {
       clearTimeout(timer)
@@ -32,7 +32,7 @@ export async function runTests({ code, tests, language }) {
     worker.onerror = (e) => {
       clearTimeout(timer)
       worker.terminate()
-      resolve({ results: [], logs: [], compileError: e.message || t('Błąd workera') })
+      resolve({ results: [], logs: [], compileError: e.message || t('Worker error') })
     }
     worker.postMessage({ code: js, tests })
   })

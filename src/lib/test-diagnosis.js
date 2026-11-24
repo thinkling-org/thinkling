@@ -1,14 +1,14 @@
 import { t } from './i18n.js'
-// Lokalna diagnoza oblanych testów: z komunikatu "expected X, got Y" wyciąga obie wartości,
-// znajduje dokładną różnicę i opisuje ją po ludzku. Bez modelu, więc działa od razu.
+// Extract expected and actual values from test errors and describe the difference locally.
+
 
 const QUOTED = /expected:?\s+(['"`])((?:\\.|(?!\1).)*)\1[\s,;]*(?:but\s+)?(?:got|received|actual|was|otrzymano|dostałem|jest)\s*:?\s*(['"`])((?:\\.|(?!\3).)*)\3/is
 const NUMBERS = /expected:?\s+(-?\d+(?:[.,]\d+)?)[\s,;]*(?:but\s+)?(?:got|received|actual|was|otrzymano|jest)\s*:?\s*(-?\d+(?:[.,]\d+)?)/i
 
 const NAMES = {
-  '.': 'kropka', ',': 'przecinek', ';': 'średnik', ':': 'dwukropek', ' ': 'spacja', '\n': 'nowa linia',
-  '\t': 'tabulator', '"': 'cudzysłów', "'": 'apostrof', '!': 'wykrzyknik', '?': 'znak zapytania',
-  '-': 'minus', '(': 'nawias', ')': 'nawias', '[': 'nawias kwadratowy', ']': 'nawias kwadratowy',
+  '.': 'period', ',': 'comma', ';': 'semicolon', ':': 'colon', ' ': 'space', '\n': 'newline',
+  '\t': 'tab', '"': 'quotation mark', "'": 'apostrophe', '!': 'exclamation mark', '?': 'question mark',
+  '-': 'minus sign', '(': 'parenthesis', ')': 'parenthesis', '[': 'square bracket', ']': 'square bracket',
 }
 
 function unescape(text) {
@@ -18,7 +18,7 @@ function unescape(text) {
   })
 }
 
-/** Tekst z widocznymi znakami białymi, do wyświetlenia w diffie. */
+/** Render whitespace characters visibly in the diff. */
 export const visible = (text) => text.replace(/\n/g, '↵').replace(/\t/g, '⇥')
 
 function describeChars(text) {
@@ -44,24 +44,24 @@ function compare(expected, got) {
   const onlySpaces = expected.replace(/\s+/g, '') === got.replace(/\s+/g, '')
   if (expected.trim() && got.trim() && Number.isFinite(a) && Number.isFinite(b)) {
     kind = 'number'
-    message = t('Liczba się nie zgadza: oczekiwano {0}, a wyszło {1} (różnica {2}).', [expected.trim(), got.trim(), +(b - a).toFixed(6)])
+    message = t('Number mismatch: expected {0}, got {1} (difference {2}).', [expected.trim(), got.trim(), +(b - a).toFixed(6)])
   } else if (expected !== got && expected.toLowerCase() === got.toLowerCase()) {
     kind = 'case'
-    message = t('Tekst się zgadza, różni się tylko wielkość liter.')
+    message = t('The text matches except for letter case.')
   } else if (!missing && small(extra)) {
     kind = 'extra'
-    message = t('Masz o {0} za dużo: {1}.', [extra.length === 1 ? t('jeden znak') : t('kilka znaków'), describeChars(extra)])
+    message = t('You have {0} too many: {1}.', [extra.length === 1 ? t('one character') : t('a few characters'), describeChars(extra)])
   } else if (!extra && small(missing)) {
     kind = 'missing'
-    message = t('Brakuje {0}: {1}.', [missing.length === 1 ? t('jednego znaku') : t('kilku znaków'), describeChars(missing)])
+    message = t('You are missing {0}: {1}.', [missing.length === 1 ? t('a single character') : t('several characters'), describeChars(missing)])
   } else if (onlySpaces) {
     kind = 'whitespace'
-    message = t('Treść się zgadza, różnią się tylko spacje albo znaki nowej linii.')
+    message = t('The content matches except for spaces or line breaks.')
   } else if (small(missing) && small(extra)) {
     kind = 'replaced'
-    message = t('Zamiast {0} masz {1}.', [describeChars(missing), describeChars(extra)])
+    message = t('Expected {0}, got {1}.', [describeChars(missing), describeChars(extra)])
   } else {
-    message = t('Wynik różni się od oczekiwanego. Porównaj zaznaczony fragment.')
+    message = t('The result differs from the expected output. Compare the highlighted section.')
   }
   return { kind, message, start, missing, extra, nearMiss: kind !== 'different' }
 }
@@ -73,7 +73,7 @@ function parse(error) {
   return numbers ? { expected: numbers[1], got: numbers[2] } : null
 }
 
-/** Szuka w kodzie ucznia linii, z której najpewniej pochodzi różnica. */
+/** Find the line of the learner’s code most likely responsible for the difference. */
 function locate(code, got, diff) {
   if (!code || diff.kind === 'case' || diff.kind === 'whitespace') return null
   const before = got.slice(Math.max(0, diff.start - 6), diff.start).replace(/^.*\n/s, '')
@@ -104,9 +104,9 @@ export function diagnoseRun(run, code = '') {
   const total = run.results.length
   const passed = total - failed.length
   let headline
-  if (first.diff.nearMiss && same) headline = t('Prawie! Wszystkie oblane testy ({0}) mają ten sam drobny błąd.', [failed.length])
-  else if (first.diff.nearMiss) headline = passed ? t('Prawie! {0} z {1} testów przechodzi, a w reszcie wynik różni się drobiazgiem.', [passed, total]) : t('Prawie! Wynik różni się tylko drobiazgiem.')
-  else headline = t('Wynik różni się od oczekiwanego w {0} z {1} testów.', [failed.length, total])
+  if (first.diff.nearMiss && same) headline = t('Almost! All {0} failed tests have the same small issue.', [failed.length])
+  else if (first.diff.nearMiss) headline = passed ? t('Almost! {0} of {1} tests pass. The remaining results differ slightly.', [passed, total]) : t('Almost! The result differs by one small detail.')
+  else headline = t('The result differs from the expected output in {0} of {1} tests.', [failed.length, total])
 
   return {
     headline,

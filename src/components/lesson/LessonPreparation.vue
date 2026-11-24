@@ -14,20 +14,20 @@ const props = defineProps({
 const emit = defineEmits(['retry'])
 
 const tips = [
-  t('Po przykładzie możesz spróbować samodzielnie, z podpowiedzią i bez oceny.'),
-  t('Następna lekcja przygotowuje się w tle, gdy robisz tę.'),
-  t('Błędy trafiają do fiszek i wrócą w powtórce.'),
-  t('Enter sprawdza odpowiedź lub przechodzi dalej. Klawisze 1–4 wybierają odpowiedź.'),
+  t('After the example, try it yourself with a hint and no grade.'),
+  t('The next lesson prepares in the background while you work.'),
+  t('Mistakes become flashcards for later review.'),
+  t('Enter checks the answer or continues. Keys 1–4 select an answer.'),
 ]
 const tip = tips[Math.floor(Math.random() * tips.length)]
 const progress = computed(() => {
   const generation = props.generation
-  if (generation?.stage === 'building') return t('Przygotowuję środowisko (jednorazowo)…')
-  if (generation?.stage === 'validating') return t('Sprawdzam testy na wzorcowym rozwiązaniu…')
-  if (generation?.stage === 'fixing') return t('Test nie przeszedł. {0} poprawia zadanie…', [props.providerName])
+  if (generation?.stage === 'building') return t('Preparing the environment (one-time setup)…')
+  if (generation?.stage === 'validating') return t('Running tests against the reference solution…')
+  if (generation?.stage === 'fixing') return t('A test failed. {0} is fixing the exercise…', [props.providerName])
   const characters = (generation?.chars || 0).toLocaleString(uiLocale())
   const seconds = Math.round((generation?.elapsed || 0) / 1000)
-  return t('{0} znaków · {1} s', [characters, seconds])
+  return t('{0} characters · {1} s', [characters, seconds])
 })
 </script>
 
@@ -35,7 +35,7 @@ const progress = computed(() => {
   <main class="preparation">
     <div v-if="loading" class="status-card card">
       <Gem :index="moduleIndex" :size="72" glow />
-      <h1>{{ providerName }} {{ t('przygotowuje lekcję') }}</h1>
+      <h1>{{ providerName }} {{ t('is preparing your lesson') }}</h1>
       <p v-if="title" class="lesson-title">{{ title }}</p>
       <div class="generation" role="status">
         <span class="spinner" aria-hidden="true" />
@@ -47,11 +47,11 @@ const progress = computed(() => {
       <p class="tip">{{ tip }}</p>
     </div>
     <div v-else class="status-card card">
-      <h1>{{ t('Nie udało się przygotować lekcji') }}</h1>
+      <h1>{{ t('Couldn\'t prepare the lesson') }}</h1>
       <p class="error" role="alert">{{ error }}</p>
       <div class="actions">
-        <RouterLink to="/path" class="btn">{{ t('Wróć') }}</RouterLink>
-        <button type="button" class="btn btn-primary" @click="emit('retry')">{{ t('Spróbuj ponownie') }}</button>
+        <RouterLink to="/path" class="btn">{{ t('Go back') }}</RouterLink>
+        <button type="button" class="btn btn-primary" @click="emit('retry')">{{ t('Try again') }}</button>
       </div>
     </div>
   </main>

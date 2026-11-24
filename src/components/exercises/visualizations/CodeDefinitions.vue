@@ -15,17 +15,17 @@ watch(() => props.config, () => { selected.value = 0 })
 </script>
 
 <template>
-  <section class="card viz definitions" :aria-label="t('Definicje w miejscu użycia')">
+  <section class="card viz definitions" :aria-label="t('Definitions in context')">
     <Markdown v-if="config.instruction" class="instruction" :src="config.instruction" />
     <CodeBlock
       :code="config.code"
       :language="codeLanguage"
-      :file-name="t('przykład')"
+      :file-name="t('example')"
       :tokens="tokens"
       :active-token="selected"
       @token="selected = $event"
     />
-    <div class="chips" role="group" :aria-label="t('Fragmenty z definicją')">
+    <div class="chips" role="group" :aria-label="t('Snippets with definitions')">
       <button
         v-for="(t, i) in config.terms"
         :key="t.token"

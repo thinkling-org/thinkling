@@ -12,7 +12,7 @@ const outputs = computed(() => props.config.outputs.map((output) => ({ ...output
 const pattern = computed(() => props.config.inputs.map((input) => state.value[input.id]).join(''))
 const note = computed(() => props.config.notes.find((n) => n.pattern === pattern.value)?.say ?? '')
 
-// Tabela prawdy ma sens dla małej liczby wejść; przy 4 wejściach to wciąż 16 wierszy.
+// Limit the truth table to small circuits. Four inputs already produce 16 rows.
 const table = computed(() => {
   const { inputs } = props.config
   if (inputs.length > 3) return []
@@ -32,11 +32,11 @@ function toggle(id) {
 </script>
 
 <template>
-  <section class="card viz circuit" :aria-label="t('Interaktywny schemat')">
+  <section class="card viz circuit" :aria-label="t('Interactive diagram')">
     <Markdown class="instruction" :src="config.instruction" />
     <div class="layout">
       <div class="board">
-        <div class="inputs" role="group" :aria-label="t('Wejścia')">
+        <div class="inputs" role="group" :aria-label="t('Inputs')">
           <button
             v-for="input in config.inputs"
             :key="input.id"
@@ -64,7 +64,7 @@ function toggle(id) {
       </div>
       <div v-if="table.length" class="table-wrap">
         <table>
-          <caption class="label">{{ t('Tabela prawdy') }}</caption>
+          <caption class="label">{{ t('Truth table') }}</caption>
           <thead>
             <tr>
               <th v-for="input in config.inputs" :key="input.id" scope="col">{{ input.id }}</th>

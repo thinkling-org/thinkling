@@ -1,4 +1,4 @@
-// Uruchamia kod ucznia + testy w izolowanym Web Workerze.
+// Run the learner’s code and tests in a Web Worker.
 
 const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor
 

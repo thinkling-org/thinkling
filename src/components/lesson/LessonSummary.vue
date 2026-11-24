@@ -16,20 +16,20 @@ defineProps({
     <div class="summary-card card">
       <Gem :index="moduleIndex" :size="96" glow />
       <div>
-        <h1>{{ t('Lekcja ukończona!') }}</h1>
+        <h1>{{ t('Lesson complete!') }}</h1>
         <p class="lesson-title">{{ title }}</p>
       </div>
       <dl class="results">
         <div class="points">
-          <dt>{{ t('Łącznie XP') }}</dt>
+          <dt>{{ t('Total XP') }}</dt>
           <dd>{{ xp }}</dd>
         </div>
         <div class="accuracy">
-          <dt>{{ t('Dokładność') }}</dt>
+          <dt>{{ t('Accuracy') }}</dt>
           <dd>{{ accuracy }}%</dd>
         </div>
         <div class="time">
-          <dt>{{ t('Czas') }}</dt>
+          <dt>{{ t('Time') }}</dt>
           <dd>{{ elapsed }}</dd>
         </div>
       </dl>

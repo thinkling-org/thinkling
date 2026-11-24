@@ -1,84 +1,37 @@
 <script setup>
 import { t } from '../lib/i18n.js'
-import { computed, ref } from 'vue'
+import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useApp } from '../stores/app.js'
-import { ai, putJSON } from '../lib/api.js'
+import { useProviderSettings } from '../composables/useProviderSettings.js'
+import { AI_PROVIDERS, getAiProvider } from '../lib/ai-providers.js'
+import ProviderConnectionTest from '../components/ProviderConnectionTest.vue'
 import AppShell from '../components/AppShell.vue'
-import Icon from '../components/Icon.vue'
 import ModelPicker from '../components/ModelPicker.vue'
 import LanguagePicker from '../components/LanguagePicker.vue'
-import { play, playStep } from '../lib/sfx.js'
-
-const soundDemo = computed(() => [
-  { id: 'correct', label: t('Dobrze') },
-  { id: 'almost', label: t('Prawie') },
-  { id: 'wrong', label: t('Źle') },
-  { id: 'steps', label: t('Kroki kodu'), fn: () => [0, 1, 2, 3, 4, 5].forEach((k) => setTimeout(() => playStep(k), k * 170)) },
-  { id: 'flip', label: t('Fiszka') },
-  { id: 'complete', label: t('Koniec lekcji') },
-])
+import { play } from '../lib/sfx.js'
+import { SOUND_PREVIEWS, playSoundPreview } from '../lib/sound-previews.js'
 
 const app = useApp()
 const router = useRouter()
 
-const providers = computed(() => [
-  {
-    id: 'claude',
-    name: 'Claude Code',
-    desc: t('Używa CLI `claude` zalogowanego w ramach subskrypcji Claude (Pro/Max). Klucz ANTHROPIC_API_KEY jest ignorowany.'),
-  },
-  {
-    id: 'codex',
-    name: 'Codex',
-    desc: t('Używa CLI `codex exec` zalogowanego kontem ChatGPT. Klucz OPENAI_API_KEY jest ignorowany.'),
-  },
-])
-
-const testing = ref(false)
-const testResult = ref(null)
-
-async function saveNow() {
-  await putJSON('/api/state', app.persisted())
-}
-
-async function choose(id) {
-  if (app.settings.provider === id) return
-  app.switchProvider(id)
-  testResult.value = null
-  await saveNow()
-  app.refreshStatus()
-}
+const { chooseProvider, testConnection, testing, testResult } = useProviderSettings()
+const provider = computed(() => getAiProvider(app.settings.provider))
 
 function runSetup() {
   router.push('/setup')
 }
 
 async function saveBins() {
-  await saveNow()
+  await app.saveNow()
   await app.refreshStatus()
-}
-
-async function test() {
-  testing.value = true
-  testResult.value = null
-  const t0 = Date.now()
-  try {
-    await saveNow()
-    const data = await ai('ping', {})
-    testResult.value = { ok: true, text: `${data.message} (${((Date.now() - t0) / 1000).toFixed(1)} s)` }
-  } catch (err) {
-    testResult.value = { ok: false, text: err.message }
-  } finally {
-    testing.value = false
-  }
 }
 
 function newPlan() {
   router.push('/start')
 }
 function resetAll() {
-  if (!confirm(t('Usunąć plan, postęp, XP, serię i wszystkie fiszki? Tego nie da się cofnąć.'))) return
+  if (!confirm(t('Delete your plan, progress, XP, streak and flashcards? This can\'t be undone.'))) return
   app.resetAll()
   router.push('/start')
 }
@@ -87,32 +40,32 @@ function resetAll() {
 <template>
   <AppShell>
     <div class="content">
-      <h1>{{ t('Ustawienia') }}</h1>
+      <h1>{{ t('Settings') }}</h1>
 
       <section class="sec">
         <LanguagePicker explain />
       </section>
 
       <section class="sec">
-        <h2>{{ t('Silnik AI') }}</h2>
-        <p class="muted">{{ t('Codenoms nie wysyła nic do chmury samodzielnie — uruchamia lokalne CLI, które korzysta z twojej subskrypcji. Zero płacenia za tokeny API.') }}</p>
+        <h2>{{ t('AI provider') }}</h2>
+        <p class="muted">{{ t('Codenoms runs a local CLI that uses your subscription. You don\'t pay for API tokens.') }}</p>
         <div class="providers">
           <button
-            v-for="p in providers"
+            v-for="p in AI_PROVIDERS"
             :key="p.id"
             class="card prov"
             :class="{ on: app.settings.provider === p.id }"
             :aria-pressed="app.settings.provider === p.id"
-            @click="choose(p.id)"
+            @click="chooseProvider(p.id)"
           >
             <div class="ph">
               <strong>{{ p.name }}</strong>
               <span
                 class="tag"
                 :class="app.status?.providers?.[p.id]?.available ? 'tag-green' : 'tag-red'"
-              >{{ app.status ? (app.status.providers?.[p.id]?.available ? t('znaleziono') : t('brak')) : '…' }}</span>
+              >{{ app.status ? (app.status.providers?.[p.id]?.available ? t('found') : t('missing')) : '…' }}</span>
             </div>
-            <span class="pd">{{ p.desc }}</span>
+            <span class="pd">{{ t(p.description) }}</span>
             <code v-if="app.status?.providers?.[p.id]?.version" class="pv">{{ app.status.providers[p.id].version }}</code>
             <code v-if="app.status?.providers?.[p.id]?.path" class="pp" :title="app.status.providers[p.id].path">{{ app.status.providers[p.id].path }}</code>
           </button>
@@ -120,53 +73,47 @@ function resetAll() {
       </section>
 
       <section class="sec">
-        <h2>{{ t('Model i effort —') }} {{ app.settings.provider === 'codex' ? 'Codex' : 'Claude Code' }}</h2>
+        <h2>{{ t('Model and reasoning effort —') }} {{ provider.name }}</h2>
         <ModelPicker />
         <div class="row">
-          <button class="btn btn-primary btn-sm" :disabled="testing" @click="test">
-            <span v-if="testing" class="spinner" style="width: 16px; height: 16px; border-width: 2px; border-color: #ffffff55; border-top-color: #fff" />
-            {{ t('Testuj połączenie') }}
-          </button>
-          <span v-if="testResult" class="tr" :class="testResult.ok ? 'ok' : 'bad'">
-            <Icon :name="testResult.ok ? 'check' : 'x'" :size="18" :stroke="3" />{{ testResult.text }}
-          </span>
+          <ProviderConnectionTest :testing="testing" :result="testResult" @test="testConnection" />
         </div>
       </section>
 
       <section class="sec">
-        <h2>{{ t('Środowisko uruchomieniowe') }}</h2>
+        <h2>{{ t('Runtime') }}</h2>
         <div class="card dk">
           <div class="ph">
             <strong>Docker</strong>
             <span class="tag" :class="app.docker?.available ? 'tag-green' : 'tag-red'">
-              {{ app.docker ? (app.docker.available ? t('działa · {0}', [app.docker.version]) : t('nie działa')) : '…' }}
+              {{ app.docker ? (app.docker.available ? t('running · {0}', [app.docker.version]) : t('not running')) : '…' }}
             </span>
           </div>
           <span class="pd">
-            {{ t('Zadania w PHP, C++, Pythonie, Go, Ruście, Javie, C# i SQL uruchamiają się w prawdziwych kontenerach: edytor z plikami, terminal (bash) i testy. Kontenery nie mają dostępu do sieci i mają limit pamięci. Obraz dla danego języka buduje się raz, przy pierwszym użyciu.') }}
+            {{ t('Exercises in PHP, C++, Python, Go, Rust, Java, C# and SQL run in real containers with files, a Bash terminal and tests. Containers have no network access and have a memory limit. A language image builds on first use.') }}
           </span>
           <span v-if="app.docker && !app.docker.available" class="pd warn">
-            {{ app.docker.error || t('Docker nie odpowiada.') }} {{ t('Bez Dockera zadania w tych językach ocenia tylko') }} {{ app.settings.provider === 'codex' ? 'Codex' : 'Claude' }}.
+            {{ app.docker.error || t('Docker isn\'t responding.') }} {{ t('Without Docker, these exercises are graded only by') }} {{ provider.shortName }}.
           </span>
-          <button class="btn btn-sm" style="align-self: flex-start" @click="app.refreshStatus()">{{ t('Sprawdź ponownie') }}</button>
+          <button class="btn btn-sm" style="align-self: flex-start" @click="app.refreshStatus()">{{ t('Check again') }}</button>
         </div>
         <span class="label">JavaScript / TypeScript</span>
         <div class="seg">
-          <button class="chip" :aria-pressed="app.settings.jsRuntime !== 'docker'" @click="app.settings.jsRuntime = 'browser'">{{ t('W przeglądarce — szybko') }}</button>
+          <button class="chip" :aria-pressed="app.settings.jsRuntime !== 'docker'" @click="app.settings.jsRuntime = 'browser'">{{ t('In the browser — fast') }}</button>
           <button class="chip" :aria-pressed="app.settings.jsRuntime === 'docker'" :disabled="!app.docker?.available" @click="app.settings.jsRuntime = 'docker'">
-            {{ t('W kontenerze — Node + terminal') }}
+            {{ t('In a container — Node and terminal') }}
           </button>
         </div>
-        <span class="muted small">{{ t('Dotyczy nowo generowanych lekcji.') }}</span>
+        <span class="muted small">{{ t('Applies to newly generated lessons.') }}</span>
       </section>
 
       <section class="sec">
-        <h2>{{ t('Dźwięk') }}</h2>
+        <h2>{{ t('Sound') }}</h2>
         <div class="row">
-          <button class="chip" :aria-pressed="app.settings.sound !== false" @click="app.settings.sound = true; play('correct')">{{ t('Włączony') }}</button>
-          <button class="chip" :aria-pressed="app.settings.sound === false" @click="app.settings.sound = false">{{ t('Wyłączony') }}</button>
+          <button class="chip" :aria-pressed="app.settings.sound !== false" @click="app.settings.sound = true; play('correct')">{{ t('On') }}</button>
+          <button class="chip" :aria-pressed="app.settings.sound === false" @click="app.settings.sound = false">{{ t('Off') }}</button>
           <label class="vol" :class="{ off: app.settings.sound === false }">
-            <span class="label">{{ t('Głośność') }}</span>
+            <span class="label">{{ t('Volume') }}</span>
             <input
               type="range"
               min="0"
@@ -180,27 +127,27 @@ function resetAll() {
           </label>
         </div>
         <div v-if="app.settings.sound !== false" class="row">
-          <span class="label">{{ t('Odsłuchaj:') }}</span>
-          <button v-for="s in soundDemo" :key="s.id" class="btn btn-sm" @click="s.fn ? s.fn() : play(s.id)">{{ s.label }}</button>
+          <span class="label">{{ t('Preview:') }}</span>
+          <button v-for="sound in SOUND_PREVIEWS" :key="sound.id" class="btn btn-sm" @click="playSoundPreview(sound.id)">{{ t(sound.label) }}</button>
         </div>
       </section>
 
       <section class="sec">
-        <h2>{{ t('Ścieżki do CLI (opcjonalnie)') }}</h2>
-        <p class="muted">{{ t('Zostaw puste, żeby wykrywać automatycznie (PATH, ~/.local/bin, rozszerzenia VS Code/Cursor, instalacja Codex).') }}</p>
+        <h2>{{ t('CLI paths (optional)') }}</h2>
+        <p class="muted">{{ t('Leave these empty for automatic detection via PATH, ~/.local/bin, VS Code/Cursor extensions, or the Codex installation.') }}</p>
         <label class="label" for="cbin">Claude</label>
-        <input id="cbin" v-model="app.settings.claudeBin" class="input mono" :placeholder="t('np. C:\\Users\\…\\claude.exe')" @change="saveBins" />
+        <input id="cbin" v-model="app.settings.claudeBin" class="input mono" :placeholder="t('e.g. C:\\Users\\…\\claude.exe')" @change="saveBins" />
         <label class="label" for="xbin">Codex</label>
-        <input id="xbin" v-model="app.settings.codexBin" class="input mono" :placeholder="t('np. C:\\Users\\…\\codex.exe')" @change="saveBins" />
+        <input id="xbin" v-model="app.settings.codexBin" class="input mono" :placeholder="t('e.g. C:\\Users\\…\\codex.exe')" @change="saveBins" />
       </section>
 
       <section class="sec danger">
-        <h2>{{ t('Dane') }}</h2>
-        <p class="muted">{{ t('Wszystko jest zapisane lokalnie w') }} <code>data/db.json</code> {{ t('w katalogu projektu.') }}</p>
+        <h2>{{ t('Data') }}</h2>
+        <p class="muted">{{ t('Everything is stored locally in') }} <code>data/db.json</code> {{ t('in the project directory.') }}</p>
         <div class="row">
-          <button class="btn btn-sm" @click="runSetup()">{{ t('Kreator konfiguracji') }}</button>
-          <button class="btn btn-sm" @click="newPlan">{{ t('Ułóż nowy plan') }}</button>
-          <button class="btn btn-sm btn-ghost-red" @click="resetAll">{{ t('Wyczyść wszystko') }}</button>
+          <button class="btn btn-sm" @click="runSetup()">{{ t('Setup wizard') }}</button>
+          <button class="btn btn-sm" @click="newPlan">{{ t('Create a new plan') }}</button>
+          <button class="btn btn-sm btn-ghost-red" @click="resetAll">{{ t('Clear all data') }}</button>
         </div>
       </section>
     </div>
@@ -320,21 +267,6 @@ h2 {
 .vol input {
   width: 160px;
   accent-color: var(--purple);
-}
-.tr {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-weight: 700;
-}
-.tr.ok {
-  color: var(--green-light);
-}
-.tr.bad {
-  color: var(--red-light);
-  font-family: var(--mono);
-  font-size: 13px;
-  white-space: pre-wrap;
 }
 @media (max-width: 760px) {
   .providers {

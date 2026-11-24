@@ -15,7 +15,7 @@ const variant = computed(() => props.config.variants[activeVariant.value])
 
 <template>
   <div class="comparison">
-    <div class="variants" role="group" :aria-label="t('Porównaj warianty przykładu')">
+    <div class="variants" role="group" :aria-label="t('Compare example variants')">
       <button
         v-for="({ label }, index) in config.variants"
         :key="index"
@@ -28,7 +28,7 @@ const variant = computed(() => props.config.variants[activeVariant.value])
         {{ label }}
       </button>
     </div>
-    <CodeBlock :code="variant.code" :language="codeLanguage" :file-name="t('przykład')" :active-line="step?.line" />
+    <CodeBlock :code="variant.code" :language="codeLanguage" :file-name="t('example')" :active-line="step?.line" />
     <div class="variant-outcome" aria-live="polite" aria-atomic="true">
       <Markdown :src="step?.say || variant.outcome" />
     </div>

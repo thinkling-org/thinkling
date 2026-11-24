@@ -26,18 +26,18 @@ function state(i) {
 
 <template>
   <div class="ex">
-    <span v-if="exercise.warmup" class="kind label warm">{{ t('Rozgrzewka · zgaduj śmiało, błąd się nie liczy') }}</span>
-    <span v-else-if="isPractice" class="kind label">{{ t('Próba bez oceny') }}</span>
-    <span v-else-if="exercise.stage === 'challenge'" class="kind label warm">{{ t('Opcjonalne wyzwanie') }}</span>
-    <span v-else class="kind label">{{ isOutput ? t('Co wypisze ten kod?') : 'Quiz' }}</span>
+    <span v-if="exercise.warmup" class="kind label warm">{{ t('Warm-up · take a guess, it doesn\'t count against you') }}</span>
+    <span v-else-if="isPractice" class="kind label">{{ t('Ungraded practice') }}</span>
+    <span v-else-if="exercise.stage === 'challenge'" class="kind label warm">{{ t('Optional challenge') }}</span>
+    <span v-else class="kind label">{{ isOutput ? t('What does this code print?') : 'Quiz' }}</span>
     <Markdown tag="h1" fit-heading class="q" :src="exercise.prompt" />
     <CodeBlock v-if="exercise.code" :code="exercise.code" :language="exercise.codeLanguage" />
     <details v-if="isPractice && exercise.hint && !result" class="card hint">
-      <summary>{{ t('Pokaż podpowiedź') }}</summary>
+      <summary>{{ t('Show hint') }}</summary>
       <Markdown :src="exercise.hint" />
     </details>
 
-    <div role="radiogroup" :aria-label="t('Odpowiedzi')" class="opts" :class="{ grid: short }">
+    <div role="radiogroup" :aria-label="t('Answers')" class="opts" :class="{ grid: short }">
       <button
         v-for="(o, i) in exercise.options"
         :key="i"
@@ -56,11 +56,11 @@ function state(i) {
     </div>
 
     <div v-if="result && exercise.warmup" class="card explain warmup">
-      <span class="label">{{ result.status === 'correct' ? t('Dobra intuicja!') : t('Dobra próba') }}</span>
-      <span>{{ t('Za chwilę karta wiedzy wyjaśni, dlaczego jest właśnie tak.') }}</span>
+      <span class="label">{{ result.status === 'correct' ? t('Good intuition!') : t('Good try') }}</span>
+      <span>{{ t('The knowledge card will explain why in a moment.') }}</span>
     </div>
     <div v-else-if="result && exercise.explanation" class="card explain" :class="result.status">
-      <span class="label">{{ isPractice ? t('Jak rozwiązać to ćwiczenie') : t('Wyjaśnienie') }}</span>
+      <span class="label">{{ isPractice ? t('How to solve this exercise') : t('Explanation') }}</span>
       <Markdown :src="exercise.explanation" />
     </div>
   </div>
@@ -132,7 +132,7 @@ function state(i) {
 .opt.mono .ot {
   font-family: var(--mono);
   letter-spacing: 0.08em;
-  /* odpowiedź typu „co wypisze” może mieć kilka linii wyjścia */
+  /* Expected program output may span multiple lines. */
   white-space: pre-line;
 }
 .opts.grid .opt.mono {

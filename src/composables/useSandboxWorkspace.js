@@ -26,7 +26,7 @@ export function useSandboxWorkspace(props) {
     clearInterval(polling)
     phase.value = 'opening'
     error.value = ''
-    progress.value = t('Uruchamiam kontener…')
+    progress.value = t('Starting the container…')
 
     try {
       if (reset) {

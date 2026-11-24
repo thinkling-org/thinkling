@@ -3,8 +3,10 @@ import { t } from '../lib/i18n.js'
 import { computed, nextTick, onBeforeUnmount, onMounted, shallowRef, useTemplateRef } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useApp } from '../stores/app.js'
+import { getAiProvider } from '../lib/ai-providers.js'
 import { useLessonAssessment } from '../composables/useLessonAssessment.js'
 import { useLessonExamples } from '../composables/useLessonExamples.js'
+import { useLessonSession } from '../composables/useLessonSession.js'
 import { buildLessonChatContext } from '../lib/lesson-context.js'
 import { play } from '../lib/sfx.js'
 import Icon from '../components/Icon.vue'
@@ -25,55 +27,14 @@ const router = useRouter()
 const app = useApp()
 
 const lessonId = computed(() => route.params.id)
-const meta = computed(() => app.findLesson(lessonId.value))
-const lesson = computed(() => app.lessons[lessonId.value])
-const intro = computed(() => lesson.value?.intro)
-const gen = computed(() => app.lessonGen[lessonId.value])
-const allExercises = computed(() => lesson.value?.exercises || [])
+const {
+  phase, loadError, level, levels, exerciseIndex, meta, intro, gen, exercises, exercise, estimate, summary,
+  load, regenerate, finish, commitTime,
+} = useLessonSession(lessonId)
+const providerName = computed(() => getAiProvider(app.settings.provider).shortName)
 
-// Uczeń deklaruje na ekranie powitalnym, ile już wie; od tego zależy, ile teorii zobaczy.
-const LEVELS = [
-  { label: t('Pierwszy raz słyszę'), plan: t('Zaczniemy od podstaw i przykładów, bez pośpiechu.'), pick: (list) => list },
-  {
-    label: t('Coś kojarzę'),
-    plan: t('Jedna karta przypomnienia, potem od razu ćwiczenia.'),
-    pick: (list) => list.filter((e, k) => e.stage !== 'learn' || list.findIndex((x) => x.stage === 'learn') === k),
-  },
-  {
-    label: t('Znam, chcę powtórkę'),
-    plan: t('Od razu pytania sprawdzające, bez teorii. Wyjaśnienie zobaczysz po każdej odpowiedzi.'),
-    pick: (list) => list.filter((e) => e.stage === 'check' || e.stage === 'challenge'),
-  },
-]
-const level = shallowRef(0)
-const levels = computed(() => {
-  if (meta.value?.kind === 'test') return []
-  return LEVELS.map((option) => ({ ...option, exercises: option.pick(allExercises.value) }))
-    .filter((option, k) => k === 0 || option.exercises.length)
-})
-const exercises = computed(() => levels.value[level.value]?.exercises || allExercises.value)
-const MINUTES = { learn: 2, choice: 1, open: 2, code: 5 }
-const estimate = computed(() => {
-  const list = exercises.value
-  const minutes = Math.max(1, Math.round(list.reduce((sum, e) => sum + (MINUTES[e.type] || 1), 0)))
-  const graded = list.filter((e) => e.stage === 'check')
-  const xpMax = graded.reduce((sum, e) => sum + (e.type === 'code' ? 20 : 10), 0) + (meta.value?.status === 'done' ? 5 : 20)
-  const n = list.length
-  const noun = n === 1 ? t('ćwiczenie') : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14) ? t('ćwiczenia') : t('ćwiczeń')
-  return { minutes, count: `${n} ${noun}`, xp: xpMax }
-})
-const providerName = computed(() => (app.settings.provider === 'codex' ? 'Codex' : 'Claude'))
-
-const phase = shallowRef('loading') // loading | error | intro | play | summary
-const loadError = shallowRef('')
-const exerciseIndex = shallowRef(0)
 const stage = useTemplateRef('stage')
 const codeEditor = useTemplateRef('codeEditor')
-const bonus = shallowRef(0)
-const startedAt = Date.now()
-let timeCommitted = false
-
-const exercise = computed(() => exercises.value[exerciseIndex.value])
 const {
   answers, issues, result, answeredCount, busy, xp, canCheck, codeRetrying,
   initialize, reset, accuracyFor, check, retryExercise, skipExercise, dontKnow,
@@ -93,34 +54,6 @@ const progress = computed(() => {
   return Math.round((completed / (exercises.value.length || 1)) * 100)
 })
 
-async function load() {
-  if (!meta.value || meta.value.status === 'locked') return router.replace('/path')
-  phase.value = 'loading'
-  loadError.value = ''
-  try {
-    await app.ensureLesson(lessonId.value)
-    initialize(allExercises.value)
-    phase.value = 'intro'
-  } catch (err) {
-    loadError.value = err.message
-    phase.value = 'error'
-  }
-}
-
-async function regenerate() {
-  phase.value = 'loading'
-  try {
-    await app.regenerateLesson(lessonId.value)
-    exerciseIndex.value = 0
-    level.value = 0
-    reset(allExercises.value)
-    phase.value = 'intro'
-  } catch (err) {
-    loadError.value = err.message
-    phase.value = 'error'
-  }
-}
-
 function skip() {
   if (exercise.value.stage === 'challenge') return next()
   skipExercise()
@@ -128,7 +61,7 @@ function skip() {
 
 function saveConcept({ term, explanation }) {
   app.addWeakSpot(term)
-  app.addFlashcards([{ front: t('Co oznacza {0}?', [term]), back: explanation }], t('pojęcie z lekcji: {0}', [meta.value?.title]))
+  app.addFlashcards([{ front: t('What does {0} mean?', [term]), back: explanation }], t('concept from lesson: {0}', [meta.value?.title]))
 }
 
 const showTrace = shallowRef(false)
@@ -173,36 +106,20 @@ function goToExercise(index) {
   drawerOpen.value = false
   drawer.value?.reset()
   window.scrollTo({ top: 0 })
-  if (index >= exercises.value.length) finish()
-  else exerciseIndex.value = index
-}
-
-function finish() {
-  accuracy.value = accuracyFor(exercises.value)
-  bonus.value = app.completeLesson(lessonId.value, { xp: xp.value }) || 0
-  commitTime()
+  if (index < exercises.value.length) {
+    exerciseIndex.value = index
+    return
+  }
+  finish(xp.value, accuracyFor(exercises.value))
   play('complete')
-  phase.value = 'summary'
-}
-
-const accuracy = shallowRef(0)
-const elapsedText = computed(() => {
-  const s = Math.round((Date.now() - startedAt) / 1000)
-  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
-})
-
-function commitTime() {
-  if (timeCommitted) return
-  timeCommitted = true
-  app.addTime(Math.min((Date.now() - startedAt) / 1000, 3 * 60 * 60))
 }
 
 function close() {
-  if (phase.value === 'play' && answeredCount.value && !confirm(t('Przerwać lekcję? Postęp tej lekcji nie zostanie zapisany (fiszki z błędów zostają).'))) return
+  if (phase.value === 'play' && answeredCount.value && !confirm(t('Leave this lesson? Progress in this lesson won\'t be saved, but flashcards from mistakes will be kept.'))) return
   router.push('/path')
 }
 
-// ------------------------------------------------------------- dopytaj
+// Tutor chat
 
 const drawer = useTemplateRef('drawer')
 const drawerOpen = shallowRef(false)
@@ -224,7 +141,7 @@ function explainInChat() {
   drawer.value?.explain({ exercise: current, chosenIndex: answers[current.id] })
 }
 
-// ------------------------------------------------------------- klawiatura
+// Exercise keyboard shortcuts
 
 function onKey(e) {
   if (e.defaultPrevented || e.repeat || e.altKey || e.shiftKey || phase.value !== 'play' || drawerOpen.value) return
@@ -249,7 +166,8 @@ function onKey(e) {
 
 onMounted(() => {
   window.addEventListener('keydown', onKey)
-  load()
+  if (!meta.value || meta.value.status === 'locked') router.replace('/path')
+  else load(initialize)
 })
 onBeforeUnmount(() => {
   window.removeEventListener('keydown', onKey)
@@ -262,7 +180,7 @@ const wide = computed(() => phase.value === 'play' && exercise.value?.type === '
 <template>
   <div class="lesson" :class="{ wide, tracing: showTrace, 'ask-open': drawerOpen }">
     <header class="lesson-header">
-      <button type="button" class="close-lesson" :aria-label="t('Zamknij lekcję')" @click="close">
+      <button type="button" class="close-lesson" :aria-label="t('Close lesson')" @click="close">
         <Icon name="x" :size="24" :stroke="2.8" />
       </button>
       <div class="lesson-progress">
@@ -270,7 +188,7 @@ const wide = computed(() => phase.value === 'play' && exercise.value?.type === '
           <span class="lesson-name">{{ meta?.title }}</span>
           <span class="count">{{ exerciseIndex + 1 }} / {{ exercises.length }}</span>
         </div>
-        <div class="bar progress-bar" role="progressbar" :aria-label="t('Postęp lekcji')" :aria-valuenow="progress">
+        <div class="bar progress-bar" role="progressbar" :aria-label="t('Lesson progress')" :aria-valuenow="progress">
           <div :style="{ width: `${progress}%` }" />
         </div>
       </div>
@@ -284,7 +202,7 @@ const wide = computed(() => phase.value === 'play' && exercise.value?.type === '
       :provider-name="providerName"
       :generation="gen"
       :error="loadError"
-      @retry="regenerate"
+      @retry="regenerate(reset)"
     />
 
     <main v-else-if="phase === 'intro'" class="stage">
@@ -295,12 +213,12 @@ const wide = computed(() => phase.value === 'play' && exercise.value?.type === '
       v-else-if="phase === 'summary'"
       :title="meta?.title || ''"
       :module-index="meta?.moduleIndex || 0"
-      :xp="xp + bonus"
-      :accuracy="accuracy"
-      :elapsed="elapsedText"
+      :xp="summary.xp"
+      :accuracy="summary.accuracy"
+      :elapsed="summary.elapsed"
     />
 
-    <!-- ćwiczenia -->
+    <!-- Exercises -->
     <main v-else-if="exercise" ref="stage" class="stage">
       <div class="inner" :key="exercise.id">
         <LessonTracePanel
@@ -348,20 +266,20 @@ const wide = computed(() => phase.value === 'play' && exercise.value?.type === '
       <template #left>
         <span class="intro-stats">
           <span>~{{ estimate.minutes }} min</span><span aria-hidden="true">·</span>
-          <span>{{ estimate.count }}</span><span aria-hidden="true">·</span>
-          <span class="xp">{{ t('do +') }}{{ estimate.xp }} XP</span>
+          <span>{{ t('Exercises: {0}', [estimate.count]) }}</span><span aria-hidden="true">·</span>
+          <span class="xp">{{ t('up to +') }}{{ estimate.xp }} XP</span>
         </span>
       </template>
       <button type="button" class="btn btn-primary btn-lg" @click="startLesson">
-        {{ meta?.kind === 'test' ? t('Rozpocznij sprawdzian') : t('Zacznij naukę') }}
+        {{ meta?.kind === 'test' ? t('Start assessment') : t('Start learning') }}
       </button>
     </LessonFooter>
 
     <LessonFooter v-else-if="phase === 'summary'" tone="idle">
       <template #left>
-        <RouterLink v-if="app.dueCards.length" to="/review" class="btn btn-ghost">{{ t('Fiszki (') }}{{ app.dueCards.length }})</RouterLink>
+        <RouterLink v-if="app.dueCards.length" to="/review" class="btn btn-ghost">{{ t('Flashcards (') }}{{ app.dueCards.length }})</RouterLink>
       </template>
-      <RouterLink to="/path" class="btn btn-primary btn-lg">{{ t('Dalej') }}</RouterLink>
+      <RouterLink to="/path" class="btn btn-primary btn-lg">{{ t('Continue') }}</RouterLink>
     </LessonFooter>
 
     <ExerciseFooter

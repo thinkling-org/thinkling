@@ -1,6 +1,6 @@
-// Parser małych wyrażeń logicznych dla schematów (bramki, przełączniki).
-// Obsługuje: nazwy wejść, 0/1, nawiasy, NOT/!/¬, AND/&&/&/∧, XOR/^/⊕/!==, OR/||/|/∨.
-// Priorytet: NOT > AND > XOR > OR. Zwraca funkcję (wartości wejść) => 0 | 1 albo null.
+// Parse logic expressions for circuits.
+// Accept input names, 0/1, parentheses, NOT/!/¬, AND/&&/&/∧, XOR/^/⊕/!==, and OR/||/|/∨.
+// Precedence is NOT, AND, XOR, OR. Return an evaluator that yields 0 or 1, or null if parsing fails.
 
 const OPERATORS = [
   ['!==', 'xor'], ['&&', 'and'], ['||', 'or'],

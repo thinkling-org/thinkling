@@ -16,7 +16,7 @@ import SandboxFileExplorer from './sandbox/SandboxFileExplorer.vue'
 const props = defineProps({
   wsId: { type: String, required: true },
   language: { type: String, required: true },
-  seedFiles: { type: Array, default: () => [] }, // [{path, content}] — szablon (pliki + testy)
+  seedFiles: { type: Array, default: () => [] }, // Starter files and tests, each with path and content.
   testCommand: { type: String, default: '' },
   testPaths: { type: Array, default: () => [] },
   mainFile: { type: String, default: '' },
@@ -53,7 +53,7 @@ const activeIssues = computed(() =>
 )
 
 async function newFile() {
-  const name = prompt(t('Ścieżka nowego pliku (np. src/Helper.php):'))?.trim()
+  const name = prompt(t('Path for the new file (e.g. src/Helper.php):'))?.trim()
   if (name) await createFile(name)
 }
 
@@ -87,7 +87,7 @@ function runInTerminal() {
 }
 
 async function reset() {
-  if (!confirm(t('Przywrócić pliki szablonu? Twoje zmiany w tym zadaniu zostaną usunięte.'))) return
+  if (!confirm(t('Restore the starter files? This discards your changes to this exercise.'))) return
   run.value = null
   await open(true)
 }
@@ -96,7 +96,7 @@ function removeIssue(idx) {
   emit('update:issues', props.issues.filter((_, i) => i !== idx))
 }
 
-// wysokość panelu terminala (przeciąganie górnej krawędzi), zapamiętana lokalnie
+// Store the resizable terminal panel height locally.
 const panelH = shallowRef(Number(safeGet('dl-panel-h')) || 260)
 function safeGet(k) {
   try {
@@ -134,13 +134,13 @@ defineExpose({ runTests, userFiles, showReview: () => (panel.value = 'review') }
     <div v-if="phase !== 'ready'" class="overlay">
       <template v-if="phase === 'opening'">
         <span class="spinner" />
-        <strong>{{ t('Przygotowuję środowisko') }} {{ environment || language }}</strong>
+        <strong>{{ t('Preparing the environment') }} {{ environment || language }}</strong>
         <code class="prog">{{ progress }}</code>
       </template>
       <template v-else>
-        <strong style="color: var(--red-light)">{{ t('Nie udało się uruchomić kontenera') }}</strong>
+        <strong style="color: var(--red-light)">{{ t('Couldn\'t start the container') }}</strong>
         <code class="prog">{{ error }}</code>
-        <button class="btn btn-sm btn-primary" @click="open(false)">{{ t('Spróbuj ponownie') }}</button>
+        <button class="btn btn-sm btn-primary" @click="open(false)">{{ t('Try again') }}</button>
       </template>
     </div>
 
@@ -156,8 +156,8 @@ defineExpose({ runTests, userFiles, showReview: () => (panel.value = 'review') }
         @auxclick.prevent="closeTab(t)"
       >
         <span class="ext">{{ fileBadge(t) }}</span>{{ t.split('/').pop() }}
-        <span v-if="files[t]?.dirty" class="dirty" :title="t('Niezapisane')" />
-        <span class="x" role="button" :aria-label="t('Zamknij')" @click.stop="closeTab(t)">×</span>
+        <span v-if="files[t]?.dirty" class="dirty" :title="t('Unsaved')" />
+        <span class="x" role="button" :aria-label="t('Close')" @click.stop="closeTab(t)">×</span>
       </button>
     </div>
 
@@ -189,48 +189,48 @@ defineExpose({ runTests, userFiles, showReview: () => (panel.value = 'review') }
           @apply="(i) => removeIssue(activeIssues[i]?.idx)"
           @dismiss="(i) => removeIssue(activeIssues[i]?.idx)"
         />
-        <div v-else class="empty muted">{{ t('Wybierz plik z drzewa po lewej.') }}</div>
+        <div v-else class="empty muted">{{ t('Select a file from the tree on the left.') }}</div>
       </div>
     </div>
 
     <div class="panel" :style="{ height: `${panelH}px` }">
-      <div class="drag" :title="t('Przeciągnij, aby zmienić wysokość')" @mousedown.prevent="startDrag" />
+      <div class="drag" :title="t('Drag to resize')" @mousedown.prevent="startDrag" />
       <div class="ptabs" role="tablist">
         <button role="tab" :class="{ on: panel === 'terminal' }" @click="panel = 'terminal'">Terminal</button>
-        <button role="tab" :class="{ on: panel === 'tests' }" @click="panel = 'tests'">{{ testPaths.length ? t('Testy') : t('Wynik') }} <template v-if="total">{{ passed }}/{{ total }}</template></button>
+        <button role="tab" :class="{ on: panel === 'tests' }" @click="panel = 'tests'">{{ testPaths.length ? t('Tests') : t('Output') }} <template v-if="total">{{ passed }}/{{ total }}</template></button>
         <button v-if="review !== undefined && testPaths.length" role="tab" :class="{ on: panel === 'review' }" @click="panel = 'review'">Review {{ providerName }}</button>
         <span class="grow" />
-        <button class="pbtn" :title="t('Przywróć pliki szablonu')" @click="reset"><Icon name="refresh" :size="14" :stroke="2.4" />{{ t('Szablon') }}</button>
-        <button class="pbtn" :disabled="!testCommand" :title="t('Wpisz komendę testów w terminalu')" @click="runInTerminal">{{ t('$ w terminalu') }}</button>
+        <button class="pbtn" :title="t('Restore starter files')" @click="reset"><Icon name="refresh" :size="14" :stroke="2.4" />{{ t('Starter files') }}</button>
+        <button class="pbtn" :disabled="!testCommand" :title="t('Enter the test command in the terminal')" @click="runInTerminal">{{ t('$ in terminal') }}</button>
         <button class="pbtn run" :disabled="running || !testCommand || phase !== 'ready'" @click="runTestsClick">
-          <span v-if="running" class="spinner" style="width: 14px; height: 14px; border-width: 2px" />▶ {{ runLabel || t('Uruchom testy') }}
+          <span v-if="running" class="spinner" style="width: 14px; height: 14px; border-width: 2px" />▶ {{ runLabel || t('Run tests') }}
         </button>
       </div>
       <div class="pbody">
         <Terminal v-if="phase === 'ready'" v-show="panel === 'terminal'" ref="terminal" :ws-id="wsId" :active="panel === 'terminal'" class="termbox" />
         <div v-if="panel === 'tests'" class="list">
           <code class="cmd">$ {{ testCommand }}</code>
-          <span v-if="running" class="muted">{{ t('Uruchamiam w kontenerze…') }}</span>
-          <span v-else-if="!run" class="muted">{{ t('Kliknij „Uruchom testy” albo odpal je w terminalu.') }}</span>
+          <span v-if="running" class="muted">{{ t('Running in the container…') }}</span>
+          <span v-else-if="!run" class="muted">{{ t('Click “Run tests” or run them in the terminal.') }}</span>
           <template v-else>
             <TestDiagnosis :run="run" :code="diagnosisCode" />
             <span v-for="(r, i) in run.results" :key="i" :class="r.ok ? 'good' : 'bad'">{{ r.ok ? '✓' : '✗' }} {{ r.name }}<template v-if="!r.ok"> — {{ r.error }}</template></span>
             <pre v-if="run.compileError || !run.results.length" class="raw">{{ run.compileError || run.output }}</pre>
-            <details v-else class="rawd"><summary>{{ t('Pełne wyjście') }}</summary><pre class="raw">{{ run.output }}</pre></details>
+            <details v-else class="rawd"><summary>{{ t('Full output') }}</summary><pre class="raw">{{ run.output }}</pre></details>
           </template>
         </div>
         <div v-if="panel === 'review'" class="list">
-          <span v-if="busy" class="muted">{{ providerName }} {{ t('robi review…') }}</span>
+          <span v-if="busy" class="muted">{{ providerName }} {{ t('is reviewing…') }}</span>
           <Markdown v-else-if="review?.summary" :src="review.summary" class="review" />
-          <span v-else class="muted">{{ t('Review pojawi się po „Sprawdź z') }} {{ providerName }}”.</span>
+          <span v-else class="muted">{{ t('Review appears after you choose “Check with') }} {{ providerName }}”.</span>
         </div>
       </div>
     </div>
 
-    <div v-if="saveError" class="save-error" role="alert">{{ t('Nie udało się zapisać pliku.') }} {{ saveError }}</div>
+    <div v-if="saveError" class="save-error" role="alert">{{ t('Couldn\'t save the file.') }} {{ saveError }}</div>
     <div class="status">
       <span>{{ environment }} · {{ active || '—' }} · Ln {{ cursor.line }}, Col {{ cursor.col }}</span>
-      <span>{{ t('● Docker · bez sieci · /workspace') }}</span>
+      <span>{{ t('● Docker · no network · /workspace') }}</span>
     </div>
   </section>
 </template>

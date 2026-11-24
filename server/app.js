@@ -1,5 +1,4 @@
-import { t } from './locale.js'
-// Codenoms — lokalny serwer: API + (w trybie produkcyjnym) zbudowany frontend.
+// Serve the local API and the production frontend build.
 import express from 'express'
 import fs from 'node:fs'
 import http from 'node:http'
@@ -13,14 +12,14 @@ import * as SB from './sandbox.js'
 import { registerSpeech } from './speech.js'
 import { registerDictation } from './dictation.js'
 import { registerSetup, features } from './setup.js'
-import { initializeLocale, localeForRequest, runWithRequestLocale } from './locale.js'
+import { initializeLocale, localeForRequest, runWithRequestLocale, t } from './locale.js'
 import { normalizeLocale } from '../src/lib/languages.js'
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const DIST = path.join(ROOT, 'dist')
 const routes = express.Router()
 
-// Tylko lokalne źródła: obca strona otwarta w przeglądarce nie może wołać API ani terminala.
+// Restrict the API and terminal to local origins.
 function localOrigin(origin) {
   if (!origin) return true
   try {
@@ -30,18 +29,18 @@ function localOrigin(origin) {
     return false
   }
 }
-// --------------------------------------------------------------- stan
+// --------------------------------------------------------------- state
 
 routes.get('/api/state', (req, res) => res.json(initializeLocale(req)))
 
 routes.put('/api/state', (req, res) => {
-  if (!req.body || typeof req.body !== 'object') return res.status(400).json({ error: t('Zły format') })
+  if (!req.body || typeof req.body !== 'object') return res.status(400).json({ error: t('Invalid format') })
   const locale = normalizeLocale(req.body.settings?.locale) || localeForRequest(req)
   writeState({ ...req.body, settings: { ...req.body.settings, locale } })
   res.json({ ok: true })
 })
 
-// --------------------------------------------------------------- status dostawców
+// --------------------------------------------------------------- provider status
 
 routes.get('/api/status', async (req, res) => {
   const s = readState().settings
@@ -53,7 +52,7 @@ routes.get('/api/status', async (req, res) => {
   res.json({ active: s.provider, model: s.model, effort: s.effort, port: req.socket.localPort, providers: { claude, codex }, features: feat })
 })
 
-// --------------------------------------------------------------- zadania AI (strumień NDJSON)
+// --------------------------------------------------------------- AI tasks (NDJSON stream)
 
 const TASKS = {
   plan: { build: P.planTask, system: P.SYSTEM_JSON },
@@ -70,13 +69,13 @@ const TASKS = {
 
 routes.post('/api/ai/:task', async (req, res) => {
   const task = TASKS[req.params.task]
-  if (!task) return res.status(404).json({ error: t('Nieznane zadanie') })
+  if (!task) return res.status(404).json({ error: t('Unknown task') })
 
   let built
   try {
     built = task.build(req.body || {})
   } catch (err) {
-    return res.status(400).json({ error: t('Złe dane wejściowe: {0}', [err.message]) })
+    return res.status(400).json({ error: t('Invalid input: {0}', [err.message]) })
   }
 
   res.setHeader('Content-Type', 'application/x-ndjson; charset=utf-8')
@@ -128,7 +127,7 @@ routes.post('/api/ai/:task', async (req, res) => {
   }
 })
 
-// --------------------------------------------------------------- piaskownica (Docker)
+// --------------------------------------------------------------- Docker sandbox
 
 const wrap = (fn) => async (req, res) => {
   try {
@@ -138,7 +137,7 @@ const wrap = (fn) => async (req, res) => {
   }
 }
 
-/** Strumień NDJSON z postępem (budowa obrazu bywa długa). */
+/** Stream progress as NDJSON while long-running operations such as image builds complete. */
 async function ndjson(res, fn) {
   res.setHeader('Content-Type', 'application/x-ndjson; charset=utf-8')
   res.flushHeaders?.()
@@ -159,7 +158,7 @@ routes.post('/api/sandbox/open', (req, res) =>
   ndjson(res, async (progress) => {
     const { wsId, language, files, reset } = req.body || {}
     SB.safeId(wsId)
-    if (!SB.envFor(language)) throw new Error(t('Brak środowiska dla języka: {0}', [language]))
+    if (!SB.envFor(language)) throw new Error(t('No environment for language: {0}', [language]))
     const seeded = SB.seedWorkspace(wsId, files, { lang: language, reset: !!reset })
     if (reset) await SB.stopWorkspace(wsId)
     await SB.ensureContainer(wsId, language, progress)
@@ -176,7 +175,7 @@ routes.post(
   '/api/sandbox/:ws/run',
   wrap(async (req) => {
     const meta = SB.readMeta(req.params.ws)
-    if (!meta) throw new Error(t('Workspace nie istnieje'))
+    if (!meta) throw new Error(t('Workspace does not exist'))
     const r = await SB.execIn(req.params.ws, meta.lang, String(req.body?.cmd || ''), { timeoutSec: 90 })
     return req.body?.parse ? { ...SB.parseTestOutput(r.output, r.exitCode), output: r.output } : r
   }),
@@ -195,7 +194,7 @@ export async function startServer({ host, port, resourceRoot = ROOT, systemLangu
     next()
   })
   app.use('/api', (req, res, next) => {
-    if (!localOrigin(req.headers.origin)) return res.status(403).json({ error: t('Niedozwolone źródło') })
+    if (!localOrigin(req.headers.origin)) return res.status(403).json({ error: t('Origin not allowed') })
     runWithRequestLocale(req, next)
   })
   app.use(express.json({ limit: '5mb' }))

@@ -14,7 +14,7 @@ const props = defineProps({
   showSolution: Boolean,
 })
 
-// Lista z lekcji; dla starszych lekcji zgadujemy ją z wzorcowego rozwiązania.
+// Use the lesson toolbox or infer it from the reference solution for older lessons.
 const tools = computed(() => {
   const own = (props.exercise.toolbox || []).filter((t) => t?.name?.trim())
   if (own.length) return own
@@ -35,7 +35,7 @@ const example = computed(() => {
   return text.includes('```') ? text : '```' + props.language + '\n' + text + '\n```'
 })
 
-// Dokładny tekst wyjścia: generator zapisuje go w wymaganiach w backtickach.
+// The generator puts exact expected output in backticks in the requirements.
 const expectedOutput = computed(() => {
   for (const r of props.exercise.requirements || []) {
     if (!/wypis|wyświetl|wyjści|output|komunikat|print/i.test(r)) continue
@@ -54,39 +54,37 @@ const reqState = computed(() => {
 const scoreLabel = computed(() => {
   const n = props.exercise.requirements?.length || 0
   const r = props.run
-  if (reqState.value === 'ok') return t('{0} / {1} spełnione', [n, n])
+  if (reqState.value === 'ok') return t('{0} / {1} met', [n, n])
   if (reqState.value === 'bad') {
     const ok = r.results?.filter((x) => x.ok).length || 0
-    return t('testy {0} / {1}', [ok, r.results?.length || 0])
+    return t('tests {0} / {1}', [ok, r.results?.length || 0])
   }
   return `0 / ${n}`
 })
 const failNote = computed(() => {
   const r = props.run
-  if (r?.compileError) return t('Kod się nie uruchamia — szczegóły w zakładce Testy.')
+  if (r?.compileError) return t('The code doesn\'t run. See the Tests tab for details.')
   const bad = r?.results?.filter((x) => !x.ok).length || 0
-  const few = bad % 10 >= 2 && bad % 10 <= 4 && (bad % 100 < 12 || bad % 100 > 14)
-  const what = bad === 1 ? t('test nie przechodzi') : few ? t('testy nie przechodzą') : t('testów nie przechodzi')
-  return t('{0} {1} — szczegóły w zakładce Testy.', [bad, what])
+  return t('Failed tests: {0}. See the Tests tab for details.', [bad])
 })
 </script>
 
 <template>
-  <section class="task" :aria-label="t('Zadanie')">
+  <section class="task" :aria-label="t('Exercise')">
     <header class="head">
-      <span class="kicker">{{ t('Zadanie') }}</span>
-      <Markdown tag="h1" fit-heading class="title" :src="exercise.title || t('Zadanie')" inline />
+      <span class="kicker">{{ t('Exercise') }}</span>
+      <Markdown tag="h1" fit-heading class="title" :src="exercise.title || t('Exercise')" inline />
       <Markdown class="desc" :src="exercise.prompt" />
     </header>
 
     <div v-if="expectedOutput" class="group">
-      <span class="label">{{ t('Oczekiwany output') }}</span>
+      <span class="label">{{ t('Expected output') }}</span>
       <div class="out"><span class="prompt" aria-hidden="true">›</span>{{ expectedOutput }}</div>
     </div>
 
     <div v-if="exercise.requirements?.length" class="group">
       <div class="group-head">
-        <span class="label">{{ t('Wymagania') }}</span>
+        <span class="label">{{ t('Requirements') }}</span>
         <span class="score" :class="reqState">{{ scoreLabel }}</span>
       </div>
       <ul class="reqs">
@@ -96,11 +94,11 @@ const failNote = computed(() => {
         </li>
       </ul>
       <span v-if="reqState === 'bad'" class="fail-note">{{ failNote }}</span>
-      <span v-else-if="reqState === 'todo'" class="hint-note">{{ t('Uruchom testy, a wymagania odhaczą się same.') }}</span>
+      <span v-else-if="reqState === 'todo'" class="hint-note">{{ t('Run the tests to update the checklist.') }}</span>
     </div>
 
     <div v-if="tools.length" class="group">
-      <span class="label">{{ t('Przydatne · kliknij, żeby zobaczyć') }}</span>
+      <span class="label">{{ t('Useful tools · click to learn more') }}</span>
       <div class="chips">
         <button
           v-for="t in tools"
@@ -118,20 +116,20 @@ const failNote = computed(() => {
       </div>
     </div>
     <div v-if="exercise.example" class="card box">
-      <span class="label">{{ t('Przykład') }}</span>
+      <span class="label">{{ t('Example') }}</span>
       <Markdown :src="example" class="ex-md" />
     </div>
     <details v-if="showSolution && exercise.solution" class="card box sol">
-      <summary class="label">{{ t('Wzorcowe rozwiązanie') }}</summary>
+      <summary class="label">{{ t('Reference solution') }}</summary>
       <CodeBlock :code="exercise.solution" :language="language" :file-name="fileName" />
     </details>
     <details v-if="showSolution && exercise.solutionFiles?.length" class="card box sol">
-      <summary class="label">{{ t('Wzorcowe rozwiązanie') }}</summary>
+      <summary class="label">{{ t('Reference solution') }}</summary>
       <CodeBlock v-for="f in exercise.solutionFiles" :key="f.path" :code="f.content" :language="language" :file-name="f.path" />
     </details>
     <div v-if="exercise.runtime === 'docker'" class="card box hint">
-      <span class="label">{{ t('Środowisko') }}</span>
-      <span>{{ t('Prawdziwy kontener (bez sieci). Edytuj pliki, odpalaj komendy w terminalu. Testy:') }}</span>
+      <span class="label">{{ t('Environment') }}</span>
+      <span>{{ t('A real container with no network access. Edit files and run commands in the terminal. Tests:') }}</span>
       <code>{{ exercise.testCommand }}</code>
     </div>
   </section>

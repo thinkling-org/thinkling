@@ -1,7 +1,7 @@
 import { t } from './locale.js'
-// Kreator pierwszego uruchomienia: diagnostyka środowiska i instalatory dodatków.
-// Instalacje działają w tle jako „zadania” — przeglądarka odpytuje GET /api/setup/jobs,
-// więc odświeżenie strony nie przerywa pobierania.
+// First-run setup checks the environment and installs optional components.
+// Installation jobs run in the background. The browser polls GET /api/setup/jobs
+// so refreshing the page does not interrupt a download.
 import { spawn, execFileSync } from 'node:child_process'
 import fs from 'node:fs'
 import net from 'node:net'
@@ -39,7 +39,7 @@ export function paths(root) {
   }
 }
 
-// --------------------------------------------------------------- narzędzia
+// --------------------------------------------------------------- helpers
 
 const exists = (p) => {
   try {
@@ -59,7 +59,7 @@ function which(name) {
   }
 }
 
-/** Uruchamia proces i przekazuje każdą linię wyjścia do `onLine`. */
+/** Run a process and pass each line of its output to onLine. */
 function run(cmd, args, { onLine, env, cwd } = {}) {
   return new Promise((resolve, reject) => {
     const child = spawn(cmd, args, { env: env || process.env, cwd, windowsHide: true })
@@ -72,7 +72,7 @@ function run(cmd, args, { onLine, env, cwd } = {}) {
     child.stdout.on('data', feed)
     child.stderr.on('data', feed)
     child.on('error', reject)
-    child.on('close', (code) => (code === 0 ? resolve(tail) : reject(new Error(t('{0} zakończył się kodem {1}.\n{2}', [path.basename(cmd), code, tail.slice(-600)])))))
+    child.on('close', (code) => (code === 0 ? resolve(tail) : reject(new Error(t('{0} exited with code {1}.\n{2}', [path.basename(cmd), code, tail.slice(-600)])))))
   })
 }
 
@@ -80,7 +80,7 @@ export async function download(url, dest, onProgress) {
   if (exists(dest)) return
   fs.mkdirSync(path.dirname(dest), { recursive: true })
   const tmp = `${dest}.part`
-  // Wznawianie: jeśli poprzednie pobieranie się urwało, prosimy o resztę pliku (HTTP Range).
+  // Request the remaining bytes with HTTP Range after an interrupted download.
   let have = 0
   try {
     have = fs.statSync(tmp).size
@@ -90,14 +90,14 @@ export async function download(url, dest, onProgress) {
     try {
       res = await fetch(url, { redirect: 'follow', headers: have ? { Range: `bytes=${have}-` } : {} })
       if (res.status === 416) {
-        // Część już jest kompletna.
+        // The partial download already contains the complete file.
         fs.renameSync(tmp, dest)
         return
       }
       if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`)
       break
     } catch (err) {
-      if (attempt >= 3) throw new Error(t('Nie udało się pobrać {0} ({1}). Sprawdź połączenie z huggingface.co i spróbuj ponownie — pobieranie wznowi się od miejsca przerwania.', [path.basename(dest), err.message]))
+      if (attempt >= 3) throw new Error(t('Couldn\'t download {0} ({1}). Check your connection to huggingface.co and try again. The download will resume.', [path.basename(dest), err.message]))
       await new Promise((r) => setTimeout(r, 2000 * attempt))
     }
   }
@@ -118,9 +118,9 @@ export async function download(url, dest, onProgress) {
   try {
     await pipeline(body, fs.createWriteStream(tmp, { flags: resumed ? 'a' : 'w' }))
   } catch (err) {
-    throw new Error(t('Przerwano pobieranie {0} ({1}). Kliknij „Spróbuj ponownie” — pobieranie wznowi się od {2}.', [path.basename(dest), err.message, mb(done)]))
+    throw new Error(t('Download interrupted for {0} ({1}). Click “Try again” to resume from {2}.', [path.basename(dest), err.message, mb(done)]))
   }
-  if (total && done < total) throw new Error(t('Pobrano tylko {0} z {1} pliku {2}. Spróbuj ponownie — pobieranie wznowi się.', [mb(done), mb(total), path.basename(dest)]))
+  if (total && done < total) throw new Error(t('Downloaded only {0} of {1} for {2}. Try again to resume.', [mb(done), mb(total), path.basename(dest)]))
   fs.renameSync(tmp, dest)
   onProgress?.(done, total || done)
 }
@@ -128,7 +128,7 @@ export async function download(url, dest, onProgress) {
 const hf = (repo, file) => `https://huggingface.co/${repo}/resolve/main/${file}`
 const mb = (n) => `${(n / 1024 / 1024).toFixed(0)} MB`
 
-// --------------------------------------------------------------- zadania w tle
+// --------------------------------------------------------------- background jobs
 
 const jobs = new Map()
 
@@ -156,7 +156,7 @@ function startJob(kind, fn) {
     .then(() => {
       job.status = 'done'
       job.progress = null
-      api.log('✓ Gotowe')
+      api.log(`✓ ${t('Done')}`)
     })
     .catch((err) => {
       job.status = 'error'
@@ -190,7 +190,7 @@ function linuxDistro() {
     return { id: '', like: '' }
   }
 }
-// Distra obsługiwane przez https://get.docker.com
+// Distributions supported by https://get.docker.com.
 const GET_DOCKER = /\b(ubuntu|debian|raspbian|fedora|centos|rhel|sles|rocky|almalinux|linuxmint|pop|elementary|zorin|kali)\b/
 const graphicalSudo = () => !isWin && !isMac && which('pkexec') && (process.env.DISPLAY || process.env.WAYLAND_DISPLAY)
 
@@ -201,7 +201,8 @@ function dockerHelp(probe) {
       autoInstall: !!which('winget'),
       autoStart: exists(desktopExe),
       install: ['winget install -e --id Docker.DockerDesktop'],
-      start: ['Uruchom „Docker Desktop” z menu Start i poczekaj, aż ikona wieloryba przestanie migać.'],
+      start: [],
+      startHint: 'Start Docker Desktop from the Start menu and wait for the whale icon to stop flashing.',
       link: 'https://docs.docker.com/desktop/setup/install/windows-install/',
     }
   }
@@ -224,7 +225,8 @@ function dockerHelp(probe) {
       ? ['sudo pacman -S docker', `sudo usermod -aG docker ${user}`, 'sudo systemctl enable --now docker']
       : ['curl -fsSL https://get.docker.com | sudo sh', `sudo usermod -aG docker ${user}`, 'sudo systemctl enable --now docker'],
     start: hasDesktopLinux() ? ['systemctl --user start docker-desktop'] : ['sudo systemctl start docker'],
-    permission: [`sudo usermod -aG docker ${user}`, 'Wyloguj się i zaloguj ponownie (albo uruchom ponownie komputer), potem uruchom Codenoms jeszcze raz.'],
+    permission: [`sudo usermod -aG docker ${user}`],
+    permissionHint: 'Sign out and back in (or restart your computer), then launch Codenoms again.',
     link: 'https://docs.docker.com/engine/install/',
     problem: probe.problem,
   }
@@ -235,52 +237,52 @@ async function waitForDocker(job, seconds = 120) {
     const p = await dockerProbe()
     if (p.running) return p
     if (p.problem === 'permission') {
-      throw new Error(t('Docker działa, ale Twoje konto nie ma do niego dostępu. Wyloguj się i zaloguj ponownie (grupa „docker”), potem uruchom Codenoms jeszcze raz.'))
+      throw new Error(t('Docker is running, but your account can\'t access it. Sign out and back in to apply docker group membership, then launch Codenoms again.'))
     }
-    if (i % 5 === 0) job.log(t('Czekam, aż Docker wystartuje…'))
+    if (i % 5 === 0) job.log(t('Waiting for Docker to start…'))
     await new Promise((r) => setTimeout(r, 2000))
   }
-  throw new Error(t('Docker nie wystartował w ciągu 2 minut. Uruchom go ręcznie i kliknij „Sprawdź ponownie”.'))
+  throw new Error(t('Docker didn\'t start within 2 minutes. Start it manually and click “Check again”.'))
 }
 
 async function installDocker(job) {
   const onLine = (l) => job.log(l)
   if (isWin) {
-    job.step(t('Instaluję Docker Desktop przez winget (potwierdź okno uprawnień)'))
+    job.step(t('Installing Docker Desktop with winget (confirm the permissions prompt)'))
     await run('winget', ['install', '-e', '--id', 'Docker.DockerDesktop', '--accept-package-agreements', '--accept-source-agreements'], { onLine })
-    job.log(t('Docker Desktop zainstalowany. Może być wymagane ponowne uruchomienie Windows (WSL 2).'))
+    job.log(t('Docker Desktop is installed. Windows may need to restart for WSL 2.'))
     await startDocker(job)
     return
   }
   if (isMac) {
-    job.step(t('Instaluję Docker Desktop przez Homebrew'))
+    job.step(t('Installing Docker Desktop with Homebrew'))
     await run('brew', ['install', '--cask', 'docker'], { onLine })
     await startDocker(job)
     return
   }
-  if (!graphicalSudo()) throw new Error(t('Automatyczna instalacja wymaga pkexec i sesji graficznej. Wykonaj polecenia z instrukcji w terminalu.'))
+  if (!graphicalSudo()) throw new Error(t('Automatic installation requires pkexec and a graphical session. Run the commands in the instructions in a terminal.'))
   const user = os.userInfo().username
-  job.step(t('Instaluję Docker Engine (oficjalny skrypt get.docker.com) — podaj hasło administratora'))
+  job.step(t('Installing Docker Engine with the official get.docker.com script. Enter your administrator password.'))
   await run('pkexec', ['sh', '-c', `curl -fsSL https://get.docker.com | sh && systemctl enable --now docker && usermod -aG docker ${user}`], { onLine })
-  job.log(t('Dodano użytkownika {0} do grupy „docker”.', [user]))
+  job.log(t('Added user {0} to the docker group.', [user]))
   const p = await dockerProbe()
   if (p.problem === 'permission') {
-    throw new Error(t('Docker jest zainstalowany. Żeby działał bez sudo, wyloguj się i zaloguj ponownie, a potem uruchom Codenoms jeszcze raz.'))
+    throw new Error(t('Docker is installed. Sign out and back in to use Docker without sudo, then launch Codenoms again.'))
   }
   await waitForDocker(job)
 }
 
 async function startDocker(job) {
-  job.step(t('Uruchamiam Docker'))
+  job.step(t('Starting Docker'))
   if (isWin) spawn(desktopExe, [], { detached: true, stdio: 'ignore' }).unref()
   else if (isMac) await run('open', ['-a', 'Docker'])
   else if (hasDesktopLinux()) await run('systemctl', ['--user', 'start', 'docker-desktop'], { onLine: (l) => job.log(l) })
   else if (graphicalSudo()) await run('pkexec', ['systemctl', 'start', 'docker'], { onLine: (l) => job.log(l) })
-  else throw new Error(t('Uruchom Docker ręcznie: sudo systemctl start docker'))
+  else throw new Error(t('Start Docker manually: sudo systemctl start docker'))
   await waitForDocker(job)
 }
 
-// --------------------------------------------------------------- głos (ZONOS3-Mini)
+// --------------------------------------------------------------- voice (ZONOS3-Mini)
 
 let voiceCache = { at: 0, ok: false }
 
@@ -327,8 +329,8 @@ async function extractFromImage(image, srcDir, destDir) {
 }
 
 async function buildZonosImage(P, job) {
-  if (await SB.imageExists(ZONOS_IMAGE)) return job.log('Obraz serwera głosu już jest.')
-  job.step('Buduję serwer głosu w Dockerze (jednorazowo, zwykle 5–20 min)')
+  if (await SB.imageExists(ZONOS_IMAGE)) return job.log(t('The voice server image already exists.'))
+  job.step(t('Building the voice server in Docker (one-time setup, usually 5–20 min)'))
   const pack = tar.pack()
   pack.entry({ name: 'Dockerfile' }, fs.readFileSync(path.join(P.zonosContext, 'Dockerfile'), 'utf8'))
   pack.finalize()
@@ -363,17 +365,17 @@ async function ensureZonosContainer(P, job) {
     info = await c.inspect()
   } catch {}
   if (info && info.Config?.Image !== ZONOS_IMAGE && (await voiceServerUp(true))) {
-    return job.log(`Kontener ${ZONOS_CONTAINER} już działa (własna konfiguracja) — zostawiam go.`)
+    return job.log(t('Container {0} is already running with a custom configuration.', [ZONOS_CONTAINER]))
   }
   if (info && info.Config?.Image !== ZONOS_IMAGE) {
-    throw new Error(`Istnieje kontener „${ZONOS_CONTAINER}” z innego obrazu. Usuń go (docker rm -f ${ZONOS_CONTAINER}) i spróbuj ponownie.`)
+    throw new Error(t('Container {0} uses a different image. Remove it with docker rm -f {0} and try again.', [ZONOS_CONTAINER]))
   }
   const port = new URL(ZONOS_URL).port || '1919'
   if (!info?.State?.Running && !(await portFree(Number(port)))) {
-    throw new Error(`Port ${port} jest zajęty przez inny program, więc serwer głosu nie może wystartować. Zamknij ten program albo uruchom Codenoms z innym adresem, np. ZONOS_URL=http://127.0.0.1:1920 npm start.`)
+    throw new Error(t('The voice server cannot start because port {0} is in use. Close the other program or start Codenoms with a different address, for example ZONOS_URL=http://127.0.0.1:1920 npm start.', [port]))
   }
   if (!info) {
-    job.step('Tworzę kontener serwera głosu')
+    job.step(t('Creating the voice server container'))
     const threads = Math.max(2, Math.min(6, os.cpus().length - 2))
     await SB.docker.createContainer({
       name: ZONOS_CONTAINER,
@@ -390,7 +392,7 @@ async function ensureZonosContainer(P, job) {
     })
   }
   if (!info?.State?.Running) {
-    job.step('Uruchamiam serwer głosu')
+    job.step(t('Starting the voice server'))
     await c.start().catch((err) => {
       if (!/already started/i.test(err.message)) throw err
     })
@@ -399,51 +401,51 @@ async function ensureZonosContainer(P, job) {
 
 async function installVoice(P, job) {
   const d = await dockerProbe()
-  if (!d.running) throw new Error('Głos AI działa w Dockerze — najpierw uruchom Dockera.')
+  if (!d.running) throw new Error(t('The AI voice server requires Docker. Start Docker first.'))
 
   for (const [i, file] of ZONOS_FILES.entries()) {
     const dest = path.join(P.zonosModels, path.basename(file))
     if (exists(dest)) {
-      job.log(`${path.basename(file)} — już pobrany`)
+      job.log(t('{0} is already downloaded', [path.basename(file)]))
       continue
     }
-    job.step(`Pobieram model głosu (${i + 1}/${ZONOS_FILES.length}): ${path.basename(file)}`)
+    job.step(t('Downloading voice model ({0}/{1}): {2}', [i + 1, ZONOS_FILES.length, path.basename(file)]))
     await download(hf('Zyphra/ZONOS3-Mini', file), dest, (done, total) => job.progress(done, total, `${mb(done)} / ${total ? mb(total) : '?'}`))
   }
 
   await buildZonosImage(P, job)
 
   if (!exists(P.zonosVoices) || !fs.readdirSync(P.zonosVoices).length) {
-    job.step('Kopiuję próbki głosów do projektowania')
+    job.step(t('Copying samples for voice design'))
     await extractFromImage(ZONOS_IMAGE, '/opt/voices', P.zonosVoices)
   }
 
   await ensureZonosContainer(P, job)
 
-  job.step('Czekam, aż model głosu się załaduje')
+  job.step(t('Waiting for the voice model to load'))
   for (let i = 0; i < 90; i++) {
     if (await voiceServerUp(true)) break
-    if (i === 89) throw new Error('Serwer głosu nie odpowiada. Sprawdź: docker logs codenoms-zonos')
+    if (i === 89) throw new Error(t('The voice server is not responding. Check docker logs codenoms-zonos.'))
     await new Promise((r) => setTimeout(r, 2000))
   }
-  job.log(`Serwer głosu działa na ${ZONOS_URL}. Uruchamia się sam razem z Dockerem.`)
+  job.log(t('The voice server is running at {0}. It starts automatically with Docker.', [ZONOS_URL]))
 }
 
 async function removeVoiceContainer(job) {
-  job.step('Zatrzymuję serwer głosu')
+  job.step(t('Stopping the voice server'))
   const c = SB.docker.getContainer(ZONOS_CONTAINER)
   const info = await c.inspect().catch(() => null)
-  if (!info) return job.log('Kontener nie istnieje.')
-  if (info.Config?.Image !== ZONOS_IMAGE) throw new Error('Ten kontener nie został utworzony przez Codenoms — zatrzymaj go ręcznie.')
+  if (!info) return job.log(t('The container does not exist.'))
+  if (info.Config?.Image !== ZONOS_IMAGE) throw new Error(t('Stop this container manually. It was created outside Codenoms.'))
   await c.remove({ force: true })
   voiceCache.at = 0
-  job.log('Kontener usunięty. Pobrane modele zostały w data/zonos/models.')
+  job.log(t('Container removed. Downloaded models are in data/zonos/models.'))
 }
 
 // --------------------------------------------------------------- dyktowanie (Faster Whisper)
 
-// Faster Whisper + av mają gotowe paczki (wheels) dla Pythona 3.10–3.13. Na nowszym pip
-// spróbowałby kompilacji, która zwykle się nie udaje, więc wolimy starszą wersję, jeśli jest.
+// Faster Whisper and av publish wheels for Python 3.10–3.13. Prefer these versions
+// to avoid compiling dependencies from source.
 const PY_MIN = [3, 10]
 const PY_MAX_TESTED = [3, 13]
 
@@ -464,7 +466,7 @@ function findPython() {
       if (ver[0] === 3 && cmpVer(ver, PY_MIN) >= 0) found.push({ cmd, pre, version: v, ver, tested: cmpVer(ver, PY_MAX_TESTED) <= 0 })
     } catch {}
   }
-  // Najnowsza przetestowana wersja, a jeśli takiej nie ma — cokolwiek ≥ 3.10.
+  // Prefer the latest tested version. Otherwise use any version from 3.10 onward.
   found.sort((a, b) => (b.tested - a.tested) || cmpVer(b.ver, a.ver))
   return found[0] || null
 }
@@ -477,29 +479,29 @@ async function installDictation(P, job) {
   const onLine = (l) => job.log(l)
   if (!exists(P.whisperPython)) {
     const py = findPython()
-    if (!py) throw new Error(t('Nie znaleziono Pythona 3.10+. Zainstaluj Pythona 3.12 lub 3.13 (https://www.python.org/downloads/) i spróbuj ponownie.'))
-    if (!py.tested) job.log(t('Uwaga: Python {0} jest nowszy niż sprawdzone 3.10–3.13. Jeśli instalacja się nie uda, zainstaluj Pythona 3.12 lub 3.13.', [py.version]))
-    job.step(t('Tworzę środowisko Pythona {0}', [py.version]))
+    if (!py) throw new Error(t('Python 3.10 or newer not found. Install Python 3.12 or 3.13 from https://www.python.org/downloads/ and try again.'))
+    if (!py.tested) job.log(t('Python {0} is newer than the tested 3.10–3.13 range. If setup fails, install Python 3.12 or 3.13.', [py.version]))
+    job.step(t('Creating Python {0} environment', [py.version]))
     try {
       await run(py.cmd, [...py.pre, '-m', 'venv', P.whisperVenv], { onLine })
     } catch {
-      // Debian/Ubuntu bez python3-venv: tworzymy venv bez pip i doinstalowujemy go niżej.
+      // On Debian and Ubuntu without python3-venv, create the venv without pip, then install it below.
       fs.rmSync(P.whisperVenv, { recursive: true, force: true })
-      job.log(t('Brak ensurepip — tworzę środowisko bez pip.'))
+      job.log(t('ensurepip is unavailable. Creating the environment without pip.'))
       try {
         await run(py.cmd, [...py.pre, '-m', 'venv', '--without-pip', P.whisperVenv], { onLine })
       } catch (err) {
         fs.rmSync(P.whisperVenv, { recursive: true, force: true })
-        throw new Error(!isWin && !isMac ? t('Nie udało się utworzyć venv. Doinstaluj: sudo apt install python3-venv\n{0}', [err.message]) : err.message)
+        throw new Error(!isWin && !isMac ? t('Couldn\'t create the virtual environment. Run sudo apt install python3-venv and try again.\n{0}', [err.message]) : err.message)
       }
     }
   }
   const has = (code) => run(P.whisperPython, ['-c', code]).then(() => true, () => false)
   if (await has('import faster_whisper')) {
-    job.log(t('Faster Whisper jest już zainstalowany.'))
+    job.log(t('Faster Whisper is already installed.'))
   } else {
     if (!(await has('import pip'))) {
-      job.step(t('Doinstalowuję pip w środowisku Pythona'))
+      job.step(t('Installing pip in the Python environment'))
       try {
         await run(P.whisperPython, ['-m', 'ensurepip', '--upgrade'], { onLine })
       } catch {
@@ -508,21 +510,21 @@ async function installDictation(P, job) {
         await run(P.whisperPython, [getPip, '--disable-pip-version-check'], { onLine })
       }
     }
-    job.step(t('Instaluję Faster Whisper (pip)'))
+    job.step(t('Installing Faster Whisper with pip'))
     try {
       await run(P.whisperPython, ['-m', 'pip', 'install', '--disable-pip-version-check', '--prefer-binary', '-r', P.whisperRequirements], { onLine })
     } catch (err) {
-      throw new Error(t('Instalacja pakietów Whisper nie powiodła się. Najczęstsza przyczyna: brak gotowych paczek dla Twojej wersji Pythona — zainstaluj Pythona 3.12 lub 3.13, usuń katalog data/whisper/venv i spróbuj ponownie.\n{0}', [err.message.slice(-400)]))
+      throw new Error(t('Couldn\'t install Whisper packages. Your Python version may not have compatible packages. Use Python 3.12 or 3.13, remove data/whisper/venv and try again.\n{0}', [err.message.slice(-400)]))
     }
   }
 
   for (const [i, file] of WHISPER_FILES.entries()) {
     const dest = path.join(P.whisperModel, file)
     if (exists(dest)) continue
-    job.step(t('Pobieram model rozpoznawania mowy ({0}/{1}): {2}', [i + 1, WHISPER_FILES.length, file]))
+    job.step(t('Downloading speech recognition model ({0}/{1}): {2}', [i + 1, WHISPER_FILES.length, file]))
     await download(hf('Systran/faster-whisper-small', file), dest, (done, total) => job.progress(done, total, `${mb(done)} / ${total ? mb(total) : '?'}`))
   }
-  job.step(t('Sprawdzam instalację'))
+  job.step(t('Checking the installation'))
   await run(P.whisperPython, ['-c', 'import faster_whisper; print("faster-whisper", faster_whisper.__version__)'], { onLine })
 }
 
@@ -539,10 +541,10 @@ async function sandboxImages() {
 
 async function buildSandboxImages(languages, job) {
   const d = await dockerProbe()
-  if (!d.running) throw new Error(t('Docker nie działa.'))
+  if (!d.running) throw new Error(t('Docker isn\'t running.'))
   const list = languages.filter((l) => SB.envFor(l))
   for (const [i, lang] of list.entries()) {
-    job.step(t('Przygotowuję środowisko {0} ({1}/{2})', [SB.envFor(lang).label, i + 1, list.length]))
+    job.step(t('Preparing {0} ({1}/{2})', [SB.envFor(lang).label, i + 1, list.length]))
     job.progress(i, list.length, `${i} / ${list.length}`)
     await SB.ensureImage(lang, (l) => job.log(l))
   }
@@ -595,14 +597,14 @@ export function registerSetup(app, root) {
     dictation: () => (job) => installDictation(P, job),
     sandbox: (body) => {
       const languages = Array.isArray(body?.languages) ? body.languages.map(String) : []
-      if (!languages.length) throw new Error(t('Wybierz co najmniej jeden język.'))
+      if (!languages.length) throw new Error(t('Select at least one language.'))
       return (job) => buildSandboxImages(languages, job)
     },
   }
 
   app.post('/api/setup/jobs/:kind', (req, res) => {
     const make = KINDS[req.params.kind]
-    if (!make) return res.status(404).json({ error: t('Nieznane zadanie') })
+    if (!make) return res.status(404).json({ error: t('Unknown task') })
     let fn
     try {
       fn = make(req.body)
@@ -614,7 +616,7 @@ export function registerSetup(app, root) {
 
   app.get('/api/providers/:id/models', async (req, res) => {
     const id = req.params.id
-    if (id !== 'claude' && id !== 'codex') return res.status(404).json({ error: t('Nieznany dostawca') })
+    if (id !== 'claude' && id !== 'codex') return res.status(404).json({ error: t('Unknown provider') })
     const s = readState().settings
     res.json(await providerModels(id, id === 'codex' ? s.codexBin : s.claudeBin))
   })

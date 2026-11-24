@@ -2,6 +2,8 @@ import { app, BrowserWindow, dialog, session, shell } from 'electron'
 import { randomBytes } from 'node:crypto'
 import path from 'node:path'
 import { setTimeout as delay } from 'node:timers/promises'
+import { preferredLocale } from '../src/lib/languages.js'
+import { translate } from '../src/lib/translation.js'
 
 const HOST = '127.0.0.1'
 const AUTH_HEADER = 'x-codenoms-desktop'
@@ -13,6 +15,7 @@ let backend
 let window
 let quitting = false
 let stopped = false
+let startupLocale
 
 function configureSession(desktopSession, origin, socketOrigin, secret) {
   const filter = { urls: [`${origin}/*`, `${socketOrigin}/*`] }
@@ -64,15 +67,17 @@ async function start() {
   process.env.CODENOMS_DATA ||= path.join(app.getPath('userData'), 'data')
   const { startServer } = await import('../server/app.js')
   const secret = randomBytes(32).toString('hex')
+  const systemLanguages = app.getPreferredSystemLanguages()
+  startupLocale = preferredLocale(systemLanguages)
   backend = await startServer({
     host: HOST,
     port: 0,
     resourceRoot,
-    systemLanguages: app.getPreferredSystemLanguages(),
+    systemLanguages,
     authorize: (req) => req.headers[AUTH_HEADER] === secret
       && (!req.headers.origin || req.headers.origin === `http://${HOST}:${req.socket.localPort}`),
   })
-  if (!backend.hasFrontend) throw new Error('Brak zbudowanego interfejsu. Uruchom npm run desktop.')
+  if (!backend.hasFrontend) throw new Error(translate(startupLocale, 'The frontend build is missing. Run npm run desktop.'))
   if (quitting) return
 
   const origin = `http://${HOST}:${backend.port}`
@@ -116,7 +121,8 @@ async function start() {
 function failStartup(err) {
   if (quitting) return
   console.error(err)
-  dialog.showErrorBox('Codenoms', `Nie udało się uruchomić aplikacji.\n\n${err.message}`)
+  const message = translate(startupLocale, 'Could not start the application.')
+  dialog.showErrorBox('Codenoms', `${message}\n\n${err.message}`)
   app.quit()
 }
 

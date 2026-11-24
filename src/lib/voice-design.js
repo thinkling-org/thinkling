@@ -1,11 +1,11 @@
 export const VOICE_CONTROLS = [
-  { key: 'gender', label: 'Barwa', low: 'Męska', high: 'Żeńska', min: -2, max: 2, direction: 'identity.gender' },
-  { key: 'age', label: 'Wiek głosu', low: 'Młodszy', high: 'Dojrzalszy', min: -2, max: 2, direction: 'identity.age' },
-  { key: 'pitch', label: 'Wysokość', low: 'Niższa', high: 'Wyższa', min: -1.5, max: 1.5, direction: 'pitch.pitch' },
-  { key: 'softness', label: 'Miękkość', low: 'Neutralna', high: 'Miękka', min: 0, max: 4, direction: 'texture.soft' },
-  { key: 'pace', label: 'Tempo', low: 'Wolniej', high: 'Szybciej', min: -2, max: 2, direction: 'delivery.tempo' },
-  { key: 'room', label: 'Brzmienie nagrania', low: 'Neutralne', high: 'Studyjne', min: 0, max: 4, direction: 'room.clean' },
-  { key: 'accent', label: 'Polski akcent', low: 'Naturalny', high: 'Wzmocniony', min: 0, max: 1.5, direction: 'accents_l1.pol' },
+  { key: 'gender', label: 'Timbre', low: 'Masculine', high: 'Feminine', min: -2, max: 2, direction: 'identity.gender' },
+  { key: 'age', label: 'Voice age', low: 'Younger', high: 'Mature', min: -2, max: 2, direction: 'identity.age' },
+  { key: 'pitch', label: 'Pitch', low: 'Lower', high: 'Higher', min: -1.5, max: 1.5, direction: 'pitch.pitch' },
+  { key: 'softness', label: 'Softness', low: 'Neutral softness', high: 'Soft', min: 0, max: 4, direction: 'texture.soft' },
+  { key: 'pace', label: 'Pace', low: 'Slower', high: 'Faster', min: -2, max: 2, direction: 'delivery.tempo' },
+  { key: 'room', label: 'Recording sound', low: 'Neutral sound', high: 'Studio', min: 0, max: 4, direction: 'room.clean' },
+  { key: 'accent', label: 'Polish accent', low: 'Natural', high: 'Stronger', min: 0, max: 1.5, direction: 'accents_l1.pol' },
 ]
 
 export const DEFAULT_VOICE_DESIGN = {
@@ -14,13 +14,13 @@ export const DEFAULT_VOICE_DESIGN = {
 
 export function normalizeVoiceDesign(design) {
   if (!Number.isInteger(design?.seed) || design.seed < 0 || design.seed > 0x7fffffff) {
-    throw new Error('Nieprawidłowy numer projektu głosu.')
+    throw new Error('Invalid voice design seed.')
   }
   const normalized = { seed: design.seed }
   for (const { key, min, max } of VOICE_CONTROLS) {
     const value = design[key] ?? DEFAULT_VOICE_DESIGN[key]
     if (!Number.isFinite(value) || value < min || value > max) {
-      throw new Error('Nieprawidłowe ustawienia projektu głosu.')
+      throw new Error('Invalid voice design settings.')
     }
     normalized[key] = value
   }

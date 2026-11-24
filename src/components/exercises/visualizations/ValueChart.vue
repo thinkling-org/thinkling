@@ -35,18 +35,18 @@ const series = computed(() => props.config.series.map((s, k) => ({
 const yTicks = computed(() => Array.from({ length: 5 }, (_, i) => yMin.value + (yMax.value - yMin.value) * i / 4))
 const cursorX = computed(() => px(xs.value[index.value]))
 const note = computed(() => [...props.config.notes].reverse().find((n) => xs.value[index.value] >= n.from)?.say ?? '')
-// Pasek wartości w skali logarytmicznej, żeby małe i duże liczby były widoczne obok siebie.
+// Use a logarithmic scale to keep small and large values visible together.
 const peak = computed(() => Math.max(...props.config.series.flatMap((s) => s.values.map(Math.abs)), 1))
 const barWidth = (v) => `${Math.max(2, Math.log10(Math.abs(v) + 1) / Math.log10(peak.value + 1) * 100)}%`
 </script>
 
 <template>
-  <section class="card viz chart" :aria-label="t('Wykres z regulacją')">
+  <section class="card viz chart" :aria-label="t('Interactive chart')">
     <Markdown class="instruction" :src="config.instruction" />
     <div class="layout">
       <div class="plot">
         <div class="axis-label">{{ config.yLabel }}</div>
-        <svg :viewBox="`0 0 ${W} ${H}`" role="img" :aria-label="t('Wykres: {0} w zależności od {1}', [config.yLabel, config.xLabel])">
+        <svg :viewBox="`0 0 ${W} ${H}`" role="img" :aria-label="t('Chart: {0} versus {1}', [config.yLabel, config.xLabel])">
           <defs>
             <clipPath :id="clipId"><rect :x="PAD.left" :y="PAD.top - 4" :width="W - PAD.left - PAD.right" :height="H - PAD.top - PAD.bottom + 4" /></clipPath>
           </defs>
@@ -78,7 +78,7 @@ const barWidth = (v) => `${Math.max(2, Math.log10(Math.abs(v) + 1) / Math.log10(
           />
         </label>
       </div>
-      <ul class="values" :aria-label="t('Wartości dla {0} = {1}', [config.xLabel, numberFormat(xs[index])])" aria-live="polite">
+      <ul class="values" :aria-label="t('Values for {0} = {1}', [config.xLabel, numberFormat(xs[index])])" aria-live="polite">
         <li v-for="s in series" :key="s.label" :class="{ off: s.off }">
           <div class="row">
             <span class="name"><svg width="18" height="8" aria-hidden="true"><line x1="0" x2="18" y1="4" y2="4" :style="{ stroke: s.color }" stroke-width="3" :stroke-dasharray="s.dash" /></svg><span>{{ s.label }}</span></span>

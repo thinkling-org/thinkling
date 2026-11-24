@@ -20,7 +20,7 @@ export function highlight(code, lang) {
   return escapeHtml(code)
 }
 
-/** Podświetla kod i dzieli HTML na linie, domykając/otwierając spany na granicach linii. */
+/** Highlight code and split the HTML into lines, carrying open spans across line boundaries. */
 export function highlightLines(code, lang) {
   const html = highlight(String(code ?? '').replace(/\s+$/, ''), lang)
   const out = []
@@ -33,7 +33,7 @@ export function highlightLines(code, lang) {
   return out
 }
 
-/** Pierwsze zdanie tekstu Markdown (bez bloków kodu) — do krótkich komunikatów. */
+/** Extract the first sentence of Markdown prose for a short message. */
 export function firstSentence(md, max = 170) {
   const t = String(md || '').replace(/```[\s\S]*?```/g, '').replace(/\s+/g, ' ').trim()
   const m = t.match(/^.{15,}?[.!?](?=\s|$)/)

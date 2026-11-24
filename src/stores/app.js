@@ -60,7 +60,7 @@ function hash(s) {
   return (h >>> 0).toString(36).slice(0, 5)
 }
 
-/** Pierwsza nieukończona lekcja = current, reszta po niej = locked. */
+/** Mark the first unfinished lesson as current and subsequent lessons as locked. */
 function refreshStatuses(plan) {
   let currentSet = false
   for (const m of plan.modules) {
@@ -72,12 +72,12 @@ function refreshStatuses(plan) {
   }
 }
 
-// Wersja struktury lekcji. Nieukończone lekcje w starszym formacie generują się od nowa.
+// Regenerate unfinished lessons that use an older format.
 const LESSON_FORMAT = 3
 
 function validateLessonFlow(kind, intro, exercises) {
   if (![intro?.outcome, intro?.relevance, intro?.focus].every((value) => typeof value === 'string' && value.trim())) {
-    throw new Error(t('Model nie przygotował pełnego wprowadzenia do lekcji.'))
+    throw new Error(t('The model did not generate a complete lesson introduction.'))
   }
   const stages = exercises.map(({ stage }) => stage).join(' ')
   const validOrder = kind === 'test'
@@ -89,7 +89,7 @@ function validateLessonFlow(kind, intro, exercises) {
         if (stage === 'challenge') return type === 'choice'
         return type !== 'learn'
       })
-  if (!validOrder) throw new Error(t('Model zwrócił niewłaściwą kolejność etapów lekcji.'))
+  if (!validOrder) throw new Error(t('The model returned the lesson stages in the wrong order.'))
 }
 
 let saveTimer = null
@@ -156,10 +156,10 @@ export const useApp = defineStore('app', {
           settings: { ...base.settings, ...(data.settings || {}) },
         })
         this.settings.locale = normalizeLocale(this.settings.locale) || base.settings.locale
-        // Istniejące instalacje (z planem nauki) nie muszą przechodzić kreatora od nowa.
+        // Existing installations with a learning plan can skip setup.
         if (data.settings?.setupDone === undefined && data.plan) this.settings.setupDone = true
       } catch (err) {
-        console.error(t('Nie udało się wczytać stanu'), err)
+        console.error(t('Couldn\'t load saved state'), err)
       }
       this.loaded = true
       this.refreshStatus()
@@ -184,21 +184,25 @@ export const useApp = defineStore('app', {
       return pendingSave
     },
 
+    saveNow() {
+      this.scheduleSave()
+      return this.flushSave()
+    },
+
     async changeLocale(value) {
       const locale = normalizeLocale(value)
       const previous = this.settings.locale
       if (!locale || locale === previous) return
       this.settings.locale = locale
-      this.scheduleSave()
       try {
-        await this.flushSave()
+        await this.saveNow()
       } catch (error) {
         this.settings.locale = previous
         throw error
       }
     },
 
-    /** Przełącza silnik AI, pamiętając wybrany model i effort osobno dla każdego dostawcy. */
+    /** Switch AI providers and recall the saved model and effort for the selected provider. */
     switchProvider(id) {
       const s = this.settings
       if (s.provider === id) return
@@ -214,7 +218,7 @@ export const useApp = defineStore('app', {
       this.docker = d.status === 'fulfilled' ? d.value : { available: false }
     },
 
-    /** Gdzie uruchamiać zadania z kodem: 'browser' (Web Worker), 'docker' (kontener) albo 'review' (tylko ocena modelu). */
+    /** Select browser execution, a Docker container or review by the model. */
     runtimeFor(lang) {
       const l = String(lang || '').toLowerCase()
       const dockerOk = !!(this.docker?.available && this.docker.envs?.[l])
@@ -271,7 +275,7 @@ export const useApp = defineStore('app', {
       return this.allLessons.find((l) => l.id === id) || null
     },
 
-    // ------------------------------------------------------------ lekcje
+    // ------------------------------------------------------------ lessons
 
     lessonReady(id) {
       const c = this.lessons[id]
@@ -279,7 +283,7 @@ export const useApp = defineStore('app', {
       return c.format === LESSON_FORMAT || this.findLesson(id)?.status === 'done'
     },
 
-    /** Uruchamia testy zadań z kodem na wzorcowym rozwiązaniu i szablonie (raz na zadanie). */
+    /** Verify the reference solution and starter code once per exercise. */
     async validateLesson(id) {
       const c = this.lessons[id]
       const todo = (c?.exercises || []).filter((e) => e.type === 'code' && !e.testsStatus)
@@ -293,7 +297,7 @@ export const useApp = defineStore('app', {
         if (r.patch) Object.assign(e, r.patch)
         e.testsStatus = r.status
         if (r.total) e.testsTotal = r.total
-        if (r.fixed) e.testsFixNote = r.note || t('Testy poprawione automatycznie.')
+        if (r.fixed) e.testsFixNote = r.note || t('Tests repaired automatically.')
       }
       delete this.lessonGen[id]
       return c
@@ -309,7 +313,7 @@ export const useApp = defineStore('app', {
         return v
       }
       const l = this.findLesson(id)
-      if (!l) return Promise.reject(new Error(t('Nie ma takiej lekcji')))
+      if (!l) return Promise.reject(new Error(t('Lesson not found')))
       this.lessonGen[id] = { chars: 0, elapsed: 0, error: null }
       let runtime = 'browser'
       const p = (this.docker ? Promise.resolve() : this.refreshStatus())
@@ -337,7 +341,7 @@ export const useApp = defineStore('app', {
                   : { runtime: runtime === 'docker' ? 'review' : runtime }
                 : {}),
             }))
-          if (!exercises.length) throw new Error(t('Model zwrócił pustą lekcję'))
+          if (!exercises.length) throw new Error(t('The model returned an empty lesson'))
           validateLessonFlow(l.kind, data.intro, exercises)
           this.lessons[id] = { intro: data.intro, exercises, flashcards: data.flashcards || [], generatedAt: Date.now(), format: LESSON_FORMAT }
           return this.validateLesson(id)
@@ -360,7 +364,7 @@ export const useApp = defineStore('app', {
       return this.ensureLesson(id)
     },
 
-    /** Prefetch następnej lekcji w tle, żeby start był natychmiastowy. */
+    /** Prefetch the next lesson in the background. */
     prefetchNext(afterId) {
       const list = this.allLessons
       const idx = afterId ? list.findIndex((l) => l.id === afterId) : -1
@@ -377,7 +381,7 @@ export const useApp = defineStore('app', {
       refreshStatuses(this.plan)
       this.stats.xp += xp + (firstTime ? 20 : 5)
       const cards = this.lessons[id]?.flashcards || []
-      if (firstTime) this.addFlashcards(cards, t('lekcja: {0}', [l.title]))
+      if (firstTime) this.addFlashcards(cards, t('lesson: {0}', [l.title]))
       this.touchStreak()
       this.prefetchNext(id)
       return firstTime ? 20 : 5
@@ -419,7 +423,7 @@ export const useApp = defineStore('app', {
       this.stats.lastActiveDay = d
     },
 
-    // ------------------------------------------------------------ fiszki
+    // ------------------------------------------------------------ flashcards
 
     addFlashcards(cards, source) {
       const existing = new Set(this.flashcards.map((c) => c.front.trim()))

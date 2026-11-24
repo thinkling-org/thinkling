@@ -1,4 +1,5 @@
 <script setup>
+import { t } from '../lib/i18n.js'
 import { computed, nextTick, onBeforeUnmount, ref } from 'vue'
 import Icon from './Icon.vue'
 import { getRecording, playRecording } from '../lib/speech.js'
@@ -8,7 +9,7 @@ import { useApp } from '../stores/app.js'
 const props = defineProps({
   getText: { type: Function, required: true },
   voiceDesign: Object,
-  label: { type: String, default: 'Przeczytaj' },
+  label: String,
 })
 const app = useApp()
 const design = computed(() => props.voiceDesign ?? app.settings.voiceDesign ?? null)
@@ -26,7 +27,7 @@ async function startPlayback() {
   try {
     await playRecording(audio.value)
   } catch (err) {
-    if (err.name !== 'AbortError') error.value = 'Użyj przycisku odtwarzania w odtwarzaczu.'
+    if (err.name !== 'AbortError') error.value = t('Use the play button in the audio player.')
   }
 }
 
@@ -43,7 +44,7 @@ async function toggleReading() {
   loading.value = true
   try {
     const chunks = speechChunks(props.getText().filter(Boolean))
-    if (!chunks.length) throw new Error('Brak tekstu do odczytania.')
+    if (!chunks.length) throw new Error(t('There is no text to read.'))
     const recording = await getRecording(chunks, design.value)
     if (disposed) return
     recordingUrl.value = URL.createObjectURL(recording)
@@ -87,14 +88,14 @@ onBeforeUnmount(() => {
       <button
         type="button"
         class="btn btn-ghost btn-sm"
-        :title="loading ? (autoplay ? 'Anuluj odtwarzanie' : 'Odtwórz po wygenerowaniu') : undefined"
+        :title="loading ? (autoplay ? t('Cancel playback') : t('Play when ready')) : undefined"
         @click="toggleReading"
         @keydown.enter.stop
       >
         <span v-if="loading" class="spinner speech-spinner" aria-hidden="true" />
         <Icon v-else name="volume" :size="18" />
         <span aria-live="polite">
-          {{ loading ? (autoplay ? 'Generuję nagranie…' : 'Generuję w tle…') : reading ? 'Wstrzymaj' : label }}
+          {{ loading ? (autoplay ? t('Generating the recording…') : t('Generating in the background…')) : reading ? t('Pause playback') : label || t('Read aloud') }}
         </span>
       </button>
     </div>
@@ -113,13 +114,13 @@ onBeforeUnmount(() => {
       <button
         type="button"
         class="btn btn-ghost btn-sm player-button player-play"
-        :aria-label="reading ? 'Wstrzymaj' : 'Odtwórz'"
-        :title="reading ? 'Wstrzymaj' : 'Odtwórz'"
+        :aria-label="reading ? t('Pause playback') : t('Play recording')"
+        :title="reading ? t('Pause playback') : t('Play recording')"
         @click="toggleReading"
       >
         <Icon :name="reading ? 'pause' : 'play'" :size="18" />
       </button>
-      <button type="button" class="btn btn-ghost btn-sm player-button" aria-label="Zatrzymaj" title="Zatrzymaj" @click="stopReading">
+      <button type="button" class="btn btn-ghost btn-sm player-button" :aria-label="t('Stop playback')" :title="t('Stop playback')" @click="stopReading">
         <Icon name="stop" :size="18" />
       </button>
       <input

@@ -164,21 +164,21 @@ const slope = computed(() => parameters.value.rise / props.config.model.xSpan)
 </script>
 
 <template>
-  <section class="card viz regression" :aria-label="t('Dopasowanie prostej do danych')">
+  <section class="card viz regression" :aria-label="t('Fit a line to the data')">
     <Markdown class="instruction" :src="config.instruction" />
     <div>
       <div class="axis-label">{{ config.yLabel }}</div>
-      <canvas ref="canvas" class="plot" role="img" :aria-label="t('Wykres dopasowania. Oś pozioma: {0}. Oś pionowa: {1}.', [config.xLabel, config.yLabel])" />
+      <canvas ref="canvas" class="plot" role="img" :aria-label="t('Fit chart. Horizontal axis: {0}. Vertical axis: {1}.', [config.xLabel, config.yLabel])" />
       <div class="axis-label x-label">{{ config.xLabel }}</div>
     </div>
-    <ul class="legend" :aria-label="t('Legenda')">
-      <li><span class="key point" aria-hidden="true"></span>{{ t('Obserwacja') }}</li>
-      <li><span class="key fit" aria-hidden="true"></span>{{ t('Prosta') }}</li>
-      <li><span class="key residual" aria-hidden="true"></span>{{ t('Błąd prognozy') }}</li>
+    <ul class="legend" :aria-label="t('Legend')">
+      <li><span class="key point" aria-hidden="true"></span>{{ t('Observation') }}</li>
+      <li><span class="key fit" aria-hidden="true"></span>{{ t('Fitted line') }}</li>
+      <li><span class="key residual" aria-hidden="true"></span>{{ t('Prediction error') }}</li>
     </ul>
     <div class="controls">
       <label>
-        <span>{{ t('Nachylenie') }} <strong>{{ formatNumber(slope) }}</strong></span>
+        <span>{{ t('Slope') }} <strong>{{ formatNumber(slope) }}</strong></span>
         <input
           type="range"
           min="0"
@@ -189,27 +189,27 @@ const slope = computed(() => parameters.value.rise / props.config.model.xSpan)
         />
       </label>
       <label>
-        <span>{{ t('Wysokość przy x =') }} {{ formatNumber(config.model.xMin) }} <strong>{{ formatNumber(parameters.start) }}</strong></span>
+        <span>{{ t('Height at x =') }} {{ formatNumber(config.model.xMin) }} <strong>{{ formatNumber(parameters.start) }}</strong></span>
         <input
           type="range"
           min="0"
           :max="sliderSteps"
           :value="sliderPosition(parameters.start, config.model.startRange)"
-          :aria-valuetext="t('{0} przy x równym {1}', [formatNumber(parameters.start), formatNumber(config.model.xMin)])"
+          :aria-valuetext="t('{0} at x = {1}', [formatNumber(parameters.start), formatNumber(config.model.xMin)])"
           @input="updateParameter('start', config.model.startRange, $event.target.value)"
         />
       </label>
     </div>
     <div class="actions">
-      <button type="button" class="btn btn-primary btn-sm" @click="showBestFit">{{ t('Pokaż najlepsze dopasowanie') }}</button>
-      <div class="error">{{ t('Średni kwadrat błędu') }} <output>{{ formatNumber(result.mse) }}</output></div>
+      <button type="button" class="btn btn-primary btn-sm" @click="showBestFit">{{ t('Show best fit') }}</button>
+      <div class="error">{{ t('Mean squared error') }} <output>{{ formatNumber(result.mse) }}</output></div>
     </div>
     <details class="values">
-      <summary>{{ t('Pokaż dane i prognozy') }}</summary>
+      <summary>{{ t('Show data and predictions') }}</summary>
       <div class="table-scroll">
         <table>
           <thead>
-            <tr><th scope="col">{{ config.xLabel }}</th><th scope="col">{{ config.yLabel }}</th><th scope="col">{{ t('Prognoza') }}</th><th scope="col">{{ t('Różnica') }}</th></tr>
+            <tr><th scope="col">{{ config.xLabel }}</th><th scope="col">{{ config.yLabel }}</th><th scope="col">{{ t('Prediction') }}</th><th scope="col">{{ t('Difference') }}</th></tr>
           </thead>
           <tbody>
             <tr v-for="(row, index) in result.rows" :key="index">

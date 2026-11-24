@@ -3,6 +3,8 @@ import { t, uiLocale } from '../lib/i18n.js'
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useApp } from '../stores/app.js'
+import { LESSON_KINDS } from '../lib/lesson-kinds.js'
+import { describePlanProgress, summarizeModule } from '../lib/plan-overview.js'
 import Logo from '../components/Logo.vue'
 import Gem from '../components/Gem.vue'
 import Icon from '../components/Icon.vue'
@@ -17,35 +19,7 @@ const view = computed(() => (running.value ? app.gen.partial || {} : app.plan ||
 const modules = computed(() => (view.value.modules || []).filter((m) => m && m.title))
 const lessonCount = computed(() => modules.value.reduce((a, m) => a + (m.lessons?.length || 0), 0))
 const isFirstPlan = computed(() => !app.plan)
-const KIND = {
-  theory: { label: t('pytania'), icon: 'question' },
-  output: { label: 'output', icon: 'terminal' },
-  code: { label: t('zadania'), icon: 'code' },
-  mixed: { label: t('mix'), icon: 'mixed' },
-  design: { label: t('projekt'), icon: 'design' },
-  test: { label: 'test', icon: 'trophy' },
-}
-
-function moduleSummary(m) {
-  const counts = {}
-  for (const l of m.lessons || []) if (l?.kind) counts[l.kind] = (counts[l.kind] || 0) + 1
-  const parts = Object.entries(counts).map(([k, n]) => (k === 'code' ? t('{0} × zadania', [n]) : KIND[k]?.label || k))
-  return [t('{0} lekcji', [m.lessons?.length || 0]), ...parts].join(' · ')
-}
-
-const steps = computed(() => {
-  const p = app.gen.partial || {}
-  const mods = (p.modules || []).filter((m) => m?.title)
-  const s1 = !!(p.goal || p.level)
-  const s2 = mods.length > 0
-  const done = app.gen.status === 'done'
-  return [
-    { title: t('Analiza opisu'), sub: p.goal ? t('Cel: {0}', [p.goal]) : t('Czytam, czego chcesz się nauczyć'), state: s1 || done ? 'done' : 'active' },
-    { title: t('Ocena poziomu'), sub: p.level ? `${p.level}${p.levelSummary ? ' · ' + p.levelSummary : ''}` : t('Szukam luk'), state: s2 || done ? 'done' : s1 ? 'active' : 'todo' },
-    { title: t('Układanie modułów'), sub: s2 ? t('{0} gotowe', [mods.length]) : t('W kolejce'), state: done ? 'done' : s2 ? 'active' : 'todo' },
-    { title: t('Pierwsza lekcja i fiszki'), sub: done ? t('Gotowe') : t('W kolejce'), state: done ? 'done' : 'todo' },
-  ]
-})
+const steps = computed(() => describePlanProgress(app.gen))
 
 const expanded = ref(new Set())
 function toggle(i) {
@@ -83,8 +57,8 @@ const secs = computed(() => Math.round((app.gen.elapsed || 0) / 1000))
   <div class="page">
     <header class="head">
       <Logo />
-      <ProviderPill :busy="running" :label="running ? t('{0} generuje…', [app.settings.provider === 'codex' ? 'Codex' : 'Claude']) : ''">
-        <span v-if="running" class="tok">{{ app.gen.chars.toLocaleString(uiLocale()) }} {{ t('zn ·') }} {{ secs }} s</span>
+      <ProviderPill :busy="running" :label="running ? t('{0} is generating…', [app.settings.provider === 'codex' ? 'Codex' : 'Claude']) : ''">
+        <span v-if="running" class="tok">{{ app.gen.chars.toLocaleString(uiLocale()) }} {{ t('chars ·') }} {{ secs }} s</span>
       </ProviderPill>
     </header>
 
@@ -93,9 +67,9 @@ const secs = computed(() => Math.round((app.gen.elapsed || 0) / 1000))
         <template v-if="running || (isFirstPlan && !failed)">
           <div class="progress">
             <div class="bar"><div :style="{ width: running ? `${50 + Math.min(45, modules.length * 8)}%` : '100%' }" /></div>
-            <span class="label">{{ t('Krok 2 / 2') }}</span>
+            <span class="label">{{ t('Step 2 of 2') }}</span>
           </div>
-          <h1>{{ app.gen.mode === 'refinePlan' ? t('Poprawiam twój plan') : t('Układam twój plan treningowy') }}</h1>
+          <h1>{{ app.gen.mode === 'refinePlan' ? t('Revising your plan') : t('Building your study plan') }}</h1>
           <div class="steps">
             <div
               v-for="s in steps"
@@ -115,34 +89,34 @@ const secs = computed(() => Math.round((app.gen.elapsed || 0) / 1000))
         </template>
 
         <template v-else-if="app.plan">
-          <span class="label" style="color: var(--purple-link)">{{ t('Twój poziom') }}</span>
+          <span class="label" style="color: var(--purple-link)">{{ t('Your level') }}</span>
           <h1>{{ app.plan.level }}</h1>
           <p class="sum">{{ app.plan.levelSummary }}</p>
           <div class="card meta">
-            <span class="label">{{ t('Cel') }}</span>
+            <span class="label">{{ t('Goal') }}</span>
             <p>{{ app.plan.goal }}</p>
-            <span class="label">{{ t('Słabe punkty') }}</span>
+            <span class="label">{{ t('Weak points') }}</span>
             <div class="tags">
               <span v-for="w in app.weakSpots" :key="w" class="tag tag-red">{{ w }}</span>
-              <span v-if="!app.weakSpots.length" class="muted">{{ t('Brak — świetnie!') }}</span>
+              <span v-if="!app.weakSpots.length" class="muted">{{ t('None — good work!') }}</span>
             </div>
           </div>
         </template>
 
         <div v-if="failed" class="card err">
-          <strong>{{ t('Nie udało się') }} {{ app.gen.mode === 'refinePlan' ? t('poprawić') : t('wygenerować') }} {{ t('planu') }}</strong>
+          <strong>{{ t('Couldn\'t') }} {{ app.gen.mode === 'refinePlan' ? t('revise') : t('generate') }} {{ t('the plan') }}</strong>
           <p>{{ app.gen.error }}</p>
           <div class="row">
-            <button class="btn btn-sm btn-primary" @click="retry">{{ app.gen.mode === 'refinePlan' ? 'OK' : t('Spróbuj ponownie') }}</button>
-            <RouterLink to="/settings" class="btn btn-sm">{{ t('Ustawienia') }}</RouterLink>
+            <button class="btn btn-sm btn-primary" @click="retry">{{ app.gen.mode === 'refinePlan' ? 'OK' : t('Try again') }}</button>
+            <RouterLink to="/settings" class="btn btn-sm">{{ t('Settings') }}</RouterLink>
           </div>
         </div>
 
         <form v-if="app.plan || running" class="refine" @submit.prevent="refine">
-          <label for="refine" class="label">{{ t('Popraw plan') }}</label>
+          <label for="refine" class="label">{{ t('Revise plan') }}</label>
           <div class="refine-box">
-            <input id="refine" v-model="feedback" :disabled="running" :placeholder="t('np. więcej async, mniej teorii, dodaj testy')" autocomplete="off" />
-            <button type="submit" :aria-label="t('Wyślij poprawkę')" :disabled="running || !feedback.trim()">
+            <input id="refine" v-model="feedback" :disabled="running" :placeholder="t('e.g. more async, less theory, add tests')" autocomplete="off" />
+            <button type="submit" :aria-label="t('Submit revision')" :disabled="running || !feedback.trim()">
               <Icon name="send" :size="18" :stroke="2.4" />
             </button>
           </div>
@@ -152,14 +126,14 @@ const secs = computed(() => Math.round((app.gen.elapsed || 0) / 1000))
       <section class="right">
         <div class="card hero">
           <div class="hero-t">
-            <span class="label" style="color: var(--purple-link)">{{ t('Twój plan') }}</span>
-            <span class="title">{{ view.title || (running ? t('Generuję…') : '—') }}</span>
+            <span class="label" style="color: var(--purple-link)">{{ t('Your plan') }}</span>
+            <span class="title">{{ view.title || (running ? t('Generating…') : '—') }}</span>
             <span v-if="view.summary" class="hero-sum">{{ view.summary }}</span>
           </div>
           <div class="kpis">
-            <div><div class="k">{{ view.durationWeeks ? t('{0} tyg.', [view.durationWeeks]) : '–' }}</div><div class="label">{{ t('Czas trwania') }}</div></div>
-            <div><div class="k">{{ modules.length || '–' }}</div><div class="label">{{ t('Modułów') }}</div></div>
-            <div><div class="k">{{ lessonCount || '–' }}</div><div class="label">{{ t('Lekcji') }}</div></div>
+            <div><div class="k">{{ view.durationWeeks ? t('{0} wk', [view.durationWeeks]) : '–' }}</div><div class="label">{{ t('Duration') }}</div></div>
+            <div><div class="k">{{ modules.length || '–' }}</div><div class="label">{{ t('Modules') }}</div></div>
+            <div><div class="k">{{ lessonCount || '–' }}</div><div class="label">{{ t('Lessons') }}</div></div>
           </div>
         </div>
 
@@ -168,9 +142,9 @@ const secs = computed(() => Math.round((app.gen.elapsed || 0) / 1000))
             <button class="mod-head" :aria-expanded="expanded.has(i)" @click="toggle(i)">
               <Gem :index="i" :size="44" />
               <div class="mod-t">
-                <span class="label sm">{{ t('Moduł') }} {{ i + 1 }}<template v-if="m.week"> {{ t('· Tydzień') }} {{ m.week }}</template></span>
+                <span class="label sm">{{ t('Module') }} {{ i + 1 }}<template v-if="m.week"> {{ t('· Week') }} {{ m.week }}</template></span>
                 <span class="mt">{{ m.title }}</span>
-                <span class="ms">{{ moduleSummary(m) }}</span>
+                <span class="ms">{{ summarizeModule(m) }}</span>
               </div>
               <span v-if="!running && m.lessons" class="mod-prog">
                 {{ m.lessons.filter((l) => l.status === 'done').length }}/{{ m.lessons.length }}
@@ -179,13 +153,13 @@ const secs = computed(() => Math.round((app.gen.elapsed || 0) / 1000))
             <div v-if="expanded.has(i)" class="lessons">
               <p v-if="m.description" class="mdesc">{{ m.description }}</p>
               <div v-for="(l, li) in m.lessons || []" :key="li" class="lesson" :class="l.status">
-                <span class="li-ic"><Icon :name="KIND[l.kind]?.icon || 'mixed'" :size="16" /></span>
+                <span class="li-ic"><Icon :name="LESSON_KINDS[l.kind]?.icon || 'mixed'" :size="16" /></span>
                 <div>
                   <div class="lt">{{ l.title }}</div>
                   <div class="lf">{{ l.focus }}</div>
                 </div>
                 <RouterLink v-if="l.status === 'done' || l.status === 'current'" :to="`/lesson/${l.id}`" class="btn btn-sm">
-                  {{ l.status === 'done' ? t('Powtórz') : 'Start' }}
+                  {{ l.status === 'done' ? t('Review') : 'Start' }}
                 </RouterLink>
               </div>
             </div>
@@ -197,9 +171,9 @@ const secs = computed(() => Math.round((app.gen.elapsed || 0) / 1000))
         </div>
 
         <div class="actions">
-          <RouterLink to="/start" class="btn">{{ app.plan ? t('Nowy plan') : t('Wróć') }}</RouterLink>
+          <RouterLink to="/start" class="btn">{{ app.plan ? t('New plan') : t('Go back') }}</RouterLink>
           <button v-if="app.plan" class="btn btn-primary btn-lg" :disabled="running" @click="go">
-            {{ app.doneCount ? t('Do ścieżki') : t('Zaczynamy') }}
+            {{ app.doneCount ? t('Go to the learning path') : t('Get started') }}
           </button>
         </div>
       </section>

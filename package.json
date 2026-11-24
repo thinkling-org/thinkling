@@ -6,7 +6,7 @@
   "homepage": "https://codenoms.org",
   "type": "module",
   "main": "electron/main.js",
-  "description": "Lokalna nauka programowania krótkimi lekcjami z grywalizacją, napędzana Twoją subskrypcją Claude Code albo Codex.",
+  "description": "Learn programming locally with short, gamified lessons powered by your Claude Code or Codex subscription.",
   "scripts": {
     "dev": "concurrently -k -n api,web -c magenta,cyan \"node --watch-path=server server/index.js\" \"vite\"",
     "build": "vite build",
@@ -50,7 +50,7 @@
       "server/**",
       "src/lib/languages.js",
       "src/lib/translation.js",
-      "src/locales/en.js",
+      "src/locales/**",
       "src/lib/voice-design.js",
       "dist/**",
       "LICENSE",

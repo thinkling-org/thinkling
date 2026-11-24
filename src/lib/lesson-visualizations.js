@@ -3,7 +3,7 @@ import { buildRegressionModel } from './linear-regression.js'
 import { compileLogic } from './logic-expression.js'
 import { checkScenario } from './system-sim.js'
 
-// Sprawdzenie scenariusza przelicza wszystkie kombinacje przełączników, więc zapamiętujemy wynik.
+// Cache validation results because validation evaluates every combination of controls.
 const checkedScenarios = new WeakMap()
 
 const hasText = (value) => typeof value === 'string' && value.trim().length > 0
@@ -78,7 +78,7 @@ const readers = {
       type: 'state-inspector',
       instruction: instruction || '',
       code: count ? code : '',
-      label: hasText(label) ? label : t('Stan'),
+      label: hasText(label) ? label : t('State'),
       layout: ['stack', 'queue', 'list'].includes(layout) ? layout : 'list',
       steps: valid,
     }
@@ -167,7 +167,7 @@ export function readLessonVisualization(exercise) {
   return readers[visualization?.type]?.(visualization) ?? null
 }
 
-/** Tekstowy opis pomocy dla czatu z tutorem. */
+/** Describe the visualization for tutor chat. */
 export function describeVisualization(visualization) {
   if (!visualization) return ''
   const steps = (items, format) => items.map((step, i) => `${i + 1}. ${format(step)}`).join('\n')

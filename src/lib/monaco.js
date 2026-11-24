@@ -69,7 +69,7 @@ export function ensureTheme() {
   }
   ts.typescriptDefaults.setCompilerOptions(opts)
   ts.javascriptDefaults.setCompilerOptions({ ...opts, checkJs: false, allowJs: true })
-  // Nie krzycz o "nieużywane" / "brak modułu" w zadaniach.
+  // Suppress unused-variable and missing-module diagnostics in exercises.
   ts.typescriptDefaults.setDiagnosticsOptions({ diagnosticCodesToIgnore: [6133, 6196, 2307, 1375, 1378] })
   ts.javascriptDefaults.setDiagnosticsOptions({ noSemanticValidation: true })
 }
@@ -93,7 +93,7 @@ export async function transpileTypeScript(code) {
     const client = await getWorker(uri)
     const out = await client.getEmitOutput(uri.toString())
     const file = out.outputFiles.find((f) => f.name.endsWith('.js'))
-    if (!file) throw new Error(t('brak wyjścia kompilatora'))
+    if (!file) throw new Error(t('no compiler output'))
     return file.text
   } finally {
     model.dispose()

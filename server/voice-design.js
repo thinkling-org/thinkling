@@ -1,3 +1,4 @@
+import { t } from './locale.js'
 import { createHash } from 'node:crypto'
 import fs from 'node:fs'
 import path from 'node:path'
@@ -19,7 +20,7 @@ function loadAnchors(directory) {
     const vector = Array.from({ length: EMBEDDING_SIZE }, (_, i) => npy.readFloatLE(offset + i * 4))
     return [{ npy, offset, vector, norm: Math.hypot(...vector) }]
   })
-  if (embeddings.length < 6) throw new Error('Brakuje danych do projektowania głosu.')
+  if (embeddings.length < 6) throw new Error(t('The voice design data is missing.'))
   return embeddings
 }
 
