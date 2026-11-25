@@ -143,6 +143,22 @@ const drawerContext = computed(() => exercise.value ? buildLessonChatContext({
   experience: app.profile?.description,
 }) : '')
 
+async function loadChatContext() {
+  const current = exercise.value
+  if (!current) return ''
+  const snapshot = current.type === 'code' ? await codeEditor.value?.getChatContext() : undefined
+  return buildLessonChatContext({
+    exercise: current,
+    answer: answers[current.id],
+    result: result.value,
+    title: meta.value?.title,
+    moduleTitle: meta.value?.module?.title,
+    experience: app.profile?.description,
+    files: snapshot?.files,
+    testRun: snapshot?.testRun,
+  })
+}
+
 function openAsk() {
   drawerOpen.value = true
 }
@@ -322,7 +338,7 @@ const wide = computed(() => phase.value === 'play' && exercise.value?.type === '
       @trace="openTrace"
     />
 
-    <AskDrawer ref="drawer" :open="drawerOpen" :context="drawerContext" @close="drawerOpen = false" />
+    <AskDrawer ref="drawer" :open="drawerOpen" :context="drawerContext" :load-context="loadChatContext" @close="drawerOpen = false" />
   </div>
 </template>
 

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { t } from '../lib/i18n.ts'
 import { nextTick, onBeforeUnmount, ref, watch } from 'vue'
+import type { PropType } from 'vue'
 import { ai } from '../lib/api.ts'
 import { play } from '../lib/sfx.ts'
 import { useApp } from '../stores/app.ts'
@@ -10,6 +11,7 @@ import Icon from './Icon.vue'
 const props = defineProps({
   open: Boolean,
   context: { type: String, default: '' },
+  loadContext: { type: Function as PropType<() => Promise<string>>, default: null },
 })
 const emit = defineEmits(['close'])
 const app = useApp()
@@ -35,7 +37,11 @@ async function run(task: 'chat' | 'explain', payload: unknown, userText: string)
   const request = new AbortController()
   ctrl = request
   try {
-    const text = await ai(task, payload, {
+    const requestPayload = task === 'chat' && props.loadContext
+      ? { ...payload as object, context: await props.loadContext() }
+      : payload
+    if (ctrl !== request) return
+    const text = await ai(task, requestPayload, {
       signal: request.signal,
       onProgress: (p) => {
         if (ctrl === request) progress.value = p.chars

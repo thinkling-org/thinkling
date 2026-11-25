@@ -1,15 +1,16 @@
 <script setup lang="ts">
 import { computed, shallowRef, useTemplateRef, watch } from 'vue'
+import type { PropType } from 'vue'
 import BrowserCodeWorkspace from './BrowserCodeWorkspace.vue'
 import CodeTaskBrief from './CodeTaskBrief.vue'
 import SandboxIDE from '../SandboxIDE.vue'
 import { RUNNABLE } from '../../lib/runner.ts'
 import { mergeFiles, wsIdFor } from '../../lib/sandbox.ts'
 import { useApp } from '../../stores/app.ts'
-import type { CodeIssue } from '../../domain.ts'
+import type { CodeIssue, Exercise } from '../../domain.ts'
 
 const props = defineProps({
-  exercise: { type: Object, required: true },
+  exercise: { type: Object as PropType<Exercise>, required: true },
   result: { type: Object, default: null },
   busy: Boolean,
 })
@@ -51,6 +52,10 @@ defineExpose({
   },
   runAll: () => sandboxMode.value ? sandbox.value?.runTests() : browser.value?.runAll(),
   getFiles: () => sandbox.value?.userFiles() ?? Promise.resolve([]),
+  getChatContext: async () => ({
+    files: sandboxMode.value ? await sandbox.value?.userFiles() : undefined,
+    testRun: lastRun.value,
+  }),
   showReview: () => sandboxMode.value ? sandbox.value?.showReview() : browser.value?.showReview(),
 })
 </script>

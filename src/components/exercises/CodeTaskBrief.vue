@@ -3,26 +3,19 @@ import { t } from '../../lib/i18n.ts'
 import { computed, shallowRef, watch } from 'vue'
 import CodeBlock from '../CodeBlock.vue'
 import Markdown from '../Markdown.vue'
-import { suggestTools } from '../../lib/glossary.ts'
 import { allTestsPassed } from '../../lib/runner.ts'
 import type { PropType } from 'vue'
-import type { TestRun } from '../../domain.ts'
+import type { Exercise, TestRun } from '../../domain.ts'
 
 const props = defineProps({
-  exercise: { type: Object, required: true },
+  exercise: { type: Object as PropType<Exercise>, required: true },
   language: { type: String, required: true },
   fileName: { type: String, required: true },
   run: { type: Object as PropType<TestRun>, default: null },
   showSolution: Boolean,
 })
 
-// Use the lesson toolbox or infer it from the reference solution for older lessons.
-const tools = computed(() => {
-  const own = (props.exercise.toolbox || []).filter((t) => t?.name?.trim())
-  if (own.length) return own
-  const solution = [props.exercise.solution, ...(props.exercise.solutionFiles || []).map((f) => f.content)].join('\n')
-  return suggestTools(solution, props.language)
-})
+const tools = computed(() => (props.exercise.toolbox || []).filter((tool) => tool?.name?.trim()))
 
 const openTool = shallowRef(null)
 const activeTool = computed(() => tools.value.find((tool) => tool.name === openTool.value) || null)
@@ -31,22 +24,6 @@ watch(() => props.exercise.id, () => { openTool.value = null })
 function toggleTool(name) {
   openTool.value = openTool.value === name ? null : name
 }
-
-const example = computed(() => {
-  const text = props.exercise.example || ''
-  return text.includes('```') ? text : '```' + props.language + '\n' + text + '\n```'
-})
-
-// The generator puts exact expected output in backticks in the requirements.
-const expectedOutput = computed(() => {
-  for (const r of props.exercise.requirements || []) {
-    if (!/wypis|wyświetl|wyjści|output|komunikat|print/i.test(r)) continue
-    const spans = [...r.matchAll(/`([^`]+)`/g)].map((m) => m[1])
-    const text = spans.filter((s) => !/^(print|console\.log)\b/.test(s)).pop()
-    if (text) return text
-  }
-  return ''
-})
 
 const reqState = computed(() => {
   const r = props.run
@@ -79,9 +56,9 @@ const failNote = computed(() => {
       <Markdown class="desc" :src="exercise.prompt" />
     </header>
 
-    <div v-if="expectedOutput" class="group">
+    <div v-if="exercise.expectedOutput" class="group">
       <span class="label">{{ t('Expected output') }}</span>
-      <div class="out"><span class="prompt" aria-hidden="true">›</span>{{ expectedOutput }}</div>
+      <div class="out"><span class="prompt" aria-hidden="true">›</span>{{ exercise.expectedOutput }}</div>
     </div>
 
     <div v-if="exercise.requirements?.length" class="group">
@@ -119,7 +96,7 @@ const failNote = computed(() => {
     </div>
     <div v-if="exercise.example" class="card box">
       <span class="label">{{ t('Example') }}</span>
-      <Markdown :src="example" class="ex-md" />
+      <Markdown :src="exercise.example" class="ex-md" />
     </div>
     <details v-if="showSolution && exercise.solution" class="card box sol">
       <summary class="label">{{ t('Reference solution') }}</summary>

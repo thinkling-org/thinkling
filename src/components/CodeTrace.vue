@@ -19,7 +19,7 @@ const step = computed<TraceStep>(() => steps.value[i.value] || {})
 const prevStep = computed<TraceStep>(() => steps.value[i.value - 1] || { output: [] })
 const atEnd = computed(() => i.value >= steps.value.length - 1)
 const correct = computed(() => props.chosenIndex === props.exercise.correctIndex)
-const lines = computed(() => highlightLines(props.exercise.code, props.exercise.codeLanguage || 'javascript'))
+const lines = computed(() => highlightLines(props.exercise.code, props.exercise.codeLanguage))
 const output = computed(() =>
   (step.value.output || []).map((text, k) => ({ text, fresh: k >= (prevStep.value.output || []).length && i.value > 0 })),
 )
@@ -109,8 +109,8 @@ onBeforeUnmount(() => {
 
         <section class="code" :aria-label="t('Code')">
           <div class="code-h">
-            <span v-if="step.phase" class="phase" :class="{ alt: /2|EXEC|MIKRO|MAKRO/i.test(step.phase) }">{{ step.phase }}</span>
-            <span class="fn">{{ exercise.fileName || 'snippet.js' }}</span>
+            <span v-if="step.phase" class="phase">{{ step.phase }}</span>
+            <span class="fn">{{ exercise.fileName || t('Code') }}</span>
           </div>
           <div class="lines">
             <div
@@ -294,10 +294,6 @@ onBeforeUnmount(() => {
   padding: 5px 10px;
   background: var(--purple-soft);
   color: var(--purple-light);
-}
-.phase.alt {
-  background: var(--yellow-bg);
-  color: var(--yellow-light);
 }
 .fn {
   margin-left: auto;

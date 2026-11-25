@@ -71,7 +71,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
     <main v-else-if="card" class="stage">
       <div class="inner">
         <div class="meta">
-          <span v-if="card.source" class="tag" :class="/bł[ąę]d/.test(card.source) ? 'tag-red' : 'tag-purple'">{{ card.source }}</span>
+          <span v-if="card.source" class="tag tag-purple">{{ card.source }}</span>
           <span v-if="card.lapses" class="muted small">{{ t('mistakes:') }} {{ card.lapses }}</span>
         </div>
         <div class="stack">

@@ -126,22 +126,3 @@ export function linkGlossaryTerms(html: string) {
   }
   return template.innerHTML
 }
-
-const CONSTRUCTS: Record<string, [RegExp, string, string][]> = {
-  python: [[/\bf(["'])/, 'f"...{x}..."', 'f-string: inserts variable values in braces into the string.']],
-  javascript: [[/`[^`]*\$\{/, '`...${x}...`', 'Template literal: inserts expression values into the string.']],
-}
-
-/** Infer toolbox entries from the reference solution when a lesson has none. */
-export function suggestTools(code: string, language: string) {
-  const scope = language === 'typescript' ? 'javascript' : language
-  const known = { python: pythonFunctions, javascript: javascriptFunctions }[scope]
-  if (!known || !code) return []
-  const used = Object.keys(known).filter((name) =>
-    new RegExp(`(?<![\\w.$])${name.replace('.', '\\.')}\\s*\\(`).test(code))
-  const tools = used.map((name) => ({ name: `${name}()`, description: t(known[name]) }))
-  for (const [pattern, name, description] of CONSTRUCTS[scope] || []) {
-    if (pattern.test(code)) tools.push({ name, description: t(description) })
-  }
-  return tools.slice(0, 5)
-}

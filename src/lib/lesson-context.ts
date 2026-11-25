@@ -1,13 +1,15 @@
 import { describeVisualization, readLessonVisualization } from './lesson-visualizations.ts'
-import type { Exercise, ExerciseResult } from '../domain.ts'
+import type { Exercise, ExerciseResult, TestRun, WorkspaceFile } from '../domain.ts'
 
-export function buildLessonChatContext({ exercise, answer, result, title, moduleTitle, experience }: {
+export function buildLessonChatContext({ exercise, answer, result, title, moduleTitle, experience, files, testRun }: {
   exercise: Exercise
   answer: string | number | null
   result?: ExerciseResult | null
   title?: string
   moduleTitle?: string
   experience?: string
+  files?: WorkspaceFile[]
+  testRun?: TestRun | null
 }) {
   const parts = [`Lesson: ${title} (${moduleTitle})`, `Exercise type: ${exercise.type}`]
   if (experience) parts.push(`Learner background and goal: ${experience}`)
@@ -17,7 +19,19 @@ export function buildLessonChatContext({ exercise, answer, result, title, module
     if (visualization) parts.push(visualization)
   } else if (exercise.type === 'code') {
     parts.push(`Exercise: ${exercise.title}\n${exercise.prompt}\nRequirements: ${(exercise.requirements || []).join('; ')}`)
-    parts.push(`Learner code:\n\`\`\`\n${answer}\n\`\`\``)
+    if (exercise.expectedOutput) parts.push(`Expected output:\n\`\`\`\n${exercise.expectedOutput}\n\`\`\``)
+    if (exercise.runtime === 'docker') {
+      parts.push(files?.length
+        ? `Current learner workspace files:\n${files.map((file) => `### ${file.path}\n\`\`\`\n${file.content}\n\`\`\``).join('\n\n')}`
+        : 'Current workspace files are unavailable. Do not assume the learner code is empty.')
+      parts.push(`Test command: ${exercise.testCommand || '(not specified)'}`)
+    } else {
+      parts.push(`Learner code:\n\`\`\`\n${answer ?? ''}\n\`\`\``)
+    }
+    if (testRun) {
+      const results = testRun.results.map((item) => `${item.ok ? 'PASS' : 'FAIL'} ${item.name}${item.error ? `: ${item.error}` : ''}`).join('\n')
+      parts.push(`Latest test run (the learner may have edited the code since this run):\n${testRun.compileError || results || '(no test results)'}${testRun.timedOut ? '\nExecution timed out.' : ''}${testRun.output ? `\nOutput:\n${testRun.output.slice(-10_000)}` : ''}`)
+    } else parts.push('No test run is available in this session. Do not invent test failures.')
     if (result?.data?.summary) parts.push(`Review: ${result.data.summary}`)
   } else {
     parts.push(`Question: ${exercise.prompt}`)

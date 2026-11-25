@@ -92,7 +92,7 @@ function saveConcept(concept) {
       <div v-if="exercise.explanation || exercise.keyPoints?.length" class="cards">
         <div v-if="exercise.explanation" class="card trap">
           <h2 class="label">{{ exercise.stage === 'learn' ? t('Why it works') : t('Pitfall') }}</h2>
-          <Markdown :src="exercise.explanation.replace(/^\s*\**pułapka\**\s*:\s*/i, '')" />
+          <Markdown :src="exercise.explanation" />
         </div>
         <div v-if="exercise.keyPoints?.length" class="card keep">
           <h2 class="label">{{ t('Remember') }}</h2>

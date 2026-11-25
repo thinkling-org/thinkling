@@ -271,6 +271,7 @@ const exerciseSchema = obj({
   requirements: arr(str),
   toolbox: arr(obj({ name: str, description: str })),
   example: str,
+  expectedOutput: str,
   fileName: str,
   starterCode: str,
   tests: str,
@@ -314,8 +315,10 @@ function dockerRules(lang) {
     FAIL <test name> :: <briefly: expected X, got Y>
   When the language allows it, catch each test failure and keep running the remaining tests. Exit 1 if any failed, otherwise 0. Use 3–6 fast, deterministic tests.
 - "testCommand": a single Bash command running in /workspace that compiles if needed and executes the tests, e.g. \`${env?.testExample || 'bash tests/run.sh'}\`. Put build artifacts under /tmp.
-- "solutionFiles": model versions of the files in "files", using identical paths and passing all tests.
-- "fileName": the main editable path from "files". Set "starterCode", "tests" and "solution" to "".`
+- "solutionFiles": model versions of the files in "files", using identical paths and passing all tests. Include any additional configuration files the learner is explicitly required to create.
+- "fileName": the main editable path from "files". Set "starterCode", "tests" and "solution" to "".
+- Explain unfamiliar placeholder identifiers in the lesson where they are introduced. Keep required identifiers and configuration values consistent across the requirements, examples, starter, reference solution and tests. Only test an exact name when the requirements explicitly specify it.
+- If the task teaches project initialization or creating a configuration file, leave that file for the learner to create and include it in the reference solution. Otherwise provide working project configuration in the starter; do not ask the learner to initialize an already initialized project.`
 }
 
 function codeRules(lang: string, runtime?: string) {
@@ -423,7 +426,7 @@ All fields are required. Use "" / [] / 0 / null for unused fields.
 - "practice": use "hint" to direct attention to part of the example or suggest a first step without giving away the correct option. "explanation" covers the solution regardless of the selected answer. Use "" for "hint" at other stages.
 - "open": one focused question about the mechanism. State any subquestions in "prompt". Give a concise "referenceAnswer" and one "keyPoints" criterion for each distinct part. Optional "code" if needed.
 - "choice": use a question in "prompt", optional "code" and "codeLanguage", 3–4 "options", zero-based "correctIndex", and a 2–4 sentence Markdown "explanation". For output questions, use exact output, one correct answer and distractors based on typical mistakes.
-- "code": use "title" (e.g. "Implement debounce(fn, wait)"), "prompt", 3–5 "requirements", and 2–5 "toolbox" entries [{name, description}] for relevant functions, methods or constructs. Describe behavior without giving away the order or solution. Set "toolbox" to [] for other exercise types. If tests check exact output, quote the exact text in backticks within "requirements" without trailing sentence punctuation. Also fill "example" with short usage, "codeLanguage", "fileName", "starterCode", "tests" and "solution".
+- "code": use "title", "prompt", 3–5 "requirements", and 2–5 "toolbox" entries [{name, description}] for relevant functions, methods or constructs. Describe behavior without giving away the order or solution. Set "toolbox" to [] for other exercise types. If tests check exact output, state it in "requirements" and put the exact output, including required spaces and line breaks, in "expectedOutput". Use "" for "expectedOutput" when output is not explicitly required, including other exercise types. Also fill "example" with a short usage example in Markdown: prose remains prose; code and terminal commands use fenced blocks with the appropriate language tag. Fill "codeLanguage", "fileName", "starterCode", "tests" and "solution".
 ${codeRules(lang, runtime)}
 ${runtime === 'docker' ? '' : '- Use [] for "files", "testFiles", "solutionFiles" and "" for "testCommand".'}
 
@@ -465,6 +468,10 @@ export function fixTestsTask({ exercise, language, solutionRun, starterRun, runt
 ## Exercise: ${exercise.title}
 ${exercise.prompt}
 
+## Requirements (preserve these when repairing tests)
+${(exercise.requirements || []).map((requirement) => `- ${requirement}`).join('\n')}
+${exercise.expectedOutput ? `\n## Expected output (exact)\n\`\`\`\n${exercise.expectedOutput}\n\`\`\`` : ''}
+
 ## testCommand
 \`${exercise.testCommand}\`
 
@@ -484,7 +491,7 @@ ${fmtRun(solutionRun)}
 ${fmtRun(starterRun)}
 
 ## Repair
-Find and fix the cause, such as a compile error, incorrect path or command, wrong expected value, missing PASS/FAIL output, or an unavailable dependency. The container has no network. Return complete "files", "testFiles", "solutionFiles" and "testCommand". In "note", summarize the fix in one sentence.
+Find and fix the cause, such as a compile error, incorrect path or command, wrong expected value, missing PASS/FAIL output, or an unavailable dependency. Preserve the explicit requirements, including any required module path. The container has no network. Return complete "files", "testFiles", "solutionFiles" and "testCommand". In "note", summarize the fix in one sentence.
 
 ${dockerRules(lang)}`,
     }
@@ -497,6 +504,7 @@ ${dockerRules(lang)}`,
 ${exercise.prompt}
 Requirements:
 ${(exercise.requirements || []).map((r) => `- ${r}`).join('\n')}
+${exercise.expectedOutput ? `\nExpected output (exact):\n\`\`\`\n${exercise.expectedOutput}\n\`\`\`` : ''}
 
 ## starterCode
 \`\`\`${lang}
@@ -557,7 +565,7 @@ ${answer || '(no answer)'}
 
 ## Grading rules
 - Identify the explicit requirements of the question. Use the reference and guidance as aids. Count different phrasings of one mechanism as one criterion. Details outside the question are optional.
-- Accept answers in the learner's own words, equivalent code, and clear implications. For example, if the learner explains that a read falls back to the prototype after deleting an own property, award full credit for that mechanism. Repeating operation names or prior values does not earn separate points.
+- Accept answers in the learner's own words, equivalent code, and clear implications. Repeating operation names or prior values does not earn separate points.
 - Weight requirements by importance. Give credit for a correct approach without exact syntax. If the question explicitly requests a declaration or code, distinguish a syntax omission from skipping the entire requirement.
 - Assess meaning. Deduct for substantive errors or explicit omissions, and count each gap only once. Use "tip" for optional refinements without score deductions.
 - Score 9–10 for all essential requirements addressed, 8 for the right mechanism with a small omission, 5–7 for partial understanding with a substantive gap, and 0–4 for mostly incorrect or missing reasoning. Use the upper part of 5–7 when the main mechanism is clear and one significant point is missing.
@@ -620,6 +628,7 @@ ${exercise.prompt}
 
 Requirements:
 ${(exercise.requirements || []).map((r) => `- ${r}`).join('\n')}
+${exercise.expectedOutput ? `\nExpected output (exact):\n\`\`\`\n${exercise.expectedOutput}\n\`\`\`` : ''}
 
 Tests:
 ${testsText}
@@ -733,7 +742,7 @@ export function chatTask({ context, history, question }: {
 }) {
   const conv = (history || []).map((m) => `**${m.role === 'user' ? 'Learner' : 'Codenoms'}:** ${m.content}`).join('\n\n')
   return {
-    prompt: `Answer the learner's follow-up in the context of the exercise.
+    prompt: `Answer the learner's follow-up in the context of the exercise. Diagnose code using the current learner workspace files and the supplied test results. The learner may have edited the code since the last test run: distinguish current source from earlier errors. When files or test results are unavailable, say what is missing instead of assuming the code is empty or inventing failures. Explain unfamiliar notation and placeholder identifiers when relevant to the learner's question.
 
 ## Exercise context
 ${context}

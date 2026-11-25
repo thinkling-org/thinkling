@@ -117,6 +117,7 @@ export interface Exercise {
   requirements?: string[]
   toolbox?: ToolDescription[]
   example?: string
+  expectedOutput?: string
   fileName?: string
   starterCode?: string
   tests?: string
