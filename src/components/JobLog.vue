@@ -20,7 +20,12 @@ watch(
     </div>
     <div v-if="job.status === 'running' && job.progress?.pct != null" class="bar"><div :style="{ width: `${job.progress.pct}%` }" /></div>
     <p v-if="job.error" class="job-err">{{ job.error }}</p>
-    <pre ref="pre" class="job-log">{{ job.log.join('\n') }}</pre>
+    <p v-if="job.message" class="job-message" role="status">{{ job.message }}</p>
+    <details v-if="job.status === 'action-required'" class="job-details">
+      <summary>{{ t('Show technical details') }}</summary>
+      <pre class="job-log">{{ job.log.join('\n') }}</pre>
+    </details>
+    <pre v-else ref="pre" class="job-log">{{ job.log.join('\n') }}</pre>
   </div>
 </template>
 
@@ -39,6 +44,23 @@ watch(
 }
 .job.error {
   border-color: var(--red-border);
+}
+.job.action-required {
+  border-color: var(--yellow-border);
+  background: var(--yellow-bg);
+}
+.job-message {
+  margin: 0;
+  line-height: 1.5;
+  color: var(--yellow-light);
+}
+.job-details summary {
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 13px;
+}
+.job-details[open] .job-log {
+  margin-top: 8px;
 }
 .job-head {
   display: flex;

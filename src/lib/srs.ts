@@ -13,13 +13,14 @@ export const RATINGS: readonly { id: Rating; label: string; tone: string }[] = [
 ]
 
 export function newCard({ front, back, source = '' }: FlashcardText & { source?: string }): Flashcard {
+  const created = Date.now()
   return {
     id: Math.random().toString(36).slice(2, 10),
     front,
     back,
     source,
-    created: Date.now(),
-    due: Date.now(),
+    created,
+    due: created,
     interval: 0, // days
     ease: 2.5,
     reps: 0,
@@ -28,7 +29,11 @@ export function newCard({ front, back, source = '' }: FlashcardText & { source?:
 }
 
 /** Compute the next review schedule without mutating the card. */
-export function schedule(card: Pick<Flashcard, 'interval' | 'ease'>, rating: Rating, now = Date.now()) {
+export function schedule(
+  card: Pick<Flashcard, 'interval' | 'ease'>,
+  rating: Rating,
+  now = Date.now(),
+): Pick<Flashcard, 'due' | 'interval' | 'ease'> {
   let { interval, ease } = card
   switch (rating) {
     case 'again':

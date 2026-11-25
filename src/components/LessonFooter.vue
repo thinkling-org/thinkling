@@ -11,6 +11,7 @@ defineProps({
 <template>
   <footer class="foot" :class="tone">
     <div class="inner">
+      <slot name="navigation" />
       <div v-if="tone !== 'idle'" class="msg">
         <span class="badge">
           <Icon :name="tone === 'correct' ? 'check' : tone === 'almost' ? 'bulb' : tone === 'skipped' ? 'arrow-right' : 'x'" :size="30" :stroke="3.2" />

@@ -39,16 +39,18 @@ export async function requestStream<T>(url: string, payload: unknown, { onProgre
     body: JSON.stringify(payload || {}),
     signal,
   })
-  if (!res.ok || !res.body) {
-    const data = await res.json().catch(() => null)
-    throw new Error(data?.error || `${res.status}`)
+  const stream = res.body
+  if (!res.ok || !stream) {
+    const data: { error?: unknown } | null = await res.json().catch(() => null)
+    const error = data?.error
+    throw new Error(typeof error === 'string' && error.trim() ? error : String(res.status))
   }
-  return readNdjson<T>(res, onProgress)
+  return readNdjson<T>(stream, onProgress)
 }
 
 /** Read a stream of NDJSON progress, completion and error events. */
-async function readNdjson<T>(res: Response, onProgress?: StreamOptions['onProgress']): Promise<T> {
-  const reader = res.body.getReader()
+async function readNdjson<T>(stream: NonNullable<Response['body']>, onProgress?: StreamOptions['onProgress']): Promise<T> {
+  const reader = stream.getReader()
   const decoder = new TextDecoder()
   let buf = ''
   try {

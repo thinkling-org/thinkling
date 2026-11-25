@@ -496,7 +496,7 @@ export async function verifyRun({ language, files, testCommand, onProgress }) {
   try {
     // Use a separate .NET artifact directory per run because the verification container is shared.
     const r = await execIn(verifyWs, lang, `cd /workspace/${sub} && export ArtifactsPath=/tmp/dotnet-artifacts/${sub} && ${testCommand}`, { timeoutSec: 90, onProgress })
-    return parseTestOutput(r.output, r.exitCode)
+    return { ...parseTestOutput(r.output, r.exitCode), timedOut: r.timedOut }
   } finally {
     fs.rmSync(subDir, { recursive: true, force: true })
   }

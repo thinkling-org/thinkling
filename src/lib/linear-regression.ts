@@ -1,10 +1,14 @@
-function mean(values) {
+type Point = { x: number; y: number }
+type RegressionPoint = Point & { xFraction: number }
+type RegressionParameters = { start: number; rise: number }
+
+function mean(values: readonly number[]) {
   return values.reduce((sum, value) => sum + value, 0) / values.length
 }
 
-export function buildRegressionModel(points) {
+export function buildRegressionModel(points: unknown) {
   if (!Array.isArray(points) || points.length < 2 || points.length > 60) return null
-  if (!points.every((point) => [point?.x, point?.y].every(Number.isFinite))) return null
+  if (!points.every((point): point is Point => Number.isFinite(point?.x) && Number.isFinite(point?.y))) return null
 
   const xs = points.map(({ x }) => x)
   const ys = points.map(({ y }) => y)
@@ -43,7 +47,7 @@ export function buildRegressionModel(points) {
   }
 }
 
-export function evaluateRegression({ data }, { start, rise }) {
+export function evaluateRegression({ data }: { data: readonly RegressionPoint[] }, { start, rise }: RegressionParameters) {
   const rows = data.map((point) => {
     const predicted = start + rise * point.xFraction
     return { ...point, predicted, residual: point.y - predicted }

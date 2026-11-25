@@ -67,7 +67,7 @@ function saveConcept({ term, explanation }) {
 const showTrace = shallowRef(false)
 const {
   activeVariant, comparisonVariant, comparisonStep, hasNextComparisonStep,
-  selectVariant, nextComparisonStep, traceProgress, requestTrace,
+  selectVariant, nextComparisonStep, previousComparisonStep, traceProgress, requestTrace,
 } = useLessonExamples(exercise)
 
 function openTrace() {
@@ -90,6 +90,17 @@ function next() {
 function advanceExercise() {
   if (exercise.value?.type === 'learn') play('pop', 1.2)
   goToExercise(exerciseIndex.value + 1)
+}
+
+function back() {
+  if (busy.value) return
+  if (showTrace.value) {
+    showTrace.value = false
+    return
+  }
+  if (previousComparisonStep()) return
+  if (exerciseIndex.value > 0) goToExercise(exerciseIndex.value - 1)
+  else phase.value = 'intro'
 }
 
 async function startLesson() {
@@ -300,6 +311,7 @@ const wide = computed(() => phase.value === 'play' && exercise.value?.type === '
       :tracing="showTrace"
       :next-step="hasNextComparisonStep"
       :can-skip-learn="!comparisonVariant || hasNextComparisonStep"
+      @back="back"
       @ask="openAsk"
       @check="check"
       @dont-know="dontKnow"

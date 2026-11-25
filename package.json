@@ -10,6 +10,8 @@
   "scripts": {
     "dev": "concurrently -k -n api,web -c magenta,cyan \"node --watch server/index.ts\" \"vite\"",
     "typecheck": "vue-tsc --noEmit -p tsconfig.app.json && tsc --noEmit -p tsconfig.node.json",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
     "build": "vue-tsc --noEmit -p tsconfig.app.json && tsc -p tsconfig.node.json && vite build",
     "start": "npm run build && npm run serve",
     "serve": "node server/index.ts",
@@ -40,11 +42,15 @@
     "@types/tar-stream": "^3.1.5",
     "@types/ws": "^8.18.2",
     "@vitejs/plugin-vue": "^5.2.0",
+    "@vitest/coverage-v8": "^5.1.1",
+    "@vue/test-utils": "^2.6.0",
     "concurrently": "^9.1.0",
     "electron": "45.4.1",
     "electron-builder": "^26.18.0",
+    "jsdom": "^31.0.1",
     "typescript": "5.9",
     "vite": "^6.0.0",
+    "vitest": "^5.1.1",
     "vue-tsc": "^3.3.14"
   },
   "build": {

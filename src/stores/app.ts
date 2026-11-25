@@ -115,6 +115,11 @@ interface AppState extends PersistedState {
   lessonGen: Record<string, { chars: number; elapsed: number; error: string | null; stage?: string; stageMsg?: string }>
 }
 
+type SavedState = Partial<Omit<PersistedState, 'stats' | 'settings'>> & {
+  stats?: Partial<PersistedState['stats']>
+  settings?: Partial<PersistedState['settings']>
+}
+
 export const useApp = defineStore('app', {
   state: (): AppState => ({
     ...emptyState(),
@@ -150,7 +155,7 @@ export const useApp = defineStore('app', {
       if (h.length < 2) return 0
       const prev = h.slice(-41, -1)
       const cur = h.slice(-40)
-      const avg = (a) => a.reduce((x, y) => x + y.score, 0) / a.length
+      const avg = (entries: typeof h) => entries.reduce((sum, entry) => sum + entry.score, 0) / entries.length
       return Math.round((avg(cur) - avg(prev)) * 1000)
     },
     todayMinutes(s) {
@@ -168,7 +173,7 @@ export const useApp = defineStore('app', {
   actions: {
     async load() {
       try {
-        const data = await getJSON<Partial<PersistedState>>('/api/state')
+        const data = await getJSON<SavedState>('/api/state')
         const base = emptyState()
         Object.assign(this, base, data, {
           stats: { ...base.stats, ...(data.stats || {}) },

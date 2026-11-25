@@ -15,7 +15,7 @@ const router = useRouter()
 const route = useRoute()
 
 const { total, doneCount, revealed, stats, card, finished, previews, rate } = useFlashcardReview({ reviewAll: !!route.query.all })
-const ratingPanel = useTemplateRef('ratingPanel')
+const ratingPanel = useTemplateRef<HTMLElement>('ratingPanel')
 
 watch(revealed, (r) => {
   if (!r) return
@@ -23,7 +23,7 @@ watch(revealed, (r) => {
   nextTick(() => ratingPanel.value?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }))
 })
 
-function onKey(e) {
+function onKey(e: KeyboardEvent) {
   if (finished.value) return
   if ((e.key === ' ' || e.key === 'Enter') && !revealed.value) {
     e.preventDefault()

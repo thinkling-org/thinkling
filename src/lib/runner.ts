@@ -3,7 +3,7 @@ import type { TestRun } from '../domain.ts'
 export const RUNNABLE = ['javascript', 'typescript']
 
 export function allTestsPassed(run: TestRun | null | undefined) {
-  return Boolean(run && !run.compileError && run.results.length > 0 && run.results.every((result) => result.ok))
+  return Boolean(run && !run.timedOut && !run.compileError && run.results.length > 0 && run.results.every((result) => result.ok))
 }
 
 export async function runTests({ code, tests, language }: { code: string; tests: string; language: string }): Promise<TestRun> {

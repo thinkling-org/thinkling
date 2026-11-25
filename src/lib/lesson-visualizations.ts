@@ -1,6 +1,6 @@
 import { t } from './i18n.ts'
 import { buildRegressionModel } from './linear-regression.ts'
-import { compileLogic } from './logic-expression.ts'
+import { compileLogic, isLogicOperator } from './logic-expression.ts'
 import { checkScenario } from './system-sim.ts'
 
 // Cache validation results because validation evaluates every combination of controls.
@@ -103,10 +103,10 @@ const readers = {
 
   'logic-circuit'({ instruction, inputs, outputs, notes }) {
     if (!hasText(instruction)) return null
-    const ids = new Set()
+    const ids = new Set<string>()
     const validInputs = list(inputs).filter((input) => {
       const id = input?.id?.trim()
-      if (!/^[A-Za-z_]\w{0,11}$/.test(id ?? '') || ids.has(id) || /^(AND|OR|XOR|NOT|I|LUB|NIE)$/.test(id)) return false
+      if (!/^[A-Za-z_]\w{0,11}$/.test(id ?? '') || ids.has(id) || isLogicOperator(id)) return false
       ids.add(id)
       return true
     }).slice(0, 4).map((input) => ({ id: input.id.trim(), label: input.label || input.id, on: !!input.on }))

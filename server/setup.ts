@@ -74,7 +74,7 @@ function run(cmd: string, args: string[], { onLine, env, cwd }: { onLine?: (line
     child.stdout.on('data', feed)
     child.stderr.on('data', feed)
     child.on('error', reject)
-    child.on('close', (code) => (code === 0 ? resolve(tail) : reject(new Error(t('{0} exited with code {1}.\n{2}', [path.basename(cmd), code, tail.slice(-600)])))))
+    child.on('close', (code) => (code === 0 ? resolve(tail) : reject(Object.assign(new Error(t('{0} exited with code {1}.\n{2}', [path.basename(cmd), code, tail.slice(-600)])), { exitCode: code }))))
   })
 }
 
@@ -152,11 +152,19 @@ function startJob(kind: string, fn) {
     progress(done, total, label) {
       job.progress = { done, total, pct: total ? Math.min(100, Math.round((done / total) * 100)) : null, label }
     },
+    actionRequired(title: string, message: string) {
+      job.status = 'action-required'
+      job.step = title
+      job.message = message
+      job.progress = null
+      api.log(message)
+    },
   }
   jobs.set(kind, job)
   Promise.resolve()
     .then(() => fn(api))
     .then(() => {
+      if (job.status === 'action-required') return
       job.status = 'done'
       job.progress = null
       api.log(`✓ ${t('Done')}`)
@@ -205,7 +213,7 @@ function dockerHelp(probe) {
       autoStart: exists(desktopExe),
       install: ['winget install -e --id Docker.DockerDesktop'],
       start: [],
-      startHint: 'Start Docker Desktop from the Start menu and wait for the whale icon to stop flashing.',
+      startHint: 'Open Docker Desktop from the Start menu and finish its setup. If Windows asks you to restart, restart your computer. Then return here and click “Check again”.',
       link: 'https://docs.docker.com/desktop/setup/install/windows-install/',
     }
   }
@@ -235,6 +243,8 @@ function dockerHelp(probe) {
   }
 }
 
+class DockerStartTimeout extends Error {}
+
 async function waitForDocker(job, seconds = 120) {
   for (let i = 0; i < seconds / 2; i++) {
     const p = await dockerProbe()
@@ -245,16 +255,35 @@ async function waitForDocker(job, seconds = 120) {
     if (i % 5 === 0) job.log(t('Waiting for Docker to start…'))
     await new Promise((r) => setTimeout(r, 2000))
   }
-  throw new Error(t('Docker didn\'t start within 2 minutes. Start it manually and click “Check again”.'))
+  throw new DockerStartTimeout(t('Docker didn\'t start within 2 minutes. Start it manually and click “Check again”.'))
 }
 
 async function installDocker(job) {
   const onLine = (l) => job.log(l)
   if (isWin) {
     job.step(t('Installing Docker Desktop with winget (confirm the permissions prompt)'))
-    await run('winget', ['install', '-e', '--id', 'Docker.DockerDesktop', '--accept-package-agreements', '--accept-source-agreements'], { onLine })
-    job.log(t('Docker Desktop is installed. Windows may need to restart for WSL 2.'))
-    await startDocker(job)
+    try {
+      await run('winget', ['install', '-e', '--id', 'Docker.DockerDesktop', '--accept-package-agreements', '--accept-source-agreements'], { onLine })
+    } catch (error) {
+      // WinGet reports HRESULTs; Node may expose them as signed or unsigned integers.
+      // https://github.com/microsoft/winget-cli/blob/master/doc/windows/package-manager/winget/returnCodes.md
+      const code = typeof error.exitCode === 'number' ? error.exitCode >>> 0 : null
+      if (code === 3010 || code === 1641 || code === 0x8A150109 || code === 0x8A15010B) {
+        job.actionRequired(t('Restart Windows to finish installation'), t('Save your work and restart your computer. Then open Docker Desktop, finish its setup and return to the Docker step in Codenoms. Click “Check again”.'))
+        return
+      }
+      if (code === 0x8A15010A) {
+        job.actionRequired(t('Restart Windows before installing'), t('Save your work and restart your computer. Then return to the Docker step in Codenoms and try installing Docker Desktop again.'))
+        return
+      }
+      throw error
+    }
+    try {
+      await startDocker(job)
+    } catch (error) {
+      if (!(error instanceof DockerStartTimeout)) throw error
+      job.actionRequired(t('Finish setting up Docker Desktop'), t('Docker Desktop is installed but is not ready yet. Open it from the Start menu and follow its setup instructions. If Windows asks you to restart, restart your computer. Then return here and click “Check again”.'))
+    }
     return
   }
   if (isMac) {
@@ -277,7 +306,13 @@ async function installDocker(job) {
 
 async function startDocker(job) {
   job.step(t('Starting Docker'))
-  if (isWin) spawn(desktopExe, [], { detached: true, stdio: 'ignore' }).unref()
+  if (isWin) {
+    await new Promise<void>((resolve, reject) => {
+      const child = spawn(desktopExe, [], { detached: true, stdio: 'ignore', windowsHide: true })
+      child.once('error', reject)
+      child.once('spawn', () => { child.unref(); resolve() })
+    })
+  }
   else if (isMac) await run('open', ['-a', 'Docker'])
   else if (hasDesktopLinux()) await run('systemctl', ['--user', 'start', 'docker-desktop'], { onLine: (l) => job.log(l) })
   else if (graphicalSudo()) await run('pkexec', ['systemctl', 'start', 'docker'], { onLine: (l) => job.log(l) })

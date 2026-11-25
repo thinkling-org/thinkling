@@ -4,7 +4,7 @@ import { useApp } from '../stores/app.ts'
 import { INTERFACE_LANGUAGES, languageName } from '../lib/languages.ts'
 import { t, uiLocale } from '../lib/i18n.ts'
 
-const props = defineProps({ explain: Boolean })
+const props = defineProps<{ explain?: boolean }>()
 const app = useApp()
 const saving = shallowRef(false)
 const failed = shallowRef(false)
@@ -18,11 +18,12 @@ const options = computed(() => INTERFACE_LANGUAGES.some(({ value }) => value ===
   ? INTERFACE_LANGUAGES
   : [...INTERFACE_LANGUAGES, { value: selected.value, label: languageName(selected.value, uiLocale()) }])
 
-async function change(event) {
+async function change(event: Event) {
+  const select = event.currentTarget as HTMLSelectElement
   failed.value = false
   saving.value = true
   try {
-    await app.changeLocale(event.target.value)
+    await app.changeLocale(select.value)
   } catch {
     failed.value = true
   } finally {

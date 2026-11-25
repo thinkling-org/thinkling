@@ -35,9 +35,12 @@ function localOrigin(origin) {
 routes.get('/api/state', (req, res) => res.json(initializeLocale(req)))
 
 routes.put('/api/state', (req, res) => {
-  if (!req.body || typeof req.body !== 'object') return res.status(400).json({ error: t('Invalid format') })
-  const locale = normalizeLocale(req.body.settings?.locale) || localeForRequest(req)
-  writeState({ ...req.body, settings: { ...req.body.settings, locale } })
+  const { body } = req
+  if (!body || typeof body !== 'object' || Array.isArray(body) || !Object.keys(body).length) {
+    return res.status(400).json({ error: t('Invalid format') })
+  }
+  const locale = normalizeLocale(body.settings?.locale) || localeForRequest(req)
+  writeState({ ...body, settings: { ...body.settings, locale } })
   res.json({ ok: true })
 })
 
@@ -178,7 +181,7 @@ routes.post(
     const meta = SB.readMeta(req.params.ws)
     if (!meta) throw new Error(t('Workspace does not exist'))
     const r = await SB.execIn(req.params.ws, meta.lang, String(req.body?.cmd || ''), { timeoutSec: 90 })
-    return req.body?.parse ? { ...SB.parseTestOutput(r.output, r.exitCode), output: r.output } : r
+    return req.body?.parse ? { ...SB.parseTestOutput(r.output, r.exitCode), output: r.output, timedOut: r.timedOut } : r
   }),
 )
 

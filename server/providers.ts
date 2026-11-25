@@ -196,11 +196,16 @@ export async function providerStatus(id: ProviderId, overridePath?: string) {
   return { id, label: PROVIDERS[id].label, available: !!version, path: cmd.path, version }
 }
 
-const EFFORTS = ['low', 'medium', 'high', 'xhigh', 'max']
-const EFFORT_LABELS = { low: 'Low', medium: 'Medium', high: 'High', xhigh: 'Very high', max: 'Maximum' }
+const EFFORTS = ['low', 'medium', 'high', 'xhigh', 'max'] as const
+type Effort = (typeof EFFORTS)[number]
+const EFFORT_LABELS: Record<Effort, string> = { low: 'Low', medium: 'Medium', high: 'High', xhigh: 'Very high', max: 'Maximum' }
+
+function isEffort(value?: string): value is Effort {
+  return EFFORTS.some((effort) => effort === value)
+}
 
 function safeEffort(effort?: string) {
-  return EFFORTS.includes(effort) ? effort : ''
+  return isEffort(effort) ? effort : ''
 }
 
 function runQuiet(cmd: ProviderCommand, args: string[], id: ProviderId, timeout = 20_000) {
@@ -253,54 +258,65 @@ export function clearProviderCaches() {
 }
 
 const CLAUDE_MODELS = [
-  { id: 'fable', label: 'Fable', description: t('Most capable model for lessons and feedback.') },
-  { id: 'opus', label: 'Opus', description: t('Strong quality, faster than Fable.') },
-  { id: 'sonnet', label: 'Sonnet', description: t('Balance of quality and speed.') },
-  { id: 'haiku', label: 'Haiku', description: t('Fastest option and lowest subscription usage.') },
-].map((m) => ({ ...m, efforts: EFFORTS }))
+  { id: 'fable', label: 'Fable', description: 'Most capable model for lessons and feedback.' },
+  { id: 'opus', label: 'Opus', description: 'Strong quality, faster than Fable.' },
+  { id: 'sonnet', label: 'Sonnet', description: 'Balance of quality and speed.' },
+  { id: 'haiku', label: 'Haiku', description: 'Fastest option and lowest subscription usage.' },
+]
 
-const modelsCache = new Map()
+interface CodexModel {
+  slug: string
+  visibility?: string
+  display_name?: string
+  description?: string
+  default_reasoning_level?: string
+  supported_reasoning_levels?: { effort: string }[]
+}
 
-/** List the models and effort levels supported by the CLI. */
-export async function providerModels(id, overridePath) {
-  const effortList = (list) => list.filter((e) => EFFORTS.includes(e)).map((e) => ({ id: e, label: t(EFFORT_LABELS[e]) }))
-  if (id === 'claude') {
-    return {
-      models: CLAUDE_MODELS.map((m) => ({ ...m, efforts: effortList(m.efforts) })),
-      efforts: effortList(EFFORTS),
-      defaultLabel: t('CLI default'),
-    }
-  }
-  const cmd = resolveProvider(id, overridePath)
+// Keep raw model metadata in the cache so each request can translate its labels.
+const modelsCache = new Map<string, { at: number; models: CodexModel[] }>()
+
+async function codexModels(cmd: ProviderCommand | null): Promise<CodexModel[]> {
   const key = cmd?.path || ''
   const cached = modelsCache.get(key)
-  if (cached && Date.now() - cached.at < 10 * 60_000) return cached.value
-  let raw = null
+  if (cached && Date.now() - cached.at < 10 * 60_000) return cached.models
+  let raw: CodexModel[] | null = null
   if (cmd) {
-    const r = await runQuiet(cmd, ['debug', 'models'], id)
+    const r = await runQuiet(cmd, ['debug', 'models'], 'codex')
     try {
       raw = JSON.parse(r.out).models
     } catch {}
   }
-  if (!raw) {
+  if (!Array.isArray(raw)) {
     try {
       raw = JSON.parse(fs.readFileSync(path.join(process.env.CODEX_HOME || path.join(home, '.codex'), 'models_cache.json'), 'utf8')).models
     } catch {
       raw = []
     }
   }
-  const models = raw
-    .filter((m) => m?.slug && (m.visibility ?? 'list') === 'list')
-    .map((m) => ({
-      id: m.slug,
-      label: m.display_name || m.slug,
-      description: m.description || '',
-      defaultEffort: m.default_reasoning_level || '',
-      efforts: effortList((m.supported_reasoning_levels || []).map((l) => l.effort)),
-    }))
-  const value = { models, efforts: effortList(EFFORTS), defaultLabel: t('Default from ~/.codex/config.toml') }
-  if (models.length) modelsCache.set(key, { at: Date.now(), value })
-  return value
+  const models = Array.isArray(raw) ? raw.filter((m) => m?.slug && (m.visibility ?? 'list') === 'list') : []
+  if (models.length) modelsCache.set(key, { at: Date.now(), models })
+  return models
+}
+
+/** List the models and effort levels supported by the CLI. */
+export async function providerModels(id: ProviderId, overridePath?: string) {
+  const effortList = (list: readonly string[]) => list.filter(isEffort).map((effort) => ({ id: effort, label: t(EFFORT_LABELS[effort]) }))
+  if (id === 'claude') {
+    return {
+      models: CLAUDE_MODELS.map((model) => ({ ...model, description: t(model.description), efforts: effortList(EFFORTS) })),
+      efforts: effortList(EFFORTS),
+      defaultLabel: t('CLI default'),
+    }
+  }
+  const models = (await codexModels(resolveProvider(id, overridePath))).map((model) => ({
+    id: model.slug,
+    label: model.display_name || model.slug,
+    description: model.description || '',
+    defaultEffort: model.default_reasoning_level || '',
+    efforts: effortList((model.supported_reasoning_levels || []).map(({ effort }) => effort)),
+  }))
+  return { models, efforts: effortList(EFFORTS), defaultLabel: t('Default from ~/.codex/config.toml') }
 }
 
 /**

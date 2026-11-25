@@ -20,7 +20,8 @@ async function verifyDocker(ex: Exercise, language: string, onStage?: Stage): Pr
   let cur = { files: ex.files, testFiles: ex.testFiles, solutionFiles: ex.solutionFiles, testCommand: ex.testCommand }
   let note = ''
   for (let attempt = 0; attempt < 2; attempt++) {
-    let solutionRun, starterRun
+    let solutionRun: TestRun
+    let starterRun: TestRun
     try {
       onStage?.('validating')
       solutionRun = await sandbox.verify(
@@ -29,8 +30,8 @@ async function verifyDocker(ex: Exercise, language: string, onStage?: Stage): Pr
       )
       onStage?.('validating')
       starterRun = await sandbox.verify({ language, files: mergeFiles(cur.files, cur.testFiles), testCommand: cur.testCommand })
-    } catch (err) {
-      return { status: 'unverified', note: err.message }
+    } catch (err: unknown) {
+      return { status: 'unverified', note: err instanceof Error ? err.message : String(err) }
     }
     const ok = allTestsPassed(solutionRun) && failsSomething(starterRun)
     const patch = attempt > 0 ? cur : undefined
@@ -53,7 +54,7 @@ async function verifyDocker(ex: Exercise, language: string, onStage?: Stage): Pr
   return { status: 'unverified' }
 }
 
-const failsSomething = (run: TestRun) => !!run && (!!run.compileError || run.results.some((r) => !r.ok))
+const failsSomething = (run: TestRun) => !!run && !run.timedOut && (!!run.compileError || run.results.some((r) => !r.ok))
 
 export async function verifyExercise(ex: Exercise, planLanguage?: string, { onStage }: { onStage?: Stage } = {}): Promise<Verification> {
   if (ex.runtime === 'docker') return verifyDocker(ex, String(planLanguage || ex.codeLanguage).toLowerCase(), onStage)
@@ -64,8 +65,14 @@ export async function verifyExercise(ex: Exercise, planLanguage?: string, { onSt
   let cur = { tests: ex.tests, solution: ex.solution, starterCode: ex.starterCode }
   let note = ''
   for (let attempt = 0; attempt < 2; attempt++) {
-    const solutionRun = await runTests({ code: cur.solution, tests: cur.tests, language })
-    const starterRun = await runTests({ code: cur.starterCode, tests: cur.tests, language })
+    let solutionRun: TestRun
+    let starterRun: TestRun
+    try {
+      solutionRun = await runTests({ code: cur.solution, tests: cur.tests, language })
+      starterRun = await runTests({ code: cur.starterCode, tests: cur.tests, language })
+    } catch (err: unknown) {
+      return { status: 'unverified', note: err instanceof Error ? err.message : String(err) }
+    }
     const ok = allTestsPassed(solutionRun) && failsSomething(starterRun)
     const patch = attempt > 0 ? cur : undefined
     if (ok) return { status: 'verified', patch, fixed: attempt > 0, total: solutionRun.results.length, note }

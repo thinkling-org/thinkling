@@ -1,8 +1,9 @@
 import polish from '../locales/pl.ts'
 import { interfaceLanguage } from './languages.ts'
+import type { InterfaceLanguage } from './languages.ts'
 
-type MessageCatalog = Record<string, string>
-const catalogs: Record<string, MessageCatalog | undefined> = { pl: polish }
+type MessageCatalog = Readonly<Record<string, string>>
+const catalogs: Partial<Record<InterfaceLanguage, MessageCatalog>> = { pl: polish }
 
 export function translate(locale: unknown, message: string, values: readonly unknown[] = []): string {
   const catalog = catalogs[interfaceLanguage(locale)]

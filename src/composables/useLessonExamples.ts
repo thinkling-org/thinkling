@@ -47,8 +47,14 @@ export function useLessonExamples(exercise: Readonly<Ref<Exercise | undefined>>)
     return true
   }
 
+  function previousComparisonStep() {
+    if (comparisonIndex.value <= 0) return false
+    comparisonIndex.value--
+    return true
+  }
+
   return {
     activeVariant, comparisonVariant, comparisonStep, hasNextComparisonStep,
-    selectVariant, nextComparisonStep, traceProgress, requestTrace,
+    selectVariant, nextComparisonStep, previousComparisonStep, traceProgress, requestTrace,
   }
 }

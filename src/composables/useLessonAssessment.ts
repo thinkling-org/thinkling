@@ -153,6 +153,7 @@ export function useLessonAssessment({ currentExercise, title, editor, onFeedback
 
   function skipExercise() {
     const exercise = currentExercise.value
+    if (!exercise || busy.value || result.value) return
     if (exercise.stage === 'practice') return revealPractice(exercise)
     results[exercise.id] = { status: 'skipped' }
     if (!exercise.warmup) app.recordAnswer({ score: 0 })
@@ -161,6 +162,7 @@ export function useLessonAssessment({ currentExercise, title, editor, onFeedback
   /** Show the reference answer and add a flashcard when the learner skips an open question. */
   function dontKnow() {
     const exercise = currentExercise.value
+    if (!exercise || busy.value || result.value) return
     results[exercise.id] = { status: 'unknown' }
     app.recordAnswer({ score: 0 })
     app.addFlashcards([{ front: exercise.prompt, back: exercise.referenceAnswer }], t('“I don\'t know” in lesson: {0}', [title()]))

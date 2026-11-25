@@ -280,14 +280,16 @@ export interface SandboxStatus {
 
 export interface SetupJob {
   kind?: string
-  status: 'running' | 'done' | 'error'
+  status: 'running' | 'done' | 'error' | 'action-required'
   step?: string
+  message?: string
   log: string[]
   error?: string | null
   progress?: { done: number; total: number; pct?: number; label?: string } | null
 }
 
 export interface SetupStatus {
+  platform: string
   docker: {
     running: boolean
     installed: boolean

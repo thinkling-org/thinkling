@@ -28,6 +28,9 @@ const providers = computed(() => status.value?.providers || {})
 const providerName = computed(() => getAiProvider(app.settings.provider).name)
 const activeProvider = computed(() => providers.value[app.settings.provider])
 const providerReady = computed(() => !!activeProvider.value?.available && activeProvider.value?.auth?.loggedIn !== false)
+const dockerNeedsAction = computed(() => !docker.value?.running && DOCKER_SETUP_JOBS.some((kind) => job(kind)?.status === 'action-required'))
+const visibleDockerJobs = computed(() => DOCKER_SETUP_JOBS.map((kind) => job(kind))
+  .filter((item) => item && (!docker.value?.running || item.status !== 'action-required')))
 
 function next() {
   if (step.value < SETUP_STEPS.length - 1) step.value++
@@ -62,12 +65,13 @@ const summary = computed(() => {
   <div class="page">
     <header class="head">
       <Logo />
-      <span class="label">{{ t('Setup · step') }} {{ step + 1 }} / {{ SETUP_STEPS.length }}</span>
+      <LanguagePicker v-if="current === 'welcome'" />
+      <span v-else class="label">{{ t('Setup · step') }} {{ step + 1 }} / {{ SETUP_STEPS.length }}</span>
     </header>
 
-    <main class="wrap">
+    <main class="wrap" :class="{ 'welcome-wrap': current === 'welcome' }">
       <div class="col">
-        <nav class="dots" :aria-label="t('Setup steps')">
+        <nav v-if="current !== 'welcome'" class="dots" :aria-label="t('Setup steps')">
           <button
             v-for="(s, i) in SETUP_STEPS"
             :key="s.id"
@@ -86,18 +90,16 @@ const summary = computed(() => {
         </div>
 
         <!-- Welcome -->
-        <section v-else-if="current === 'welcome'" class="card box">
-          <h1>{{ t('Welcome! Let\'s set up Codenoms') }}</h1>
-          <LanguagePicker />
+        <section v-else-if="current === 'welcome'" class="card box welcome" aria-labelledby="welcome-title">
+          <span class="welcome-icon"><Icon name="sparkle" :size="32" /></span>
+          <h1 id="welcome-title" class="welcome-title">{{ t('Welcome to Codenoms!') }}</h1>
           <p class="lead">
-            {{ t('Codenoms runs on your computer. The setup wizard checks the following and helps you install what\'s missing:') }}
+            {{ t('Connect Claude Code or Codex using your subscription. We\'ll guide you step by step.') }}
           </p>
-          <ul class="list">
-            <li><strong>{{ t('AI provider') }}</strong>{{ t(': Claude Code or Codex, signed in with your subscription (required).') }}</li>
-            <li><strong>Docker</strong>{{ t(': containerized environments with a terminal for PHP, C++, Python, Go and more (recommended).') }}</li>
-            <li><strong>{{ t('Dictation') }}</strong>{{ t(': record spoken answers and transcribe them locally (optional, about 0.5 GB).') }}</li>
-          </ul>
-          <p class="muted">{{ t('You can skip steps and return to them later from Settings.') }}</p>
+          <button class="btn btn-primary welcome-start" @click="next">
+            {{ t('Set up AI') }} <Icon name="arrow-right" :size="18" />
+          </button>
+          <p class="welcome-note">{{ t('Extras are optional. You can set them up later in Settings.') }}</p>
         </section>
 
         <!-- AI provider -->
@@ -150,27 +152,37 @@ const summary = computed(() => {
           </p>
 
           <div class="statusline">
-            <span class="tag" :class="docker.running ? 'tag-green' : 'tag-red'">
-              {{ docker.running ? t('Docker is running · {0}{1}', [docker.version, docker.endpoint ? ` · ${t(docker.endpoint)}` : '']) : docker.problem === 'permission' ? t('permission denied') : docker.installed ? t('installed but not running') : t('not installed') }}
+            <span class="tag" :class="docker.running ? 'tag-green' : dockerNeedsAction ? 'tag-yellow' : 'tag-red'">
+              {{ docker.running ? t('Docker is running · {0}{1}', [docker.version, docker.endpoint ? ` · ${t(docker.endpoint)}` : '']) : dockerNeedsAction ? t('Needs your attention') : docker.problem === 'permission' ? t('permission denied') : docker.installed ? t('installed but not running') : t('not installed') }}
             </span>
           </div>
 
-          <template v-if="!docker.running">
+          <template v-if="!docker.running && !dockerNeedsAction">
             <div v-if="docker.problem === 'permission'" class="hint">
               <strong>{{ t('Docker is running, but your account can\'t access it.') }}</strong> {{ t('Run this in a terminal:') }}
               <CopyCommand v-for="command in docker.help.permission" :key="command" :command="command" />
               <p v-if="docker.help.permissionHint" class="muted">{{ t(docker.help.permissionHint) }}</p>
             </div>
             <div v-else-if="!docker.installed" class="hint">
-              <strong>{{ t('Install Docker.') }}</strong>
+              <strong>{{ t('Docker is not installed yet') }}</strong>
               <template v-if="docker.help.autoInstall">
-                {{ t('Codenoms can install it for you. Your system will request an administrator password.') }}
-                <button class="btn btn-primary btn-sm self" :disabled="anyRunning" @click="startJob('docker-install')">{{ t('Install Docker') }}</button>
-                <span class="muted small">{{ t('Or manually, in a terminal:') }}</span>
+                <p class="install-copy">{{ t('Codenoms will download and install Docker for you. Confirm the administrator prompt if it appears.') }}</p>
+                <p v-if="status.platform === 'win32'" class="muted small install-copy">{{ t('Windows may need a restart. After installation, Docker Desktop may ask you to finish its setup.') }}</p>
+                <button class="btn btn-primary btn-sm self" :disabled="anyRunning" @click="startJob('docker-install')">
+                  <span v-if="running('docker-install')" class="spinner sm" />
+                  {{ running('docker-install') ? t('Installing…') : status.platform === 'win32' || status.platform === 'darwin' ? t('Install Docker Desktop') : t('Install Docker') }}
+                </button>
               </template>
-              <template v-else>{{ t('Run this in a terminal:') }}</template>
-              <CopyCommand v-for="command in docker.help.install" :key="command" :command="command" />
-              <a class="link small" :href="docker.help.link" target="_blank" rel="noopener">{{ t('Official installation guide ↗') }}</a>
+              <template v-else>
+                <p class="install-copy">{{ t('Automatic installation is unavailable on this computer. Download Docker and follow the installation guide, then return here and click “Check again”.') }}</p>
+                <a class="btn btn-primary btn-sm self" :href="docker.help.link" target="_blank" rel="noopener">{{ t('Get Docker ↗') }}</a>
+              </template>
+              <details v-if="docker.help.autoInstall || status.platform !== 'win32'" class="manual-install">
+                <summary>{{ t('Manual installation') }}</summary>
+                <CopyCommand v-for="command in docker.help.install" :key="command" :command="command" />
+                <a class="link small" :href="docker.help.link" target="_blank" rel="noopener">{{ t('Official installation guide ↗') }}</a>
+              </details>
+              <p class="muted small install-copy">{{ t('Docker is optional. Choose “Not now” to continue and install it later from Settings.') }}</p>
             </div>
             <div v-else class="hint">
               <strong>{{ t('Start Docker.') }}</strong>
@@ -180,7 +192,7 @@ const summary = computed(() => {
             </div>
           </template>
 
-          <JobLog v-for="k in DOCKER_SETUP_JOBS" :key="k" :job="job(k)" />
+          <JobLog v-for="item in visibleDockerJobs" :key="item.kind" :job="item" />
 
           <template v-if="docker.running && status.sandbox">
             <span class="label">{{ t('Prepare environments in advance (optional)') }}</span>
@@ -257,11 +269,11 @@ const summary = computed(() => {
 
         <p v-if="startError" class="tr bad">{{ startError }}</p>
 
-        <footer v-if="status || current === 'welcome'" class="nav">
+        <footer v-if="status && current !== 'welcome'" class="nav">
           <button v-if="step > 0" class="btn" @click="back"><Icon name="arrow-left" :size="18" /> {{ t('Back') }}</button>
           <span class="grow" />
           <button v-if="current !== 'done'" class="btn btn-primary" @click="next">
-            {{ current === 'welcome' ? t('Get started') : t('Continue') }} <Icon name="arrow-right" :size="18" />
+            {{ current === 'docker' && !docker.running ? t('Not now') : t('Continue') }} <Icon name="arrow-right" :size="18" />
           </button>
           <button v-else class="btn btn-green btn-lg" :disabled="!providerReady" @click="finish">{{ t('Continue to learning') }}</button>
         </footer>
@@ -278,6 +290,7 @@ const summary = computed(() => {
 }
 .head {
   display: flex;
+  flex-wrap: wrap;
   gap: 16px;
   align-items: center;
   justify-content: space-between;
@@ -296,6 +309,43 @@ const summary = computed(() => {
   display: flex;
   flex-direction: column;
   gap: 20px;
+}
+.welcome-wrap {
+  align-items: center;
+  padding-block: 48px 96px;
+}
+.welcome-wrap .col {
+  max-width: 560px;
+}
+.welcome-icon {
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  margin-bottom: 4px;
+  border-radius: 20px;
+  background: var(--purple-soft);
+  color: var(--purple-light);
+}
+.welcome-title {
+  font-size: 32px;
+  line-height: 1.2;
+  text-wrap: balance;
+}
+.welcome-start {
+  width: 100%;
+  max-width: 320px;
+  margin-top: 8px;
+  text-transform: none;
+  letter-spacing: normal;
+  font-size: 16px;
+}
+.welcome-note {
+  max-width: 360px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.5;
 }
 .dots {
   display: flex;
@@ -352,6 +402,12 @@ const summary = computed(() => {
   flex-direction: row;
   align-items: center;
   font-weight: 700;
+}
+.welcome {
+  align-items: center;
+  padding: 40px;
+  text-align: center;
+  gap: 20px;
 }
 h1 {
   font-size: 28px;
@@ -426,6 +482,17 @@ h1 {
   background: var(--yellow-bg);
   border-color: var(--yellow-border);
   color: var(--yellow-light);
+}
+.install-copy {
+  margin: 0;
+}
+.manual-install summary {
+  cursor: pointer;
+  color: var(--text-3);
+  font-size: 13px;
+}
+.manual-install[open] > :not(summary) {
+  margin-top: 10px;
 }
 .self {
   align-self: flex-start;
@@ -525,6 +592,15 @@ kbd {
   }
   .box {
     padding: 20px 16px;
+  }
+  .welcome {
+    padding: 32px 24px;
+  }
+  .welcome-title {
+    font-size: 28px;
+  }
+  .welcome-wrap {
+    padding-block: 32px;
   }
   .dot .t {
     display: none;

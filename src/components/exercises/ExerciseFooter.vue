@@ -16,7 +16,7 @@ const props = defineProps({
   nextStep: Boolean,
   canSkipLearn: { type: Boolean, default: true },
 })
-const emit = defineEmits(['ask', 'check', 'dont-know', 'know-it', 'next', 'retry', 'skip', 'trace'])
+const emit = defineEmits(['back', 'ask', 'check', 'dont-know', 'know-it', 'next', 'retry', 'skip', 'trace'])
 
 const TITLES = { correct: t('Great work!'), almost: t('Almost!'), wrong: t('Not quite') }
 const BUTTON_COLORS = { correct: 'green', almost: 'yellow', wrong: 'red' }
@@ -67,6 +67,11 @@ const canAsk = computed(() => !isError.value && (feedback.value.tone !== 'wrong'
 
 <template>
   <LessonFooter :tone="feedback.tone" :title="feedback.title" :message="feedback.message">
+    <template #navigation>
+      <button type="button" class="btn btn-ghost" :disabled="busy" :aria-label="t('Previous step')" @click="emit('back')">
+        <Icon name="arrow-left" :size="18" />{{ t('Go back') }}
+      </button>
+    </template>
     <template #message>
       <Markdown :src="feedback.message" />
     </template>
