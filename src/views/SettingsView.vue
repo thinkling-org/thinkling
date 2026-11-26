@@ -9,6 +9,7 @@ import ProviderConnectionTest from '../components/ProviderConnectionTest.vue'
 import AppShell from '../components/AppShell.vue'
 import ModelPicker from '../components/ModelPicker.vue'
 import LanguagePicker from '../components/LanguagePicker.vue'
+import DesktopUpdate from '../components/DesktopUpdate.vue'
 import { play } from '../lib/sfx.ts'
 import { SOUND_PREVIEWS, playSoundPreview } from '../lib/sound-previews.ts'
 
@@ -48,7 +49,7 @@ function resetAll() {
 
       <section class="sec">
         <h2>{{ t('AI provider') }}</h2>
-        <p class="muted">{{ t('Codenoms runs a local CLI that uses your subscription. You don\'t pay for API tokens.') }}</p>
+        <p class="muted">{{ t('Thinkling runs a local CLI that uses your subscription. You don\'t pay for API tokens.') }}</p>
         <div class="providers">
           <button
             v-for="p in AI_PROVIDERS"
@@ -150,6 +151,7 @@ function resetAll() {
           <button class="btn btn-sm btn-ghost-red" @click="resetAll">{{ t('Clear all data') }}</button>
         </div>
       </section>
+      <DesktopUpdate />
     </div>
   </AppShell>
 </template>

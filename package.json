@@ -1,9 +1,13 @@
 {
-  "name": "codenoms",
+  "name": "thinkling",
   "version": "0.1.0",
   "private": true,
   "license": "Apache-2.0",
-  "homepage": "https://codenoms.org",
+  "homepage": "https://github.com/codenoms-org/thinkling",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/codenoms-org/thinkling.git"
+  },
   "type": "module",
   "main": "dist-node/electron/main.js",
   "description": "Learn programming locally with short, gamified lessons powered by your Claude Code or Codex subscription.",
@@ -12,11 +16,13 @@
     "typecheck": "vue-tsc --noEmit -p tsconfig.app.json && tsc --noEmit -p tsconfig.node.json",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
+    "test:desktop-updates": "electron tests/smoke/desktop-updates.cjs",
     "build": "vue-tsc --noEmit -p tsconfig.app.json && tsc -p tsconfig.node.json && vite build",
     "start": "npm run build && npm run serve",
     "serve": "node server/index.ts",
     "desktop": "npm run build && electron .",
-    "desktop:package": "npm run build && electron-builder --win --publish never"
+    "desktop:package": "npm run build && electron-builder --win --publish never",
+    "desktop:release": "npm run build && electron-builder --win --x64 --publish always"
   },
   "dependencies": {
     "@fontsource-variable/jetbrains-mono": "^5.1.0",
@@ -25,6 +31,7 @@
     "@xterm/xterm": "^5.5.0",
     "dockerode": "^4.0.12",
     "dompurify": "^3.2.0",
+    "electron-updater": "^6.8.9",
     "express": "^4.21.0",
     "highlight.js": "^11.10.0",
     "marked": "^15.0.0",
@@ -55,12 +62,18 @@
   },
   "build": {
     "appId": "org.codenoms.desktop",
-    "productName": "Codenoms",
+    "productName": "Thinkling",
     "icon": "public/logo.svg",
     "directories": {
       "output": "release"
     },
     "npmRebuild": false,
+    "publish": {
+      "provider": "github",
+      "owner": "codenoms-org",
+      "repo": "thinkling",
+      "releaseType": "draft"
+    },
     "files": [
       "dist-node/**",
       "server/whisper.py",

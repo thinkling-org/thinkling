@@ -3,6 +3,7 @@ import { existsSync } from 'node:fs'
 import path from 'node:path'
 import { DEFAULT_VOICE_DESIGN, normalizeVoiceDesign } from '../src/lib/voice-design.ts'
 import { readState } from './store.ts'
+import { dataDirectory } from './data-directory.ts'
 import { designedSpeaker } from './voice-design.ts'
 import type { Express } from 'express'
 
@@ -10,7 +11,7 @@ const PAUSE_MARKER = '\uE003'
 
 export function registerSpeech(app: Express, root: string) {
   const zonosUrl = process.env.ZONOS_URL || 'http://127.0.0.1:1919'
-  const data = process.env.CODENOMS_DATA || path.join(root, 'data')
+  const data = dataDirectory(root)
   // Setup copies the embeddings to data/zonos/default_voices. Older manual installs
   // kept them in the ZONOS3-Mini checkout.
   const voicesDirectory = [path.join(data, 'zonos/default_voices'), path.join(data, 'zonos/source/assets/default_voices')]

@@ -92,7 +92,7 @@ const summary = computed(() => {
         <!-- Welcome -->
         <section v-else-if="current === 'welcome'" class="card box welcome" aria-labelledby="welcome-title">
           <span class="welcome-icon"><Icon name="sparkle" :size="32" /></span>
-          <h1 id="welcome-title" class="welcome-title">{{ t('Welcome to Codenoms!') }}</h1>
+          <h1 id="welcome-title" class="welcome-title">{{ t('Welcome to Thinkling!') }}</h1>
           <p class="lead">
             {{ t('Connect Claude Code or Codex using your subscription. We\'ll guide you step by step.') }}
           </p>
@@ -105,7 +105,7 @@ const summary = computed(() => {
         <!-- AI provider -->
         <section v-else-if="current === 'ai'" class="card box">
           <h1>{{ t('AI provider') }}</h1>
-          <p class="lead">{{ t('Choose which CLI Codenoms uses. It runs through your subscription, without API token charges.') }}</p>
+          <p class="lead">{{ t('Choose which CLI Thinkling uses. It runs through your subscription, without API token charges.') }}</p>
           <div class="providers">
             <button
               v-for="provider in AI_PROVIDERS"
@@ -166,7 +166,7 @@ const summary = computed(() => {
             <div v-else-if="!docker.installed" class="hint">
               <strong>{{ t('Docker is not installed yet') }}</strong>
               <template v-if="docker.help.autoInstall">
-                <p class="install-copy">{{ t('Codenoms will download and install Docker for you. Confirm the administrator prompt if it appears.') }}</p>
+                <p class="install-copy">{{ t('Thinkling will download and install Docker for you. Confirm the administrator prompt if it appears.') }}</p>
                 <p v-if="status.platform === 'win32'" class="muted small install-copy">{{ t('Windows may need a restart. After installation, Docker Desktop may ask you to finish its setup.') }}</p>
                 <button class="btn btn-primary btn-sm self" :disabled="anyRunning" @click="startJob('docker-install')">
                   <span v-if="running('docker-install')" class="spinner sm" />
@@ -264,7 +264,7 @@ const summary = computed(() => {
             </li>
           </ul>
           <div v-if="anyRunning" class="hint">{{ t('Installation is still running in the background. You can start learning now and use the feature once it finishes.') }}</div>
-          <div v-if="!providerReady" class="hint warn">{{ t('Codenoms needs a working AI provider to create a plan or lessons. Return to “AI provider”.') }}</div>
+          <div v-if="!providerReady" class="hint warn">{{ t('Thinkling needs a working AI provider to create a plan or lessons. Return to “AI provider”.') }}</div>
         </section>
 
         <p v-if="startError" class="tr bad">{{ startError }}</p>

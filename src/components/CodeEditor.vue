@@ -28,7 +28,7 @@ let silent = false
 onMounted(() => {
   ensureTheme()
   const lang = monacoLanguage(props.language)
-  const uri = monaco.Uri.parse(`file:///codenoms/${props.uid}/${props.fileName || 'main'}`)
+  const uri = monaco.Uri.parse(`file:///thinkling/${props.uid}/${props.fileName || 'main'}`)
   const existing = monaco.editor.getModel(uri)
   if (existing && props.keepModel) {
     model = existing
@@ -39,7 +39,7 @@ onMounted(() => {
   }
   editor.value = monaco.editor.create(el.value, {
     model,
-    theme: 'codenoms',
+    theme: 'thinkling',
     fontFamily: "'JetBrains Mono Variable', 'JetBrains Mono', Consolas, monospace",
     fontSize: 15,
     lineHeight: 27,

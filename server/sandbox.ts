@@ -9,11 +9,11 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { PassThrough } from 'node:stream'
 import { StringDecoder } from 'node:string_decoder'
-import { PROJECT_ROOT } from './project-path.ts'
+import { dataDirectory } from './data-directory.ts'
 import type { WebSocket } from 'ws'
 import type { WorkspaceFile } from '../src/domain.ts'
 
-const DATA_DIR = path.resolve(process.env.CODENOMS_DATA || path.join(PROJECT_ROOT, 'data'))
+const DATA_DIR = path.resolve(dataDirectory())
 const WS_ROOT = path.join(DATA_DIR, 'workspaces')
 fs.mkdirSync(WS_ROOT, { recursive: true })
 
@@ -29,6 +29,7 @@ export async function reconnectDocker() {
   }
   return found
 }
+// Stable Docker identifiers preserve existing images and containers after the rename.
 const LABEL = 'codenoms'
 const desktopNamespace = process.versions.electron
   ? createHash('sha256').update(WS_ROOT).digest('hex').slice(0, 12)
@@ -54,7 +55,7 @@ RUN grep -q "^[^:]*:[^:]*:\${SANDBOX_GID}:" /etc/group || echo "codenoms:x:\${SA
     grep -q "^[^:]*:[^:]*:\${SANDBOX_UID}:" /etc/passwd || echo "codenoms:x:\${SANDBOX_UID}:\${SANDBOX_GID}::${SANDBOX_HOME}:/bin/bash" >> /etc/passwd
 RUN mkdir -p /workspace
 WORKDIR /workspace
-ENV TERM=xterm-256color LANG=C.UTF-8 PS1='\\[\\e[1;35m\\]codenoms\\[\\e[0m\\]:\\[\\e[1;34m\\]\\w\\[\\e[0m\\]$ '
+ENV TERM=xterm-256color LANG=C.UTF-8 PS1='\\[\\e[1;35m\\]thinkling\\[\\e[0m\\]:\\[\\e[1;34m\\]\\w\\[\\e[0m\\]$ '
 `
 
 /** Runtime definitions by programming language. Each image builds locally on first use. */

@@ -60,7 +60,7 @@ beforeEach(async () => {
   spawnCli.mockReset()
   dockerResult.mockReset()
   dataDirectory = await mkdtemp(join(tmpdir(), 'codenoms-state-test-'))
-  vi.stubEnv('CODENOMS_DATA', dataDirectory)
+  vi.stubEnv('THINKLING_DATA', dataDirectory)
 })
 
 afterEach(async () => {
@@ -200,7 +200,7 @@ describe('AI request localization', () => {
     expect(await response.text()).toContain('Une promesse représente un résultat futur.')
     const args: string[] = spawnCli.mock.calls[0][1]
     const system = args[args.indexOf('--system-prompt') + 1]
-    expect(system).toContain('You are Codenoms, a programming tutor.')
+    expect(system).toContain('You are Thinkling, a programming tutor.')
     expect(system).toContain('Response language: Canadian French (fr-CA).')
     expect(system).toContain('Keep JSON keys, schema enum values, programming syntax and identifiers unchanged.')
     expect(prompt()).toContain('Answer the learner\'s follow-up in the context of the exercise.')

@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, session, shell } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, session, shell } from 'electron'
 import type { Session } from 'electron'
 import type { startServer } from '../server/app.ts'
 import { randomBytes } from 'node:crypto'
@@ -6,11 +6,16 @@ import path from 'node:path'
 import { setTimeout as delay } from 'node:timers/promises'
 import { preferredLocale } from '../src/lib/languages.ts'
 import { translate } from '../src/lib/translation.ts'
+import electronUpdater from 'electron-updater'
+import { createDesktopUpdates } from './updates.ts'
+import { desktopUserData } from './user-data.ts'
 
 const HOST = '127.0.0.1'
-const AUTH_HEADER = 'x-codenoms-desktop'
+const AUTH_HEADER = 'x-thinkling-desktop'
 
-app.setName('Codenoms')
+app.setName('Thinkling')
+app.setPath('userData', desktopUserData(app.getPath('appData'), app.getPath('userData')))
+// Preserve the NSIS identity so this remains an upgrade of the existing application.
 if (process.platform === 'win32') app.setAppUserModelId('org.codenoms.desktop')
 
 let backend: Awaited<ReturnType<typeof startServer>> | undefined
@@ -18,6 +23,7 @@ let window: BrowserWindow | null = null
 let quitting = false
 let stopped = false
 let startupLocale: string | undefined
+let updateTimer: ReturnType<typeof setInterval> | undefined
 
 function configureSession(desktopSession: Session, origin: string, socketOrigin: string, secret: string) {
   const filter = { urls: [`${origin}/*`, `${socketOrigin}/*`] }
@@ -66,8 +72,8 @@ function openExternal(url: string) {
 async function start() {
   const appPath = app.getAppPath()
   const resourceRoot = app.isPackaged ? `${appPath}.unpacked` : appPath
-  // The backend reads CODENOMS_DATA when its modules are imported.
-  process.env.CODENOMS_DATA ||= path.join(app.getPath('userData'), 'data')
+  // The backend reads the data directory when its modules are imported.
+  process.env.THINKLING_DATA ||= process.env.CODENOMS_DATA || path.join(app.getPath('userData'), 'data')
   const { startServer } = await import('../server/app.ts')
   const secret = randomBytes(32).toString('hex')
   const systemLanguages = app.getPreferredSystemLanguages()
@@ -84,7 +90,7 @@ async function start() {
   if (quitting) return
 
   const origin = `http://${HOST}:${backend.port}`
-  const desktopSession = session.fromPartition('codenoms')
+  const desktopSession = session.fromPartition('thinkling')
   configureSession(desktopSession, origin, `ws://${HOST}:${backend.port}`, secret)
   window = new BrowserWindow({
     width: 1280,
@@ -94,10 +100,45 @@ async function start() {
     backgroundColor: '#101214',
     show: false,
     autoHideMenuBar: true,
-    webPreferences: { session: desktopSession, nodeIntegration: false, contextIsolation: true, sandbox: true },
+    webPreferences: {
+      session: desktopSession, nodeIntegration: false, contextIsolation: true, sandbox: true,
+      preload: path.join(appPath, 'dist-node/electron/preload.cjs'),
+    },
   })
 
   const page = window.webContents
+  const updates = createDesktopUpdates({
+    updater: electronUpdater.autoUpdater,
+    enabled: app.isPackaged && process.platform === 'win32',
+    currentVersion: app.getVersion(),
+    prepareInstall: async () => {
+      if (quitting) throw new Error('Application is already closing')
+      // Abort the update on save failure or timeout, before starting the installer.
+      await flushRendererSave(true)
+      if (quitting) throw new Error('Application is already closing')
+    },
+    publish: (state) => {
+      if (!page.isDestroyed()) page.send('updates:changed', state)
+    },
+  })
+  const handlers = {
+    'updates:state': updates.getState,
+    'updates:check': updates.check,
+    'updates:download': updates.download,
+    'updates:install': updates.install,
+  }
+  for (const [channel, handler] of Object.entries(handlers)) {
+    ipcMain.handle(channel, (event) => {
+      if (quitting || event.sender !== page || event.senderFrame !== page.mainFrame
+        || URL.parse(event.senderFrame.url)?.origin !== origin) throw new Error('Update request not allowed')
+      return handler()
+    })
+  }
+  if (app.isPackaged && process.platform === 'win32') {
+    page.once('did-finish-load', () => { if (!quitting) void updates.check() })
+    updateTimer = setInterval(() => { if (!quitting) void updates.check() }, 6 * 60 * 60 * 1_000)
+    updateTimer.unref()
+  }
   page.setWindowOpenHandler(({ url }) => {
     openExternal(url)
     return { action: 'deny' }
@@ -125,21 +166,40 @@ function failStartup(err: Error) {
   if (quitting) return
   console.error(err)
   const message = translate(startupLocale, 'Could not start the application.')
-  dialog.showErrorBox('Codenoms', `${message}\n\n${err.message}`)
+  dialog.showErrorBox('Thinkling', `${message}\n\n${err.message}`)
   app.quit()
 }
 
 async function shutdown(ready: Promise<void>) {
   await ready.catch(() => {})
+  clearInterval(updateTimer)
   try {
-    if (window && !window.webContents.isDestroyed()) {
-      const save = window.webContents.executeJavaScript('window.flushCodenomsSave?.()')
-      await Promise.race([save, delay(2_000, undefined, { ref: false })])
-    }
+    await flushRendererSave()
   } catch (err) {
     console.error(err)
   }
   await Promise.race([backend?.close(), delay(5_000, undefined, { ref: false })])
+}
+
+async function flushRendererSave(required = false) {
+  if (!window || window.webContents.isDestroyed()) {
+    if (required) throw new Error('Application window is unavailable')
+    return
+  }
+  const save = window.webContents.executeJavaScript(required
+    ? 'Promise.resolve().then(() => { if (!window.flushThinklingSave) throw new Error("Save unavailable"); return window.flushThinklingSave() })'
+    : 'window.flushThinklingSave?.()')
+  const timeout = new AbortController()
+  try {
+    await Promise.race([
+      save,
+      delay(required ? 10_000 : 2_000, undefined, { ref: false, signal: timeout.signal }).then(() => {
+        if (required) throw new Error('Saving progress timed out')
+      }),
+    ])
+  } finally {
+    timeout.abort()
+  }
 }
 
 if (!app.requestSingleInstanceLock()) {

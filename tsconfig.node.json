@@ -17,5 +17,5 @@
     "outDir": "dist-node",
     "sourceMap": true
   },
-  "include": ["server/**/*.ts", "electron/**/*.ts"]
+  "include": ["server/**/*.ts", "electron/**/*.ts", "electron/**/*.cts"]
 }

@@ -12,6 +12,7 @@ import { pipeline } from 'node:stream/promises'
 import tar from 'tar-stream'
 import { providerStatus, providerAuth, providerModels, clearProviderCaches } from './providers.ts'
 import { readState } from './store.ts'
+import { dataDirectory } from './data-directory.ts'
 import * as SB from './sandbox.ts'
 import type { SetupJob } from '../src/domain.ts'
 import type { Express } from 'express'
@@ -20,13 +21,14 @@ const isWin = process.platform === 'win32'
 const isMac = process.platform === 'darwin'
 
 export const ZONOS_URL = process.env.ZONOS_URL || 'http://127.0.0.1:1919'
+// Stable Docker identifiers reuse already downloaded and running voice environments.
 const ZONOS_IMAGE = 'codenoms/zonos:1'
 const ZONOS_CONTAINER = 'codenoms-zonos'
 const ZONOS_FILES = ['gguf/backbone-ptq-edit.gguf', 'gguf/zac-keep2.gguf', 'gguf/steer.gguf']
 const WHISPER_FILES = ['config.json', 'model.bin', 'tokenizer.json', 'vocabulary.txt']
 
 export function paths(root) {
-  const data = path.resolve(process.env.CODENOMS_DATA || path.join(root, 'data'))
+  const data = path.resolve(dataDirectory(root))
   const venv = path.join(data, 'whisper', 'venv')
   return {
     data,
@@ -237,7 +239,7 @@ function dockerHelp(probe) {
       : ['curl -fsSL https://get.docker.com | sudo sh', `sudo usermod -aG docker ${user}`, 'sudo systemctl enable --now docker'],
     start: hasDesktopLinux() ? ['systemctl --user start docker-desktop'] : ['sudo systemctl start docker'],
     permission: [`sudo usermod -aG docker ${user}`],
-    permissionHint: 'Sign out and back in (or restart your computer), then launch Codenoms again.',
+    permissionHint: 'Sign out and back in (or restart your computer), then launch Thinkling again.',
     link: 'https://docs.docker.com/engine/install/',
     problem: probe.problem,
   }
@@ -250,7 +252,7 @@ async function waitForDocker(job, seconds = 120) {
     const p = await dockerProbe()
     if (p.running) return p
     if (p.problem === 'permission') {
-      throw new Error(t('Docker is running, but your account can\'t access it. Sign out and back in to apply docker group membership, then launch Codenoms again.'))
+      throw new Error(t('Docker is running, but your account can\'t access it. Sign out and back in to apply docker group membership, then launch Thinkling again.'))
     }
     if (i % 5 === 0) job.log(t('Waiting for Docker to start…'))
     await new Promise((r) => setTimeout(r, 2000))
@@ -269,11 +271,11 @@ async function installDocker(job) {
       // https://github.com/microsoft/winget-cli/blob/master/doc/windows/package-manager/winget/returnCodes.md
       const code = typeof error.exitCode === 'number' ? error.exitCode >>> 0 : null
       if (code === 3010 || code === 1641 || code === 0x8A150109 || code === 0x8A15010B) {
-        job.actionRequired(t('Restart Windows to finish installation'), t('Save your work and restart your computer. Then open Docker Desktop, finish its setup and return to the Docker step in Codenoms. Click “Check again”.'))
+        job.actionRequired(t('Restart Windows to finish installation'), t('Save your work and restart your computer. Then open Docker Desktop, finish its setup and return to the Docker step in Thinkling. Click “Check again”.'))
         return
       }
       if (code === 0x8A15010A) {
-        job.actionRequired(t('Restart Windows before installing'), t('Save your work and restart your computer. Then return to the Docker step in Codenoms and try installing Docker Desktop again.'))
+        job.actionRequired(t('Restart Windows before installing'), t('Save your work and restart your computer. Then return to the Docker step in Thinkling and try installing Docker Desktop again.'))
         return
       }
       throw error
@@ -299,7 +301,7 @@ async function installDocker(job) {
   job.log(t('Added user {0} to the docker group.', [user]))
   const p = await dockerProbe()
   if (p.problem === 'permission') {
-    throw new Error(t('Docker is installed. Sign out and back in to use Docker without sudo, then launch Codenoms again.'))
+    throw new Error(t('Docker is installed. Sign out and back in to use Docker without sudo, then launch Thinkling again.'))
   }
   await waitForDocker(job)
 }
@@ -411,7 +413,7 @@ async function ensureZonosContainer(P, job) {
   }
   const port = new URL(ZONOS_URL).port || '1919'
   if (!info?.State?.Running && !(await portFree(Number(port)))) {
-    throw new Error(t('The voice server cannot start because port {0} is in use. Close the other program or start Codenoms with a different address, for example ZONOS_URL=http://127.0.0.1:1920 npm start.', [port]))
+    throw new Error(t('The voice server cannot start because port {0} is in use. Close the other program or start Thinkling with a different address, for example ZONOS_URL=http://127.0.0.1:1920 npm start.', [port]))
   }
   if (!info) {
     job.step(t('Creating the voice server container'))
@@ -475,7 +477,7 @@ async function removeVoiceContainer(job) {
   const c = SB.docker.getContainer(ZONOS_CONTAINER)
   const info = await c.inspect().catch(() => null)
   if (!info) return job.log(t('The container does not exist.'))
-  if (info.Config?.Image !== ZONOS_IMAGE) throw new Error(t('Stop this container manually. It was created outside Codenoms.'))
+  if (info.Config?.Image !== ZONOS_IMAGE) throw new Error(t('Stop this container manually. It was created outside Thinkling.'))
   await c.remove({ force: true })
   voiceCache.at = 0
   job.log(t('Container removed. Downloaded models are in data/zonos/models.'))

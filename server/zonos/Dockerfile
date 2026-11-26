@@ -1,4 +1,4 @@
-# ZONOS3-Mini server (ggml, CPU) for Codenoms speech playback.
+# ZONOS3-Mini server (ggml, CPU) for Thinkling speech playback.
 # Setup builds this image locally: docker build -t codenoms/zonos:1 server/zonos
 # Setup downloads model weights to data/zonos/models and mounts that directory at /models.
 FROM rust:1-trixie AS build

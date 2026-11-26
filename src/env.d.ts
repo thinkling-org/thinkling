@@ -1,4 +1,5 @@
 interface Window {
+  thinklingUpdates?: import('./lib/desktop-updates.ts').DesktopUpdates
   webkitAudioContext?: typeof AudioContext
-  flushCodenomsSave?: () => Promise<unknown>
+  flushThinklingSave?: () => Promise<unknown>
 }

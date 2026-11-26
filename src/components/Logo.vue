@@ -7,7 +7,7 @@ const maskId = `logo-mask-${useId()}`
 </script>
 
 <template>
-  <RouterLink to="/" class="logo" :aria-label="t('Codenoms home')">
+  <RouterLink to="/" class="logo" :aria-label="t('Thinkling home')">
     <!-- Hexagonal mark with a bitten corner and cutouts for the eyes. -->
     <svg aria-hidden="true" width="36" height="36" viewBox="0 0 120 120">
       <defs>
@@ -22,7 +22,7 @@ const maskId = `logo-mask-${useId()}`
       </defs>
       <rect width="120" height="120" fill="#7C5CFF" :mask="`url(#${maskId})`" />
     </svg>
-    <span class="wordmark"><span class="code">code</span><span class="noms">noms</span></span>
+    <span class="wordmark"><span class="think">think</span><span class="ling">ling</span></span>
   </RouterLink>
 </template>
 
@@ -43,11 +43,11 @@ const maskId = `logo-mask-${useId()}`
   letter-spacing: -0.01em;
   white-space: nowrap;
 }
-.code {
+.think {
   font-family: var(--mono);
   font-weight: 500;
 }
-.noms {
+.ling {
   font-weight: 900;
   color: #a08bff;
 }

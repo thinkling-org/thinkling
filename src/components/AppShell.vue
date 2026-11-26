@@ -5,6 +5,7 @@ import { useApp } from '../stores/app.ts'
 import { getAiProvider } from '../lib/ai-providers.ts'
 import Icon from './Icon.vue'
 import Logo from './Logo.vue'
+import DesktopUpdate from './DesktopUpdate.vue'
 
 const app = useApp()
 const nav = computed(() => [
@@ -40,6 +41,7 @@ const fmt = (n) => n.toLocaleString(uiLocale())
     <div class="main">
       <header class="top">
         <slot name="top-left" />
+        <DesktopUpdate compact />
         <div class="stats">
           <span class="stat" :class="{ dim: !app.streakAlive }" :title="app.streakAlive ? t('Learning streak') : t('Your streak ended. Do a lesson today to start a new one.')">
             <Icon name="flame" :size="22" style="color: var(--flame)" />{{ app.streakAlive ? app.stats.streak : 0 }} {{ (app.streakAlive ? app.stats.streak : 0) === 1 ? t('day') : t('days') }}

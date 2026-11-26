@@ -7,7 +7,7 @@ const server = await startServer({
   port: Number(process.env.PORT) || 3141,
 })
 
-console.log(`\n  Codenoms API → http://localhost:${server.port}`)
+console.log(`\n  Thinkling API → http://localhost:${server.port}`)
 console.log(`  Dane: ${DB_PATH}`)
 if (server.hasFrontend) console.log(`  Aplikacja → http://localhost:${server.port}\n`)
 

@@ -1,10 +1,10 @@
 // Prosty magazyn stanu w pliku JSON (data/db.json).
 import fs from 'node:fs'
 import path from 'node:path'
-import { PROJECT_ROOT } from './project-path.ts'
+import { dataDirectory } from './data-directory.ts'
 import type { PersistedState, ProviderId, Settings } from '../src/domain.ts'
 
-const DATA_DIR = process.env.CODENOMS_DATA || path.join(PROJECT_ROOT, 'data')
+const DATA_DIR = dataDirectory()
 const DB_FILE = path.join(DATA_DIR, 'db.json')
 
 fs.mkdirSync(DATA_DIR, { recursive: true })

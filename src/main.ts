@@ -14,7 +14,7 @@ app.use(pinia)
 
 const store = useApp(pinia)
 configureLocale(() => store.settings.locale)
-window.flushCodenomsSave = () => store.flushSave()
+window.flushThinklingSave = () => store.saveNow()
 
 store.load()
   .finally(() => {

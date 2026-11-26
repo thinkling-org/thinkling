@@ -1,13 +1,13 @@
 <p align="center"><img src="public/logo.svg" width="112" alt="" /></p>
 
-# Codenoms
+# Thinkling
 
-[codenoms.org](https://codenoms.org) · [English](README.md) · **Polski**
+[Thinkling na GitHubie](https://github.com/codenoms-org/thinkling) · [English](README.md) · **Polski**
 
 Lokalna aplikacja do szybkiej nauki programowania krótkimi lekcjami z grywalizacją. Działa na Twojej
 **subskrypcji Claude (Claude Code CLI) albo ChatGPT (Codex CLI)**, więc nie płacisz za tokeny API.
 
-Interfejs jest dostępny po **polsku i angielsku**. Przy pierwszym uruchomieniu Codenoms zapisuje preferowany
+Interfejs jest dostępny po **polsku i angielsku**. Przy pierwszym uruchomieniu Thinkling zapisuje preferowany
 język systemu w wersji desktopowej lub język przeglądarki w wersji webowej. Przy innym języku interfejs jest
 angielski, a nowe odpowiedzi AI powstają w zapisanym języku. Zmienisz go w **Ustawieniach → Język**.
 
@@ -51,14 +51,63 @@ npm.cmd run desktop:package  # tworzy instalator .exe w katalogu release/
 ```
 
 Electron sam uruchamia lokalny serwer na czas działania aplikacji. Dane desktopowe trafiają do
-`%APPDATA%\Codenoms\data`. Aby otworzyć istniejący plan, postępy i lokalne środowiska z wersji
-przeglądarkowej, zamknij jej serwer i ustaw `CODENOMS_DATA` na dotychczasowy katalog danych.
+`%APPDATA%\Thinkling\data`. Aby otworzyć istniejący plan, postępy i lokalne środowiska z wersji
+przeglądarkowej, zamknij jej serwer i ustaw `THINKLING_DATA` na dotychczasowy katalog danych.
 Poniższe polecenia uruchom w PowerShellu z katalogu repozytorium.
 
 ```powershell
-$env:CODENOMS_DATA = (Resolve-Path .\data).Path
+$env:THINKLING_DATA = (Resolve-Path .\data).Path
 npm.cmd run desktop
 ```
+
+### Aktualizacje aplikacji i wydania
+
+Thinkling to nowa nazwa Codenoms. Dotychczasowe instalacje desktopowe automatycznie korzystają z
+`%APPDATA%\Codenoms\data`, jeśli nowy katalog Thinkling nie zawiera zapisanej bazy. Dane pozostają
+na miejscu, żeby zachować środowiska Pythona i ścieżki kontenerów Dockera. `THINKLING_DATA` pozwala
+wybrać katalog danych; poprzednia zmienna `CODENOMS_DATA` nadal działa jako opcja zgodności.
+Wewnętrzny identyfikator aplikacji Windows i nazwy zasobów Dockera również pozostają bez zmian.
+
+Zainstalowana aplikacja Windows sprawdza publiczne [GitHub Releases](https://github.com/codenoms-org/thinkling/releases)
+przy uruchomieniu i co sześć godzin. Przycisk **Dostępna aktualizacja** rozpoczyna pobieranie, pokazuje
+postęp, a następnie zmienia się w **Uruchom ponownie i zaktualizuj**. Pobieranie i restart wymagają
+kliknięcia. Zwykłe zamknięcie aplikacji nie instaluje pobranej aktualizacji. W ustawieniach są wersja,
+ręczne sprawdzanie i lista zmian. W przeglądarce te elementy są ukryte, a w desktopowym trybie developerskim
+sprawdzanie jest wyłączone.
+
+Przed restartem musi udać się zapis postępu. Dotychczasowa sekwencja zamykania Electrona zapisuje stan
+i zatrzymuje lokalny backend przed wyjściem. Dane pozostają w `%APPDATA%\Thinkling\data` lub `THINKLING_DATA`.
+
+Po zatwierdzeniu zmian na `main` przygotuj kolejną wersję:
+
+```bash
+npm version patch
+git push origin main --follow-tags
+```
+
+Workflow `Windows release` sprawdza zgodność tagu `v*` z wersją w `package.json`, uruchamia testy i
+sprawdzanie typów, buduje instalator NSIS x64 i dodaje go do **szkicu wydania**. Pobierz i sprawdź
+instalator, a potem opublikuj szkic na GitHubie. Zachowaj razem wszystkie wygenerowane pliki `.exe`,
+`.blockmap` i `latest.yml`. Do użytkowników trafiają opublikowane wydania stabilne. Repozytorium wydań
+musi być publiczne. Token publikowania pozostaje w GitHub Actions i nie trafia do aplikacji.
+
+Podpisywanie Windows Authenticode korzysta z sekretów repozytorium `WINDOWS_CSC_LINK` (adres lub PFX
+w base64 obsługiwany przez electron-builder) i `WINDOWS_CSC_KEY_PASSWORD`. Bez nich instalator będzie
+niepodpisany. Podpisywanie należy skonfigurować przed szerszą dystrybucją; pozwala też updaterowi
+zweryfikować wydawcę aktualizacji. Nie wyłączaj sprawdzania podpisu.
+
+Pierwsze wydanie z updaterem trzeba zainstalować ręcznie. Przed publikacją sprawdź aktualizację
+rzeczywiście zainstalowanej wersji A do wyższej B: wykrywanie, pobieranie, ponowienie po utracie sieci,
+restart i zachowanie planu, postępu oraz ustawień. Użyj osobnego publicznego repozytorium testowego
+i lokalnie zmienionego `build.publish`, żeby wydania testowe nie trafiały do użytkowników. Sprawdź też,
+że zwykłe zamknięcie aplikacji nie instaluje pobranej wersji. `npm run desktop:package` buduje lokalnie
+bez publikowania, a `npm run desktop:release` wysyła szkic przy użyciu `GH_TOKEN` i jest przeznaczone
+dla workflow wydań. Tryb developerski i testy jednostkowe nie zastępują testu dwóch instalatorów.
+
+Po zbudowaniu paczki `npm run test:desktop-updates` sprawdza spakowany proces główny, preload w sandboxie,
+kontrolę dostępu IPC, polskie przyciski, postęp pobierania, symulowany błąd zapisu z ponowieniem i zamknięcie
+aplikacji. Używa odizolowanych danych i symulowanego transportu aktualizacji; nie uruchamia instalatora.
+Workflow wydań również wykonuje ten test. Zrzut interfejsu zapisuje się w `release/update-smoke.png`.
 
 ### Kreator pierwszego uruchomienia
 
@@ -85,7 +134,7 @@ W **Ustawieniach** każdy dostawca ma własny wybór modelu i effortu (zapamięt
 
 W aktywnym polu tekstowym kliknij mikrofon lub użyj **Alt+Shift+M**. Drugie
 kliknięcie kończy nagrywanie i wstawia rozpoznany tekst w miejscu kursora.
-Codenoms przetwarza nagranie lokalnie przez Faster Whisper (model `small`, CPU int8).
+Thinkling przetwarza nagranie lokalnie przez Faster Whisper (model `small`, CPU int8).
 
 Instalacja lokalna używa `data/whisper/venv/bin/python` i wag w `data/whisper/model`.
 Na innym komputerze zainstaluj pakiety z `server/whisper-requirements.txt`
@@ -126,16 +175,16 @@ W fiszkach `Spacja` odsłania odpowiedź, a `1–4` ją ocenia.
 
 ## Bezpieczeństwo
 
-Codenoms jest przeznaczone do uruchamiania wyłącznie na własnym komputerze. Serwer nasłuchuje na `127.0.0.1`
+Thinkling jest przeznaczone do uruchamiania wyłącznie na własnym komputerze. Serwer nasłuchuje na `127.0.0.1`
 i odrzuca żądania z obcych źródeł. Nie wystawiaj go do sieci (np. przez `HOST=0.0.0.0`): każdy, kto się do niego
 dostanie, ma terminal w piaskownicy i może zmienić binarkę uruchamianą przez aplikację.
 
 ## Autor
 
-Codenoms stworzył [Konrad Ciurkiewicz](https://github.com/konradciurkiewicz). Zgłoszenia błędów, pomysły i pull requesty są mile widziane.
+Thinkling stworzył [Konrad Ciurkiewicz](https://github.com/konradciurkiewicz). Zgłoszenia błędów, pomysły i pull requesty są mile widziane.
 
 ## Licencja
 
-Codenoms jest darmowe i otwarte, na licencji [Apache License 2.0](LICENSE). Możesz go używać, zmieniać i rozpowszechniać,
+Thinkling jest darmowe i otwarte, na licencji [Apache License 2.0](LICENSE). Możesz go używać, zmieniać i rozpowszechniać,
 także komercyjnie, pod warunkiem zachowania informacji o prawach autorskich i licencji (zob. [NOTICE](NOTICE)).
 Licencja nie obejmuje praw do nazwy ani logo projektu.
