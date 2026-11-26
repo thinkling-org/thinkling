@@ -53,6 +53,8 @@ defineProps({
     <template v-else-if="name === 'lock'"><rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" /></template>
     <template v-else-if="name === 'bulb'"><path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7V17h8v-2.3A7 7 0 0 0 12 2z" /></template>
     <template v-else-if="name === 'trash'"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13" /></template>
+    <template v-else-if="name === 'puzzle'"><path d="M10 4a2 2 0 0 1 4 0v2h4a1 1 0 0 1 1 1v4h-2a2 2 0 0 0 0 4h2v4a1 1 0 0 1-1 1h-4v-2a2 2 0 0 0-4 0v2H6a1 1 0 0 1-1-1v-4h2a2 2 0 0 0 0-4H5V7a1 1 0 0 1 1-1h4z" /></template>
+    <template v-else-if="name === 'upload'"><path d="M12 16V4M7 9l5-5 5 5M5 20h14" /></template>
     <template v-else-if="name === 'chart'"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2" /></template>
     <template v-else-if="name === 'settings'">
       <circle cx="12" cy="12" r="3" />

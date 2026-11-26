@@ -4,6 +4,8 @@
 // See docs/architecture/extensibility.md.
 import express from 'express'
 import type { Express } from 'express'
+import { unzipSync } from 'fflate'
+import { randomUUID } from 'node:crypto'
 import fs from 'node:fs'
 import path from 'node:path'
 import { BLOCK_SPECS } from '../src/blocks/catalog.ts'
@@ -15,6 +17,10 @@ export const pluginsDirectory = () => path.join(dataDirectory(), 'plugins')
 
 /** What the renderer needs to load a plugin. Schema and instructions stay on the server. */
 export interface InstalledPlugin {
+  /** Folder name under the plugins directory; addresses the plugin in the management API. */
+  folder: string
+  /** Disabled plugins are listed but neither loaded nor offered to the planner. */
+  enabled: boolean
   id: string
   version: string
   engine: string
@@ -121,7 +127,7 @@ function readPlugin(root: string, folder: string): { spec: BlockSpec; plugin: In
   const entry = `/plugins/${encodeURIComponent(folder)}/${path.relative(dir, entryFile).split(path.sep).map(encodeURIComponent).join('/')}`
   return {
     spec: { id, version, engine, summary: summary.trim(), schema: strictSchema(schema), instructions },
-    plugin: { id, version, engine, name: typeof name === 'string' && name.trim() ? name.trim() : id, summary: summary.trim(), entry, locales },
+    plugin: { folder, enabled: true, id, version, engine, name: typeof name === 'string' && name.trim() ? name.trim() : id, summary: summary.trim(), entry, locales },
   }
 }
 
@@ -140,18 +146,171 @@ export function loadPlugins(root = pluginsDirectory()) {
     if (err.code !== 'ENOENT') errors.push({ folder: '.', error: err.message })
   }
   const taken = new Set(BLOCK_SPECS.map((spec) => spec.id))
+  const disabled = readDisabled(root)
   for (const folder of folders) {
     try {
       const { spec, plugin } = readPlugin(root, folder)
       if (taken.has(spec.id)) throw new Error(`block "${spec.id}" is already installed`)
       taken.add(spec.id)
-      specs.push(spec)
+      plugin.enabled = !disabled.has(spec.id)
+      if (plugin.enabled) specs.push(spec)
       plugins.push(plugin)
     } catch (err) {
       errors.push({ folder, error: err.message })
     }
   }
   return { specs, plugins, errors }
+}
+
+// --------------------------------------------------------------- enable / disable
+
+const disabledFile = (root: string) => path.join(root, 'disabled.json')
+
+function readDisabled(root: string): Set<string> {
+  try {
+    const ids = JSON.parse(fs.readFileSync(disabledFile(root), 'utf8'))?.disabled
+    return new Set(Array.isArray(ids) ? ids.filter((id) => typeof id === 'string') : [])
+  } catch {
+    return new Set()
+  }
+}
+
+function writeDisabled(root: string, ids: Set<string>) {
+  fs.mkdirSync(root, { recursive: true })
+  fs.writeFileSync(disabledFile(root), `${JSON.stringify({ disabled: [...ids].sort() }, null, 2)}\n`)
+}
+
+/** Turn a plugin on or off by id. Stored by id so it survives reinstalling. */
+export function setPluginEnabled(id: string, enabled: boolean, root = pluginsDirectory()) {
+  if (!loadPlugins(root).plugins.some((plugin) => plugin.id === id)) throw new PluginRequestError(404, `plugin "${id}" is not installed`)
+  const disabled = readDisabled(root)
+  if (enabled) disabled.delete(id)
+  else disabled.add(id)
+  writeDisabled(root, disabled)
+}
+
+// --------------------------------------------------------------- install / remove
+
+/** An error the management API reports with a status code. */
+export class PluginRequestError extends Error {
+  status: number
+
+  constructor(status: number, message: string) {
+    super(message)
+    this.status = status
+  }
+}
+
+export const ARCHIVE_LIMITS = { bytes: 10 * 1024 * 1024, files: 500, unpackedBytes: 50 * 1024 * 1024 }
+
+/** Folder a plugin id is installed into, e.g. "examples/number-line" -> "examples.number-line". */
+export const folderFor = (id: string) => id.replace('/', '.')
+
+function safeFolderName(folder: string) {
+  return typeof folder === 'string' && /^[A-Za-z0-9][\w.-]*$/.test(folder) && !folder.includes('..')
+}
+
+/** Unpack a .thinkling archive (a zip of the plugin folder) into memory, refusing unsafe paths. */
+function unpack(archive: Uint8Array): Map<string, Uint8Array> {
+  if (archive.byteLength > ARCHIVE_LIMITS.bytes) throw new PluginRequestError(413, `the file is larger than ${ARCHIVE_LIMITS.bytes / 1024 / 1024} MB`)
+  let count = 0
+  let unpacked = 0
+  let entries: Record<string, Uint8Array>
+  try {
+    entries = unzipSync(archive, {
+      filter: (file) => {
+        count++
+        unpacked += file.originalSize
+        return count <= ARCHIVE_LIMITS.files && unpacked <= ARCHIVE_LIMITS.unpackedBytes
+      },
+    })
+  } catch {
+    throw new PluginRequestError(400, 'the file is not a valid .thinkling (zip) archive')
+  }
+  if (count > ARCHIVE_LIMITS.files) throw new PluginRequestError(413, `the archive has more than ${ARCHIVE_LIMITS.files} files`)
+  if (unpacked > ARCHIVE_LIMITS.unpackedBytes) throw new PluginRequestError(413, 'the archive is too large when unpacked')
+
+  const files = new Map<string, Uint8Array>()
+  for (const [name, content] of Object.entries(entries)) {
+    if (name.endsWith('/')) continue
+    const parts = name.split('/')
+    if (name.includes('\\') || name.startsWith('/') || /^[A-Za-z]:/.test(name) || parts.some((part) => !part || part === '.' || part === '..')) {
+      throw new PluginRequestError(400, `unsafe path in archive: ${name}`)
+    }
+    // Skip metadata that archivers add (e.g. __MACOSX/, .DS_Store).
+    if (parts[0] === '__MACOSX' || parts.some((part) => part.startsWith('.'))) continue
+    files.set(name, content)
+  }
+  // Accept both a zip of the folder's contents and a zip of the folder itself.
+  if (!files.has('manifest.json')) {
+    const tops = new Set([...files.keys()].map((name) => name.split('/')[0]))
+    const [top] = tops
+    if (tops.size !== 1 || !files.has(`${top}/manifest.json`)) throw new PluginRequestError(400, 'manifest.json not found in the archive')
+    return new Map([...files].map(([name, content]) => [name.slice(top.length + 1), content]))
+  }
+  return files
+}
+
+/**
+ * Install or update a plugin from a .thinkling archive. The archive is unpacked into
+ * a hidden staging folder and validated exactly like an installed plugin before it
+ * replaces anything, so a bad archive never breaks a working plugin.
+ */
+export function installPlugin(archive: Uint8Array, root = pluginsDirectory()) {
+  const files = unpack(archive)
+  fs.mkdirSync(root, { recursive: true })
+  const staging = `.staging-${randomUUID()}`
+  const stagingDir = path.join(root, staging)
+  try {
+    for (const [name, content] of files) {
+      const target = path.join(stagingDir, ...name.split('/'))
+      fs.mkdirSync(path.dirname(target), { recursive: true })
+      fs.writeFileSync(target, content)
+    }
+    let spec: BlockSpec
+    try {
+      ({ spec } = readPlugin(root, staging))
+    } catch (err) {
+      throw new PluginRequestError(400, err.message)
+    }
+    if (BLOCK_SPECS.some((builtIn) => builtIn.id === spec.id)) throw new PluginRequestError(400, `block "${spec.id}" is built in`)
+
+    const existing = loadPlugins(root).plugins.find((plugin) => plugin.id === spec.id)
+    const folder = folderFor(spec.id)
+    const target = path.join(root, folder)
+    const retired: string[] = []
+    // Move the old version aside first, so a failed swap can be rolled back.
+    for (const old of new Set([existing && path.join(root, existing.folder), target].filter(Boolean))) {
+      if (!fs.existsSync(old)) continue
+      const aside = path.join(root, `.old-${randomUUID()}`)
+      fs.renameSync(old, aside)
+      retired.push(aside)
+    }
+    try {
+      fs.renameSync(stagingDir, target)
+    } catch (err) {
+      if (retired[0] && existing) fs.renameSync(retired[0], path.join(root, existing.folder))
+      throw err
+    }
+    for (const aside of retired) fs.rmSync(aside, { recursive: true, force: true })
+    const installed = loadPlugins(root).plugins.find((plugin) => plugin.id === spec.id)
+    return { plugin: installed, previousVersion: existing?.version ?? null }
+  } finally {
+    fs.rmSync(stagingDir, { recursive: true, force: true })
+  }
+}
+
+/** Remove a plugin folder, valid or broken. */
+export function removePlugin(folder: string, root = pluginsDirectory()) {
+  if (!safeFolderName(folder)) throw new PluginRequestError(400, 'invalid plugin folder')
+  const dir = path.join(root, folder)
+  if (!fs.statSync(dir, { throwIfNoEntry: false })?.isDirectory()) throw new PluginRequestError(404, `plugin folder "${folder}" not found`)
+  const id = loadPlugins(root).plugins.find((plugin) => plugin.folder === folder)?.id
+  fs.rmSync(dir, { recursive: true, force: true })
+  if (id) {
+    const disabled = readDisabled(root)
+    if (disabled.delete(id)) writeDisabled(root, disabled)
+  }
 }
 
 /**
@@ -164,6 +323,27 @@ export function registerPlugins(app: Express, root = pluginsDirectory) {
     const { plugins, errors } = loadPlugins(root())
     res.set('Cache-Control', 'no-store').json({ plugins, errors })
   })
+
+  const handle = (action: (req: express.Request) => unknown) => (req: express.Request, res: express.Response) => {
+    try {
+      res.json(action(req) ?? { ok: true })
+    } catch (err) {
+      const status = err instanceof PluginRequestError ? err.status : 500
+      res.status(status).json({ error: err.message })
+    }
+  }
+  // The body is the raw .thinkling file. Uploads go through the same origin checks as the rest of /api.
+  app.post('/api/plugins', express.raw({ type: () => true, limit: ARCHIVE_LIMITS.bytes }), handle((req) => {
+    if (!Buffer.isBuffer(req.body) || !req.body.length) throw new PluginRequestError(400, 'empty upload')
+    return installPlugin(new Uint8Array(req.body), root())
+  }))
+  app.patch('/api/plugins/:folder', handle((req) => {
+    const plugin = loadPlugins(root()).plugins.find((item) => item.folder === req.params.folder)
+    if (!plugin) throw new PluginRequestError(404, `plugin folder "${req.params.folder}" not found`)
+    if (typeof req.body?.enabled !== 'boolean') throw new PluginRequestError(400, '"enabled" must be true or false')
+    setPluginEnabled(plugin.id, req.body.enabled, root())
+  }))
+  app.delete('/api/plugins/:folder', handle((req) => removePlugin(req.params.folder, root())))
   const files = express.Router()
   files.use((req, res, next) => express.static(root(), {
     dotfiles: 'deny',

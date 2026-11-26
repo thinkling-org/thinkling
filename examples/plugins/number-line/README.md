@@ -12,15 +12,24 @@ A minimal Thinkling block plugin. It is plain JavaScript with no build step and 
 | `index.js` | ES module that exports `default { normalize, describe, mount }`. Runs in the app window only. |
 | `locales/pl.json` | Translations of the block's English messages, used by `ctx.t`. |
 
-## Install
+## Package and install
 
-Until the Extensions screen exists, copy this folder into the `plugins` folder of Thinkling's data directory and restart Thinkling:
+Pack the folder into a `.thinkling` file (a zip of the folder):
 
-- Windows desktop app: `%APPDATA%\Thinkling\data\plugins\number-line` (older installs: `%APPDATA%\Codenoms\data\plugins\…`)
-- Running from source: `data/plugins/number-line` in the repository
-- A custom data directory set with `THINKLING_DATA`: `$THINKLING_DATA/plugins/number-line`
+```sh
+npm run plugin:pack -- examples/plugins/number-line
+# -> examples.number-line-1.0.0.thinkling
+```
 
-Invalid plugins are skipped; the reasons appear in `GET /api/plugins` under `errors` and in the app window's console.
+In Thinkling, open **Extensions**, drop the file onto the page (or choose it) and confirm. Installing a newer version of the same `id` replaces the old one. Extensions can be turned off or removed on the same screen.
+
+For development you can also copy the folder straight into the `plugins` folder of Thinkling's data directory and restart:
+
+- Windows desktop app: `%APPDATA%\Thinkling\data\plugins\` (older installs: `%APPDATA%\Codenoms\data\plugins\`)
+- Running from source: `data/plugins/` in the repository
+- A custom data directory set with `THINKLING_DATA`: `$THINKLING_DATA/plugins/`
+
+Invalid plugins are skipped; the reasons appear on the Extensions screen.
 
 Plugins run with the same access as the app itself. Install only plugins you trust.
 

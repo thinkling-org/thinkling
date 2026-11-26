@@ -6,6 +6,7 @@ import CodeBlock from '../CodeBlock.vue'
 import Icon from '../Icon.vue'
 import BlockHost from '../../blocks/BlockHost.vue'
 import { blockDefinition, readLessonVisualization } from '../../blocks/registry.ts'
+import { installedPlugins, pluginState } from '../../blocks/installed.ts'
 import type { BlockProps } from '../../blocks/types.ts'
 
 const props = defineProps({
@@ -31,6 +32,13 @@ function onBlockEvent(name: string, payload: unknown) {
 const language = computed(() => props.exercise.codeLanguage || 'javascript')
 // Use the lesson’s worked example in place of a separate code listing.
 const ownsCode = computed(() => !!block.value?.ownsCode?.(visualization.value))
+// A card made with an extension that is now missing or turned off explains why instead of showing nothing.
+const missingExtension = computed(() => {
+  const type = props.exercise.visualization?.type
+  if (typeof type !== 'string' || !pluginState.ready || blockDefinition(type)) return null
+  const plugin = installedPlugins.find((item) => item.id === type)
+  return { name: plugin?.name || type, disabled: plugin?.enabled === false }
+})
 
 function saveConcept(concept) {
   emit('review-concept', concept)
@@ -45,6 +53,15 @@ function saveConcept(concept) {
     <Markdown tag="h1" fit-heading class="title" :src="exercise.title || t('New concept')" inline />
     <Markdown class="body" :src="exercise.prompt" />
     <BlockHost v-if="block" :block="block" :block-props="blockProps" @event="onBlockEvent" />
+    <div v-else-if="missingExtension" class="card missing-extension" role="note">
+      <Icon name="puzzle" :size="22" />
+      <p>
+        {{ missingExtension.disabled
+          ? t('This card uses the “{0}” extension, which is turned off.', [missingExtension.name])
+          : t('This card uses the “{0}” extension, which is not installed.', [missingExtension.name]) }}
+      </p>
+      <RouterLink to="/extensions" class="btn btn-sm">{{ t('Manage extensions') }}</RouterLink>
+    </div>
     <div v-if="!ownsCode && exercise.code?.trim()" class="example">
       <button type="button" class="btn btn-ghost btn-sm" @click="$emit('trace')" @keydown.enter.stop>
         <Icon name="play" :size="16" />{{ t('Trace the example') }}
@@ -104,6 +121,19 @@ function saveConcept(concept) {
   font-size: 18px;
   line-height: 1.65;
   color: var(--text-2);
+}
+.missing-extension {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 18px;
+  color: var(--text-2);
+}
+.missing-extension p {
+  flex: 1;
+  margin: 0;
+  font-weight: 700;
+  line-height: 1.5;
 }
 .example {
   display: grid;

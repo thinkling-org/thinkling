@@ -15,6 +15,7 @@ const nav = computed(() => [
   { to: '/flashcards', label: t('Flashcards'), icon: 'cards', badge: app.dueCards.length || null },
   { to: '/plan', label: 'Plan', icon: 'list' },
   { to: '/sandbox', label: t('Sandbox'), icon: 'terminal' },
+  { to: '/extensions', label: t('Extensions'), icon: 'puzzle' },
   { to: '/settings', label: t('Settings'), icon: 'settings' },
 ])
 const provider = computed(() => app.activeProvider)

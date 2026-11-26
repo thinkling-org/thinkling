@@ -1,6 +1,6 @@
 # Extensibility architecture
 
-Status: accepted direction. Stages 1–4 done (2026-11-26).
+Status: accepted direction. Stages 1–5 done (2026-11-26).
 
 ## Goal
 
@@ -147,6 +147,26 @@ Renderer (`src/blocks/installed.ts`):
 - `registry.blockDefinition()` looks up built-ins first, then installed blocks. The host adds `type` to normalized data, so plugins need not copy it.
 - This module is separate from `registry.ts`, so loading plugins does not pull the built-in block views into the main bundle.
 
+### As implemented (stage 5): Extensions screen
+
+`/extensions` (`src/views/ExtensionsView.vue`, linked from the sidebar) lists installed extensions with a "Use in lessons" switch and a Remove button (second click confirms), lists extensions that could not be loaded with their error and a Remove button, and installs `.thinkling` files by drag and drop or a file picker. Choosing a file shows a trust warning first; nothing is uploaded until the learner confirms.
+
+A `.thinkling` file is a zip of the plugin folder (its contents or the folder itself). Authors create it with `npm run plugin:pack -- <folder>`.
+
+Server API (all under `/api`, so the origin check and desktop authorization apply; a cross-origin page cannot install code):
+
+| Request | Effect |
+|---|---|
+| `POST /api/plugins` (body: the file) | Unpack into a hidden staging folder, validate exactly like an installed plugin, then swap it into `<plugins>/<publisher>.<name>`. An existing install of the same id (also a manually copied folder) is moved aside first and restored if the swap fails, so a bad file never breaks a working version. Returns `{ plugin, previousVersion }`. |
+| `PATCH /api/plugins/:folder` `{ enabled }` | Turn off or on. Stored by id in `<plugins>/disabled.json`, so it survives reinstalling. Disabled plugins are listed but not loaded and not offered to the planner. |
+| `DELETE /api/plugins/:folder` | Remove the folder, valid or broken, and forget its switch. |
+
+Archive limits: 10 MB file, 500 entries, 50 MB unpacked. Absolute paths, drive letters, backslashes and `..` are refused; `__MACOSX/` and hidden files are skipped.
+
+Renderer: after each change `loadInstalledBlocks()` syncs: new and updated plugins are imported (the entry URL carries `?v=<version>` so an update is not served from the module cache), disabled and removed ones are dropped. An update to an already loaded plugin sets `restartRecommended`, because files the entry imports may still be cached.
+
+A learn card whose visualization type is not available, once plugins have loaded, shows "This card uses the "…" extension, which is turned off / not installed" with a link to the Extensions screen.
+
 ## Security
 
 Electron is configured well (`sandbox: true`, `contextIsolation`, no Node in the renderer). However, the desktop session attaches the auth header to **every** request from the app origin. Plugin code running in the main frame can therefore call the whole `/api/*`, including the Docker sandbox and state writes.
@@ -215,7 +235,7 @@ Built-in blocks may import app modules; external plugins cannot and use `ctx` in
 2. **Catalog and per-lesson block selection.** *(done; `tags` deferred)* `summary`/`tags` on specs, a `blocks` field on plan lessons, and the lesson prompt contains only the selected specs.
 3. **Data/code split and `mount()`.** *(done)* Built-in blocks described by the same manifest shape as external ones; the `vueBlock` adapter; the SDK surface above exposed through `ctx`; versioned block data. Not done: removing the `code-comparison` special case in `LearnCard.vue`. Lesson navigation drives the comparison's steps (Next/Back walk through them before leaving the card), so it now goes through generic host props and `ctx.emit`, but `LearnCard` still knows it by id. Making this generic needs a "stepper" capability blocks can declare; that waits until a second block needs it.
 4. **Runtime loader.** *(done)* `<userData>/plugins`, `GET /api/plugins`, dynamic `import()`, and an example plugin in `examples/` built separately from the app. This proves installation without a rebuild.
-5. **Extensions screen.** Install from file, disable, uninstall, placeholder for missing blocks.
+5. **Extensions screen.** *(done)* Install from file, disable, uninstall, placeholder for missing blocks.
 6. **Later.** Remote catalog, iframe isolation, pluggable *exercise types* with a grading contract (correct / almost / wrong and a score feed progress and spaced repetition), so non-programming domains stop being squeezed into `code` and `choice`.
 
 Stages 1–2 fix the token problem. Stages 3–5 deliver "install math without GitHub".

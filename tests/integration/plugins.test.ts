@@ -1,12 +1,15 @@
 import express from 'express'
-import { cp, mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises'
+import { strToU8, zipSync } from 'fflate'
+import { cp, mkdtemp, mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises'
 import type { Server } from 'node:http'
 import type { AddressInfo } from 'node:net'
 import { tmpdir } from 'node:os'
-import { join, resolve } from 'node:path'
+import { join, relative, resolve, sep } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { lessonTask, planTask } from '../../server/prompts.ts'
-import { loadPlugins, registerPlugins, satisfies, strictSchema } from '../../server/plugins.ts'
+import {
+  availableBlockSpecs, installPlugin, loadPlugins, registerPlugins, removePlugin, satisfies, setPluginEnabled, strictSchema,
+} from '../../server/plugins.ts'
 import type { Plan } from '../../src/domain.ts'
 
 const EXAMPLE = resolve(import.meta.dirname, '../../examples/plugins/number-line')
@@ -50,6 +53,8 @@ describe('installed plugins', () => {
 
     expect(errors).toEqual([])
     expect(list).toEqual([{
+      folder: 'number-line',
+      enabled: true,
       id: 'examples/number-line',
       version: '1.0.0',
       engine: '^1.0.0',
@@ -108,12 +113,87 @@ describe('installed plugins', () => {
   })
 })
 
+/** Zip a folder like `npm run plugin:pack`, optionally under a top-level folder. */
+async function archive(dir: string, { prefix = '', change = {} as Record<string, string> } = {}) {
+  const files: Record<string, Uint8Array> = {}
+  for (const entry of await readdir(dir, { recursive: true, withFileTypes: true })) {
+    if (!entry.isFile()) continue
+    const name = relative(dir, join(entry.parentPath, entry.name)).split(sep).join('/')
+    files[prefix + name] = new Uint8Array(await readFile(join(entry.parentPath, entry.name)))
+  }
+  for (const [name, content] of Object.entries(change)) files[prefix + name] = strToU8(content)
+  return zipSync(files)
+}
+
+const exampleManifest = async (changes: Record<string, unknown>) =>
+  JSON.stringify({ ...JSON.parse(await readFile(join(EXAMPLE, 'manifest.json'), 'utf8')), ...changes })
+
+describe('installing, disabling and removing plugins', () => {
+  it('installs a .thinkling archive into a folder named after the id, and updates it', async () => {
+    const first = installPlugin(await archive(EXAMPLE), plugins)
+    expect(first).toMatchObject({ plugin: { id: 'examples/number-line', folder: 'examples.number-line', version: '1.0.0' }, previousVersion: null })
+
+    const update = await archive(EXAMPLE, { prefix: 'number-line/', change: { 'manifest.json': await exampleManifest({ version: '1.1.0' }) } })
+    expect(installPlugin(update, plugins)).toMatchObject({ plugin: { version: '1.1.0' }, previousVersion: '1.0.0' })
+    expect(loadPlugins(plugins).plugins.map((p) => `${p.folder}@${p.version}`)).toEqual(['examples.number-line@1.1.0'])
+    // Staging and replaced folders are cleaned up.
+    expect((await readdir(plugins)).filter((name) => name.startsWith('.'))).toEqual([])
+  })
+
+  it('replaces a manually copied plugin instead of installing a duplicate', async () => {
+    await installExample('number-line')
+    installPlugin(await archive(EXAMPLE, { change: { 'manifest.json': await exampleManifest({ version: '2.0.0' }) } }), plugins)
+    expect(loadPlugins(plugins).plugins.map((p) => `${p.folder}@${p.version}`)).toEqual(['examples.number-line@2.0.0'])
+  })
+
+  it('rejects unsafe or invalid archives and keeps the installed version working', async () => {
+    installPlugin(await archive(EXAMPLE), plugins)
+    const reject = async (bytes: Uint8Array, message: string) => {
+      expect(() => installPlugin(bytes, plugins)).toThrow(message)
+      expect(loadPlugins(plugins)).toMatchObject({ plugins: [{ version: '1.0.0' }], errors: [] })
+    }
+    await reject(zipSync({ 'manifest.json': strToU8('{}'), '../evil.js': strToU8('x') }), 'unsafe path')
+    await reject(await archive(EXAMPLE, { change: { 'manifest.json': await exampleManifest({ version: '1.2.0', engine: '^9.0.0' }) } }), 'does not support')
+    await reject(await archive(EXAMPLE, { change: { 'manifest.json': await exampleManifest({ id: 'step-trace' }) } }), '"id"')
+    await reject(zipSync({ 'readme.txt': strToU8('hi') }), 'manifest.json not found')
+    await reject(strToU8('not a zip'), 'not a valid .thinkling')
+    expect(await readdir(join(data, 'plugins'))).toEqual(['examples.number-line'])
+  })
+
+  it('turns a plugin off for the planner and on again', async () => {
+    installPlugin(await archive(EXAMPLE), plugins)
+    setPluginEnabled('examples/number-line', false, plugins)
+    expect(loadPlugins(plugins)).toMatchObject({ specs: [], plugins: [{ id: 'examples/number-line', enabled: false }] })
+    expect(availableBlockSpecs(plugins).map((spec) => spec.id)).not.toContain('examples/number-line')
+
+    setPluginEnabled('examples/number-line', true, plugins)
+    expect(loadPlugins(plugins).plugins[0].enabled).toBe(true)
+    expect(() => setPluginEnabled('test/missing', false, plugins)).toThrow('not installed')
+  })
+
+  it('removes valid and broken plugins by folder and forgets their switch', async () => {
+    installPlugin(await archive(EXAMPLE), plugins)
+    setPluginEnabled('examples/number-line', false, plugins)
+    await writePlugin('broken', { id: 'Bad' })
+
+    removePlugin('examples.number-line', plugins)
+    removePlugin('broken', plugins)
+    expect(loadPlugins(plugins)).toEqual({ specs: [], plugins: [], errors: [] })
+    expect(JSON.parse(await readFile(join(plugins, 'disabled.json'), 'utf8'))).toEqual({ disabled: [] })
+
+    expect(() => removePlugin('..', plugins)).toThrow('invalid')
+    expect(() => removePlugin('disabled.json', plugins)).toThrow('not found')
+  })
+})
+
 describe('plugin HTTP routes', () => {
   let server: Server
   let base: string
 
   beforeEach(async () => {
     const app = express()
+    // As in server/app.ts, JSON bodies are parsed before the plugin routes.
+    app.use(express.json())
     registerPlugins(app)
     app.get(/.*/, (_req, res) => res.send('<!doctype html>app'))
     server = await new Promise((done) => {
@@ -139,6 +219,28 @@ describe('plugin HTTP routes', () => {
     const escaped = await fetch(`${base}/plugins/..%2f..%2fdb.json`)
     expect(escaped.status).toBeGreaterThanOrEqual(400)
     expect(await escaped.text()).not.toContain('<!doctype html>')
+  })
+
+  it('installs, switches and removes plugins', async () => {
+    const installed = await fetch(`${base}/api/plugins`, {
+      method: 'POST', headers: { 'Content-Type': 'application/octet-stream' }, body: await archive(EXAMPLE),
+    })
+    expect(installed.status).toBe(200)
+    expect((await installed.json()).plugin.folder).toBe('examples.number-line')
+
+    const bad = await fetch(`${base}/api/plugins`, { method: 'POST', body: strToU8('nope') })
+    expect(bad.status).toBe(400)
+    expect((await bad.json()).error).toContain('not a valid')
+
+    const off = await fetch(`${base}/api/plugins/examples.number-line`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ enabled: false }),
+    })
+    expect(off.status).toBe(200)
+    expect((await (await fetch(`${base}/api/plugins`)).json()).plugins[0].enabled).toBe(false)
+
+    expect((await fetch(`${base}/api/plugins/examples.number-line`, { method: 'DELETE' })).status).toBe(200)
+    expect((await fetch(`${base}/api/plugins/examples.number-line`, { method: 'DELETE' })).status).toBe(404)
+    expect((await (await fetch(`${base}/api/plugins`)).json()).plugins).toEqual([])
   })
 })
 
