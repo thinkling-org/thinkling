@@ -1,0 +1,12 @@
+{
+  "min": { "type": "number" },
+  "max": { "type": "number" },
+  "step": { "type": "number" },
+  "start": { "type": "number" },
+  "points": {
+    "type": "array",
+    "items": { "type": "object", "properties": { "value": { "type": "number" }, "label": { "type": "string" } } }
+  },
+  "target": { "type": "number" },
+  "tolerance": { "type": "number" }
+}

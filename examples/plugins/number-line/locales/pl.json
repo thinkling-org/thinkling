@@ -3,5 +3,8 @@
   "Marker position": "Pozycja znacznika",
   "Marker: {0}": "Znacznik: {0}",
   "Passed: {0}": "Minięte: {0}",
-  "none yet": "jeszcze nic"
+  "none yet": "jeszcze nic",
+  "Move the marker to your answer first.": "Najpierw przesuń znacznik na swoją odpowiedź.",
+  "Close. You marked {0}.": "Blisko. Zaznaczono {0}.",
+  "You marked {0}.": "Zaznaczono {0}."
 }

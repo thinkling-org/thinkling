@@ -29,6 +29,8 @@ export interface InstalledPlugin {
   /** URL of the ESM entry, served under /plugins. */
   entry: string
   locales: Record<string, Record<string, string>>
+  /** The plugin can also be an interactive, auto-graded exercise (API 1.1). */
+  exercise: boolean
 }
 
 export interface PluginError {
@@ -99,20 +101,20 @@ function readPlugin(root: string, folder: string): { spec: BlockSpec; plugin: In
   const entryFile = inside(dir, manifest.entry ?? 'index.js', 'entry')
   if (!entryFile.endsWith('.js') || !fs.existsSync(entryFile)) throw new Error('"entry" must be an existing .js file')
 
-  const schema = readJson(inside(dir, manifest.schema ?? 'schema.json', 'schema'), 'schema')
-  if (!schema || typeof schema !== 'object' || Array.isArray(schema) || !Object.keys(schema).length) {
-    throw new Error('the schema must be an object of JSON schema properties')
-  }
-  if ('type' in schema) throw new Error('the schema must not define "type"; Thinkling adds it')
-  if (JSON.stringify(schema).length > LIMITS.schema) throw new Error(`the schema is longer than ${LIMITS.schema} characters`)
+  const schema = readSchema(dir, manifest.schema ?? 'schema.json', 'schema')
+  const instructions = readInstructions(dir, manifest.instructions ?? 'instructions.md', 'instructions')
 
-  let instructions: string
-  try {
-    instructions = fs.readFileSync(inside(dir, manifest.instructions ?? 'instructions.md', 'instructions'), 'utf8').trim()
-  } catch (err) {
-    throw err.code === 'ENOENT' ? new Error('cannot read "instructions": file not found') : err
+  // API 1.1: optional exercise mode, with its own task schema (including the answer key) and instructions.
+  let exercise: BlockSpec['exercise']
+  if (manifest.exercise !== undefined) {
+    if (!manifest.exercise || typeof manifest.exercise !== 'object') throw new Error('"exercise" must be { "schema": …, "instructions": … }')
+    // The lowest API version the plugin accepts must already have exercise mode.
+    if (!satisfies('^1.1.0', engine.replace(/^\^/, ''))) throw new Error('"exercise" needs block API 1.1; set "engine" to "^1.1.0"')
+    exercise = {
+      schema: strictSchema(readSchema(dir, manifest.exercise.schema, 'exercise.schema')),
+      instructions: readInstructions(dir, manifest.exercise.instructions, 'exercise.instructions'),
+    }
   }
-  if (!instructions || instructions.length > LIMITS.instructions) throw new Error(`instructions must be 1–${LIMITS.instructions} characters`)
 
   const locales: InstalledPlugin['locales'] = {}
   for (const [locale, file] of Object.entries(manifest.locales ?? {})) {
@@ -126,9 +128,33 @@ function readPlugin(root: string, folder: string): { spec: BlockSpec; plugin: In
 
   const entry = `/plugins/${encodeURIComponent(folder)}/${path.relative(dir, entryFile).split(path.sep).map(encodeURIComponent).join('/')}`
   return {
-    spec: { id, version, engine, summary: summary.trim(), schema: strictSchema(schema), instructions },
-    plugin: { folder, enabled: true, id, version, engine, name: typeof name === 'string' && name.trim() ? name.trim() : id, summary: summary.trim(), entry, locales },
+    spec: { id, version, engine, summary: summary.trim(), schema: strictSchema(schema), instructions, ...(exercise && { exercise }) },
+    plugin: {
+      folder, enabled: true, id, version, engine, name: typeof name === 'string' && name.trim() ? name.trim() : id,
+      summary: summary.trim(), entry, locales, exercise: !!exercise,
+    },
   }
+}
+
+function readSchema(dir: string, file: unknown, field: string) {
+  const schema = readJson(inside(dir, file, field), field)
+  if (!schema || typeof schema !== 'object' || Array.isArray(schema) || !Object.keys(schema).length) {
+    throw new Error(`"${field}" must be an object of JSON schema properties`)
+  }
+  if ('type' in schema) throw new Error(`"${field}" must not define "type"; Thinkling adds it`)
+  if (JSON.stringify(schema).length > LIMITS.schema) throw new Error(`"${field}" is longer than ${LIMITS.schema} characters`)
+  return schema
+}
+
+function readInstructions(dir: string, file: unknown, field: string) {
+  let text: string
+  try {
+    text = fs.readFileSync(inside(dir, file, field), 'utf8').trim()
+  } catch (err) {
+    throw err.code === 'ENOENT' ? new Error(`cannot read "${field}": file not found`) : err
+  }
+  if (!text || text.length > LIMITS.instructions) throw new Error(`"${field}" must be 1–${LIMITS.instructions} characters`)
+  return text
 }
 
 /** Read every plugin folder. Invalid plugins are reported, never thrown. */

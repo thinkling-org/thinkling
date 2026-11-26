@@ -1,11 +1,15 @@
 {
   "id": "examples/number-line",
-  "version": "1.0.0",
-  "engine": "^1.0.0",
+  "version": "1.1.0",
+  "engine": "^1.1.0",
   "name": "Number line",
-  "summary": "A number line where the learner moves a marker past labelled values, for ordering numbers, negative numbers, intervals, inequalities and rounding.",
+  "summary": "A number line where the learner moves a marker past labelled values, for ordering numbers, negative numbers, intervals, inequalities and rounding. Also an exercise: mark a value on the line.",
   "entry": "index.js",
   "schema": "schema.json",
   "instructions": "instructions.md",
+  "exercise": {
+    "schema": "exercise-schema.json",
+    "instructions": "exercise.md"
+  },
   "locales": { "pl": "locales/pl.json" }
 }
