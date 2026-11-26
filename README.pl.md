@@ -111,6 +111,13 @@ kontrolę dostępu IPC, polskie przyciski, postęp pobierania, symulowany błąd
 aplikacji. Używa odizolowanych danych i symulowanego transportu aktualizacji; nie uruchamia instalatora.
 Workflow wydań również wykonuje ten test. Zrzut interfejsu zapisuje się w `release/update-smoke.png`.
 
+Na Windows `npm run test:installer-lifecycle` buduje dodatkowo dwie małe aplikacje z osobnym identyfikatorem
+testowym i produkcyjnym skryptem uruchamiania NSIS. Sprawdza prawdziwą instalację, aktualizację przez
+`electron-updater`, automatyczny ponowny start i zachowanie danych, a następnie odinstalowuje aplikację
+testową. Workflow wydań również wykonuje ten test. Dane, logi i instalatory testowe pozostają w `release/`.
+Zwykła instalacja użytkownika uruchamia plik `.exe` bezpośrednio; podniesione uprawnienia instalatora
+wymagają uruchomienia aplikacji z tokenem zwykłego użytkownika.
+
 ### Kreator pierwszego uruchomienia
 
 Przy pierwszym otwarciu aplikacja prowadzi przez konfigurację (`/setup`, później dostępna w **Ustawienia → Kreator konfiguracji**):

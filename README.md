@@ -116,6 +116,12 @@ IPC access checks, Polish update controls, download progress, a simulated save f
 graceful shutdown. It uses isolated data and a fake update transport; it never runs an installer. The
 release workflow also runs this smoke test. A UI screenshot is saved to `release/update-smoke.png`.
 
+On Windows, `npm run test:installer-lifecycle` additionally builds two small apps with a separate test
+identity and the production NSIS launch hook. It verifies a real fresh install, an update through
+`electron-updater`, automatic relaunch, and preservation of saved state, then uninstalls the test app.
+The release workflow runs this check too. Test data, logs and installers stay under `release/`.
+Normal per-user installs launch the executable directly; elevated installs use the desktop user's token.
+
 ### First-run wizard
 
 On first launch the app walks you through setup (`/setup`, later available under **Settings → Setup wizard**):

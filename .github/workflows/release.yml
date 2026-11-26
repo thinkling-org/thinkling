@@ -41,6 +41,8 @@ jobs:
           CSC_KEY_PASSWORD: ${{ secrets.WINDOWS_CSC_KEY_PASSWORD }}
       - name: Smoke test the packaged updater
         run: npm run test:desktop-updates
+      - name: Test real installer launch and update restart
+        run: npm run test:installer-lifecycle
       - name: Keep installer and update metadata for verification
         uses: actions/upload-artifact@v7
         with:
