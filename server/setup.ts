@@ -4,12 +4,10 @@ import { t } from './locale.ts'
 // so refreshing the page does not interrupt a download.
 import { spawn, execFileSync } from 'node:child_process'
 import fs from 'node:fs'
-import net from 'node:net'
 import os from 'node:os'
 import path from 'node:path'
 import { Readable } from 'node:stream'
 import { pipeline } from 'node:stream/promises'
-import tar from 'tar-stream'
 import { providerStatus, providerAuth, providerModels, clearProviderCaches } from './providers.ts'
 import { readState } from './store.ts'
 import { dataDirectory } from './data-directory.ts'
@@ -20,11 +18,6 @@ import type { Express } from 'express'
 const isWin = process.platform === 'win32'
 const isMac = process.platform === 'darwin'
 
-export const ZONOS_URL = process.env.ZONOS_URL || 'http://127.0.0.1:1919'
-// Stable Docker identifiers reuse already downloaded and running voice environments.
-const ZONOS_IMAGE = 'codenoms/zonos:1'
-const ZONOS_CONTAINER = 'codenoms-zonos'
-const ZONOS_FILES = ['gguf/backbone-ptq-edit.gguf', 'gguf/zac-keep2.gguf', 'gguf/steer.gguf']
 const WHISPER_FILES = ['config.json', 'model.bin', 'tokenizer.json', 'vocabulary.txt']
 
 export function paths(root) {
@@ -32,10 +25,6 @@ export function paths(root) {
   const venv = path.join(data, 'whisper', 'venv')
   return {
     data,
-    zonosDir: path.join(data, 'zonos'),
-    zonosModels: path.join(data, 'zonos', 'models'),
-    zonosVoices: path.join(data, 'zonos', 'default_voices'),
-    zonosContext: path.join(root, 'server', 'zonos'),
     whisperVenv: venv,
     whisperPython: process.env.WHISPER_PYTHON || path.join(venv, isWin ? 'Scripts/python.exe' : 'bin/python'),
     whisperModel: process.env.WHISPER_MODEL || path.join(data, 'whisper', 'model'),
@@ -322,167 +311,6 @@ async function startDocker(job) {
   await waitForDocker(job)
 }
 
-// --------------------------------------------------------------- voice (ZONOS3-Mini)
-
-let voiceCache = { at: 0, ok: false }
-
-export async function voiceServerUp(force = false) {
-  if (!force && Date.now() - voiceCache.at < 15_000) return voiceCache.ok
-  let ok = false
-  try {
-    const r = await fetch(new URL('/v2/capabilities', ZONOS_URL), { signal: AbortSignal.timeout(1500) })
-    ok = r.ok
-  } catch {}
-  voiceCache = { at: Date.now(), ok }
-  return ok
-}
-
-function voiceFiles(P) {
-  return ZONOS_FILES.map((f) => path.join(P.zonosModels, path.basename(f)))
-}
-
-async function extractFromImage(image, srcDir, destDir) {
-  const container = await SB.docker.createContainer({ Image: image, Entrypoint: ['true'] })
-  try {
-    const archive = await container.getArchive({ path: srcDir })
-    const extract = tar.extract()
-    const base = path.basename(srcDir)
-    fs.mkdirSync(destDir, { recursive: true })
-    await new Promise<void>((resolve, reject) => {
-      extract.on('entry', (header, stream, next) => {
-        const rel = header.name.split('/').slice(1).join('/')
-        const out = path.resolve(destDir, rel)
-        if (header.type !== 'file' || !rel || !out.startsWith(path.resolve(destDir) + path.sep) || !header.name.startsWith(base)) {
-          stream.resume()
-          return stream.on('end', next)
-        }
-        fs.mkdirSync(path.dirname(out), { recursive: true })
-        stream.pipe(fs.createWriteStream(out)).on('finish', next).on('error', reject)
-      })
-      extract.on('finish', resolve)
-      extract.on('error', reject)
-      archive.pipe(extract)
-    })
-  } finally {
-    await container.remove({ force: true }).catch(() => {})
-  }
-}
-
-async function buildZonosImage(P, job) {
-  if (await SB.imageExists(ZONOS_IMAGE)) return job.log(t('The voice server image already exists.'))
-  job.step(t('Building the voice server in Docker (one-time setup, usually 5–20 min)'))
-  const pack = tar.pack()
-  pack.entry({ name: 'Dockerfile' }, fs.readFileSync(path.join(P.zonosContext, 'Dockerfile'), 'utf8'))
-  pack.finalize()
-  // tar-stream uses streamx, which provides the pipe interface Dockerode consumes.
-  const stream = await SB.docker.buildImage(pack as unknown as NodeJS.ReadableStream, { t: ZONOS_IMAGE, labels: { 'codenoms.voice': '1' } })
-  await new Promise<void>((resolve, reject) => {
-    SB.docker.modem.followProgress(
-      stream,
-      (err, out) => {
-        const failed = err || out?.find((o) => o.error)
-        failed ? reject(new Error(err?.message || failed.error)) : resolve()
-      },
-      (ev) => {
-        const line = (ev.stream || ev.status || '').trim()
-        if (line) job.log(line.slice(0, 200))
-      },
-    )
-  })
-}
-
-function portFree(port) {
-  return new Promise((resolve) => {
-    const srv = net.createServer()
-    srv.once('error', () => resolve(false))
-    srv.listen(port, '127.0.0.1', () => srv.close(() => resolve(true)))
-  })
-}
-
-async function ensureZonosContainer(P, job) {
-  const c = SB.docker.getContainer(ZONOS_CONTAINER)
-  let info = null
-  try {
-    info = await c.inspect()
-  } catch {}
-  if (info && info.Config?.Image !== ZONOS_IMAGE && (await voiceServerUp(true))) {
-    return job.log(t('Container {0} is already running with a custom configuration.', [ZONOS_CONTAINER]))
-  }
-  if (info && info.Config?.Image !== ZONOS_IMAGE) {
-    throw new Error(t('Container {0} uses a different image. Remove it with docker rm -f {0} and try again.', [ZONOS_CONTAINER]))
-  }
-  const port = new URL(ZONOS_URL).port || '1919'
-  if (!info?.State?.Running && !(await portFree(Number(port)))) {
-    throw new Error(t('The voice server cannot start because port {0} is in use. Close the other program or start Thinkling with a different address, for example ZONOS_URL=http://127.0.0.1:1920 npm start.', [port]))
-  }
-  if (!info) {
-    job.step(t('Creating the voice server container'))
-    const threads = Math.max(2, Math.min(6, os.cpus().length - 2))
-    await SB.docker.createContainer({
-      name: ZONOS_CONTAINER,
-      Image: ZONOS_IMAGE,
-      Cmd: ['/models/backbone-ptq-edit.gguf', '--cpu', '--host', '0.0.0.0', '--port', '1919', '--batch', '1', '--zac-threads', '1'],
-      Env: [`OMP_NUM_THREADS=${threads}`],
-      ExposedPorts: { '1919/tcp': {} },
-      Labels: { 'codenoms.voice': '1' },
-      HostConfig: {
-        Mounts: [{ Type: 'bind', Source: P.zonosModels, Target: '/models', ReadOnly: true }],
-        PortBindings: { '1919/tcp': [{ HostIp: '127.0.0.1', HostPort: port }] },
-        RestartPolicy: { Name: 'unless-stopped' },
-      },
-    })
-  }
-  if (!info?.State?.Running) {
-    job.step(t('Starting the voice server'))
-    await c.start().catch((err) => {
-      if (!/already started/i.test(err.message)) throw err
-    })
-  }
-}
-
-async function installVoice(P, job) {
-  const d = await dockerProbe()
-  if (!d.running) throw new Error(t('The AI voice server requires Docker. Start Docker first.'))
-
-  for (const [i, file] of ZONOS_FILES.entries()) {
-    const dest = path.join(P.zonosModels, path.basename(file))
-    if (exists(dest)) {
-      job.log(t('{0} is already downloaded', [path.basename(file)]))
-      continue
-    }
-    job.step(t('Downloading voice model ({0}/{1}): {2}', [i + 1, ZONOS_FILES.length, path.basename(file)]))
-    await download(hf('Zyphra/ZONOS3-Mini', file), dest, (done, total) => job.progress(done, total, `${mb(done)} / ${total ? mb(total) : '?'}`))
-  }
-
-  await buildZonosImage(P, job)
-
-  if (!exists(P.zonosVoices) || !fs.readdirSync(P.zonosVoices).length) {
-    job.step(t('Copying samples for voice design'))
-    await extractFromImage(ZONOS_IMAGE, '/opt/voices', P.zonosVoices)
-  }
-
-  await ensureZonosContainer(P, job)
-
-  job.step(t('Waiting for the voice model to load'))
-  for (let i = 0; i < 90; i++) {
-    if (await voiceServerUp(true)) break
-    if (i === 89) throw new Error(t('The voice server is not responding. Check docker logs codenoms-zonos.'))
-    await new Promise((r) => setTimeout(r, 2000))
-  }
-  job.log(t('The voice server is running at {0}. It starts automatically with Docker.', [ZONOS_URL]))
-}
-
-async function removeVoiceContainer(job) {
-  job.step(t('Stopping the voice server'))
-  const c = SB.docker.getContainer(ZONOS_CONTAINER)
-  const info = await c.inspect().catch(() => null)
-  if (!info) return job.log(t('The container does not exist.'))
-  if (info.Config?.Image !== ZONOS_IMAGE) throw new Error(t('Stop this container manually. It was created outside Thinkling.'))
-  await c.remove({ force: true })
-  voiceCache.at = 0
-  job.log(t('Container removed. Downloaded models are in data/zonos/models.'))
-}
-
 // --------------------------------------------------------------- dyktowanie (Faster Whisper)
 
 // Faster Whisper and av publish wheels for Python 3.10–3.13. Prefer these versions
@@ -598,13 +426,12 @@ export function registerSetup(app: Express, root: string) {
 
   app.get('/api/setup/status', async (_req, res) => {
     const s = readState().settings
-    const [docker, claude, codex, claudeAuth, codexAuth, voiceUp] = await Promise.all([
+    const [docker, claude, codex, claudeAuth, codexAuth] = await Promise.all([
       dockerProbe(),
       providerStatus('claude', s.claudeBin),
       providerStatus('codex', s.codexBin),
       providerAuth('claude', s.claudeBin),
       providerAuth('codex', s.codexBin),
-      voiceServerUp(true),
     ])
     const py = findPython()
     res.json({
@@ -613,12 +440,6 @@ export function registerSetup(app: Express, root: string) {
       providers: {
         claude: { ...claude, auth: claude.available ? claudeAuth : null, install: isWin ? 'irm https://claude.ai/install.ps1 | iex' : 'curl -fsSL https://claude.ai/install.sh | bash', login: 'claude auth login' },
         codex: { ...codex, auth: codex.available ? codexAuth : null, install: 'npm install -g @openai/codex', login: 'codex login' },
-      },
-      voice: {
-        running: voiceUp,
-        modelsReady: voiceFiles(P).every(exists),
-        imageReady: docker.running ? await SB.imageExists(ZONOS_IMAGE) : false,
-        downloadMB: 1700,
       },
       dictation: { installed: dictationInstalled(P), python: py?.version || null, pythonTested: !!py?.tested, downloadMB: 560 },
       sandbox: docker.running ? await sandboxImages() : null,
@@ -633,8 +454,6 @@ export function registerSetup(app: Express, root: string) {
   const KINDS = {
     'docker-install': () => (job) => installDocker(job),
     'docker-start': () => (job) => startDocker(job),
-    voice: () => (job) => installVoice(P, job),
-    'voice-remove': () => (job) => removeVoiceContainer(job),
     dictation: () => (job) => installDictation(P, job),
     sandbox: (body) => {
       const languages = Array.isArray(body?.languages) ? body.languages.map(String) : []
@@ -664,7 +483,6 @@ export function registerSetup(app: Express, root: string) {
 
   app.post('/api/setup/refresh', async (_req, res) => {
     clearProviderCaches()
-    voiceCache.at = 0
     await SB.reconnectDocker().catch(() => {})
     res.json({ ok: true })
   })
@@ -673,5 +491,5 @@ export function registerSetup(app: Express, root: string) {
 
 export async function features(root) {
   const P = paths(root)
-  return { speech: await voiceServerUp(), dictation: dictationInstalled(P) }
+  return { dictation: dictationInstalled(P) }
 }

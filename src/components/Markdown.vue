@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { renderMarkdown } from '../lib/markdown.ts'
-import { readableSpeechText } from '../lib/speech-text.ts'
 import { activeTerm, linkGlossaryTerms } from '../lib/glossary.ts'
 
 defineOptions({ inheritAttrs: false })
@@ -21,7 +20,7 @@ const html = computed(() => {
 const textLength = computed(() => {
   const template = document.createElement('template')
   template.innerHTML = html.value
-  return readableSpeechText(template.content).length
+  return template.content.textContent.replace(/\s+/g, ' ').trim().length
 })
 const headingStyle = computed(() => {
   if (!props.fitHeading) return undefined

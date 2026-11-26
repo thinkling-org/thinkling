@@ -79,7 +79,6 @@
       "dist-node/**",
       "server/whisper.py",
       "server/whisper-requirements.txt",
-      "server/zonos/**",
       "dist/**",
       "LICENSE",
       "NOTICE",
@@ -88,8 +87,7 @@
     ],
     "asarUnpack": [
       "server/whisper.py",
-      "server/whisper-requirements.txt",
-      "server/zonos/**"
+      "server/whisper-requirements.txt"
     ],
     "win": {
       "target": "nsis"
