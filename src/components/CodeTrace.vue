@@ -5,6 +5,7 @@ import { highlightLines } from '../lib/markdown.ts'
 import { play, playStep } from '../lib/sfx.ts'
 import Markdown from './Markdown.vue'
 import Icon from './Icon.vue'
+import CodeTutor from './CodeTutor.vue'
 import type { PropType } from 'vue'
 import type { CodeTrace, Exercise, TraceStep } from '../domain.ts'
 
@@ -157,20 +158,7 @@ onBeforeUnmount(() => {
       </div>
 
       <aside class="tutor" aria-live="polite">
-        <div class="tutor-in" :style="{ transform: `translateY(${tutorTop}px)` }">
-          <svg role="img" aria-label="Tutor Hex" width="60" height="60" viewBox="0 0 64 64" class="hex">
-            <polygon points="32,4 56,18 56,46 32,60 8,46 8,18" fill="#7C5CFF" />
-            <polygon points="32,4 56,18 32,30 8,18" fill="#A08BFF" />
-            <ellipse cx="23" cy="36" rx="6.5" ry="7.5" fill="#fff" />
-            <ellipse cx="41" cy="36" rx="6.5" ry="7.5" fill="#fff" />
-            <circle cx="21" cy="37" r="3.4" fill="#15181B" />
-            <circle cx="39" cy="37" r="3.4" fill="#15181B" />
-          </svg>
-          <div class="bubble" :key="i">
-            <span class="kicker">{{ step.title }}</span>
-            <Markdown :src="step.say" class="say" />
-          </div>
-        </div>
+        <CodeTutor class="tutor-in" :style="{ transform: `translateY(${tutorTop}px)` }" :title="step.title" :message="step.say || ''" />
       </aside>
     </div>
 
@@ -459,65 +447,7 @@ onBeforeUnmount(() => {
   min-height: 200px;
 }
 .tutor-in {
-  display: flex;
-  gap: 12px;
-  align-items: flex-start;
   transition: transform 0.4s cubic-bezier(0.3, 1.4, 0.5, 1);
-}
-.hex {
-  flex: none;
-  filter: drop-shadow(0 0 16px rgba(124, 92, 255, 0.7));
-  animation: dl-float 2.6s ease-in-out infinite;
-}
-@keyframes dl-float {
-  0%,
-  100% {
-    transform: translateY(0) rotate(-4deg);
-  }
-  50% {
-    transform: translateY(-4px) rotate(3deg);
-  }
-}
-.bubble {
-  position: relative;
-  background: var(--text);
-  color: var(--bg);
-  border-radius: 16px;
-  padding: 14px 16px;
-  box-shadow: 0 5px 0 var(--text-3);
-  max-width: 340px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  animation: dl-pop 0.25s ease-out;
-}
-.bubble::before {
-  content: '';
-  position: absolute;
-  left: -7px;
-  top: 22px;
-  width: 14px;
-  height: 14px;
-  background: var(--text);
-  transform: rotate(45deg);
-}
-.kicker {
-  position: relative;
-  font-size: 12px;
-  font-weight: 900;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--purple-dark);
-}
-.say {
-  position: relative;
-  font-size: 16px;
-  font-weight: 700;
-  line-height: 1.45;
-}
-.say :deep(code) {
-  background: #e3e0f5;
-  color: #4a33b8;
 }
 .lessons {
   display: grid;

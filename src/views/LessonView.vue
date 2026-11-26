@@ -215,7 +215,7 @@ const wide = computed(() => phase.value === 'play' && exercise.value?.type === '
 </script>
 
 <template>
-  <div class="lesson" :class="{ wide, tracing: showTrace, 'ask-open': drawerOpen }">
+  <div class="lesson" :class="{ wide, tracing: showTrace, comparing: !!comparisonVariant, 'ask-open': drawerOpen }">
     <header class="lesson-header">
       <button type="button" class="close-lesson" :aria-label="t('Close lesson')" @click="close">
         <Icon name="x" :size="24" :stroke="2.8" />
@@ -452,7 +452,8 @@ const wide = computed(() => phase.value === 'play' && exercise.value?.type === '
 .wide .stage {
   padding: 4px 28px 20px;
 }
-.lesson.tracing .inner {
+.lesson.tracing .inner,
+.lesson.comparing .inner {
   max-width: 1100px;
 }
 .wide .inner {

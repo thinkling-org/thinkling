@@ -383,7 +383,7 @@ Topics from earlier completed lessons: ${earlier.slice(-12).join('; ') || 'none'
 Fill in "intro". Keep the welcome screen brief and concrete:
 - "summary": 2–3 sentences. Start from a practical problem and give a simple analogy or observation (e.g. Python treats "45000" as characters just like "Toyota"). Avoid revealing the entire solution.
 - "outcome": one sentence about what the learner will be able to do or practice in an assessment.
-- "outcomes": exactly 3 short skills, about 9 words each at most, progressing from recognition to application to result.
+- "outcomes": exactly 3 short skills, about 9 words each at most, progressing from recognition to application to result. Write infinitive phrases completing the heading "In this lesson you'll learn to:" (or "In this assessment you'll practice:"). Describe learning goals, not prerequisites or skills already mastered. For example, use "Recognize...", "Check...", "Explain...", never "You recognize..." or "You can already...". Follow the response language's grammar.
 - "relevance": a real task this helps with. Relate it to the learner's goal and stated experience.
 - "focus": a specific decision or part of the code to watch in the example, without revealing the answer.
 - "hero": 3–6 elements showing one meaningful transformation from left to right, using kinds "input", "operation" (e.g. "int()", "await", "JOIN"), "value", "result", and "symbol" (an unframed link such as "+ 1200 ="). Use a literal value or code for "text" (about 14 characters max), with a 1–3 word "label" underneath, or "" for symbols. Example: "45000" (input, string) → int() (operation, conversion) → 45000 (value, number) → + 1200 = (symbol) → 46200 (result, total). Use [] if there is no meaningful transformation.

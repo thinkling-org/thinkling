@@ -123,6 +123,7 @@ function saveConcept(concept) {
   font-weight: 900;
 }
 .body {
+  max-width: 760px;
   font-size: 18px;
   line-height: 1.65;
   color: var(--text-2);

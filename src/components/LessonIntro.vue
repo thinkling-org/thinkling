@@ -48,13 +48,14 @@ const current = computed(() => props.levels[level.value] || props.levels[0])
       <Markdown v-if="summary" class="summary" glossary :src="summary" />
     </div>
 
-    <div v-if="outcomes.length" class="outcomes" :class="`n${outcomes.length}`">
-      <h2 class="sr-only">{{ isTest ? t('What you\'ll practice') : t('What you\'ll learn') }}</h2>
-      <div v-for="(item, k) in outcomes" :key="k" class="outcome">
-        <Icon name="check" :size="26" :stroke="2.8" class="tick" />
-        <Markdown tag="span" inline glossary :src="item" />
-      </div>
-    </div>
+    <section v-if="outcomes.length" class="learning-goals">
+      <h2>{{ isTest ? t('In this assessment you\'ll practice:') : t('In this lesson you\'ll learn to:') }}</h2>
+      <ul class="outcomes" :class="`n${outcomes.length}`">
+        <li v-for="(item, k) in outcomes" :key="k" class="outcome">
+          <Markdown tag="span" inline glossary :src="item" />
+        </li>
+      </ul>
+    </section>
 
     <div v-if="intro?.relevance" class="banner goal">
       <Icon name="target" :size="26" :stroke="2.4" />
@@ -215,8 +216,21 @@ const current = computed(() => props.levels[level.value] || props.levels[0])
 .summary :deep(p) {
   margin: 0;
 }
+.learning-goals {
+  width: 100%;
+  text-align: left;
+}
+.learning-goals h2 {
+  margin: 0 0 12px;
+  color: var(--text-3);
+  font-size: 16px;
+  font-weight: 800;
+}
 .outcomes {
   width: 100%;
+  margin: 0;
+  padding: 0;
+  list-style: none;
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
@@ -240,9 +254,6 @@ const current = computed(() => props.levels[level.value] || props.levels[0])
   font-size: 16px;
   font-weight: 800;
   line-height: 1.35;
-}
-.tick {
-  color: var(--green);
 }
 .banner {
   width: 100%;
