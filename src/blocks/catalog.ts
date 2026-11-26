@@ -30,12 +30,13 @@ export function stampBlockVersion<T extends { type?: unknown }>(visualization: T
 }
 
 /**
- * Blocks the lesson generator may use, in catalog order. Lessons from plans made
- * before the planner chose blocks have no `blocks` field and get every block.
+ * Blocks the lesson generator may use, in catalog order, out of the available ones
+ * (built-in plus installed plugins). Lessons from plans made before the planner chose
+ * blocks have no `blocks` field and get every built-in block, never plugins.
  */
-export function selectBlocks(ids?: readonly string[] | null): readonly BlockSpec[] {
+export function selectBlocks(ids?: readonly string[] | null, available: readonly BlockSpec[] = BLOCK_SPECS): readonly BlockSpec[] {
   if (!Array.isArray(ids)) return BLOCK_SPECS
-  return BLOCK_SPECS.filter((spec) => ids.includes(spec.id))
+  return available.filter((spec) => ids.includes(spec.id))
 }
 
 /** One line per block for the planner: id and summary only, never the full spec. */

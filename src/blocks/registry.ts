@@ -10,6 +10,7 @@ import { block as stepOrdering } from './step-ordering/index.ts'
 import { block as diagnosis } from './diagnosis/index.ts'
 import { block as systemSim } from './system-sim/index.ts'
 import { UNVERSIONED } from './catalog.ts'
+import { installedBlocks } from './installed.ts'
 import type { BlockDefinition } from './types.ts'
 
 export { readComparisonSteps } from './code-comparison/index.ts'
@@ -20,7 +21,8 @@ const BLOCKS = new Map<string, BlockDefinition>([
 ].map((block) => [block.id, block]))
 
 export function blockDefinition(id: string): BlockDefinition | undefined {
-  return BLOCKS.get(id)
+  // Built-in blocks win; plugins cannot replace them (the server rejects such ids too).
+  return BLOCKS.get(id) ?? installedBlocks.get(id)
 }
 
 export function registeredBlockIds() {
@@ -32,10 +34,13 @@ export function readLessonVisualization(exercise) {
   if (exercise?.type !== 'learn') return null
   // Older lessons stored a comparison directly on the exercise.
   const visualization = exercise.visualization ?? { type: 'code-comparison', variants: exercise.comparison }
-  const block = BLOCKS.get(visualization?.type)
+  const block = blockDefinition(visualization?.type)
   if (!block) return null
   try {
-    return block.normalize(visualization, { version: visualization.blockVersion ?? UNVERSIONED }) ?? null
+    const normalized = block.normalize(visualization, { version: visualization.blockVersion ?? UNVERSIONED })
+    if (!normalized) return null
+    // The host finds the block by `type`; plugins need not copy it into their data.
+    return normalized.type === block.id ? normalized : { ...normalized, type: block.id }
   } catch (err) {
     // Treat a crashing normalizer like invalid data instead of breaking the lesson.
     console.error(`[block ${block.id}] normalize failed`, err)
@@ -47,7 +52,7 @@ export function readLessonVisualization(exercise) {
 export function describeVisualization(visualization) {
   if (!visualization) return ''
   try {
-    return BLOCKS.get(visualization.type)?.describe(visualization) ?? ''
+    return blockDefinition(visualization.type)?.describe(visualization) ?? ''
   } catch (err) {
     console.error(`[block ${visualization.type}] describe failed`, err)
     return ''

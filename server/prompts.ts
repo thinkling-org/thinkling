@@ -2,7 +2,8 @@
 // Schemas are strict (see src/blocks/schema.ts). Lesson visualizations come from the block catalog.
 
 import { arr, bool, int, obj, str } from '../src/blocks/schema.ts'
-import { BLOCK_IDS, blockCatalog, selectBlocks, visualizationInstructions, visualizationSchema } from '../src/blocks/catalog.ts'
+import { blockCatalog, selectBlocks, visualizationInstructions, visualizationSchema } from '../src/blocks/catalog.ts'
+import { availableBlockSpecs } from './plugins.ts'
 import type { BlockSpec } from '../src/blocks/schema.ts'
 import { envFor } from './sandbox.ts'
 import { languageName } from '../src/lib/languages.ts'
@@ -33,7 +34,7 @@ Response language: ${languageName(locale)} (${locale}). Write all learner-facing
 
 // ---------------------------------------------------------------- plan
 
-const planSchema = obj({
+const planSchema = (blocks: readonly BlockSpec[]) => obj({
   title: str,
   summary: str,
   goal: str,
@@ -52,7 +53,7 @@ const planSchema = obj({
           title: str,
           kind: { type: 'string', enum: LESSON_KINDS },
           focus: str,
-          blocks: arr({ type: 'string', enum: BLOCK_IDS }),
+          blocks: arr({ type: 'string', enum: blocks.map((block) => block.id) }),
         }),
       ),
     }),
@@ -65,7 +66,7 @@ const STYLE_LABEL = {
   theory: 'more theory questions and explanations of how things work',
 }
 
-function planRules() {
+function planRules(blocks: readonly BlockSpec[]) {
   return `Plan rules:
 - Field order matters for streaming to the UI. Emit "title", "summary", "goal", "level" and "levelSummary" first, then the remaining fields.
 - "title": memorable, at most 6 words. "summary": 1–2 sentences. "goal": 1 sentence, at most 20 words.
@@ -83,7 +84,7 @@ function planRules() {
 - Choose "kind" based on the skill, not the plan's programming language. Use "code" and "output" only for reading or writing code, such as implementing a token bucket or an idempotent consumer. Use "design" or "theory" for estimation, architecture, trade-offs, and failure behavior, even if the learner requests coding tasks. Most lessons in a system design plan should use these two kinds.
 - "focus": one sentence about a concrete skill the learner will acquire or reinforce.
 - "blocks": 0–2 interactive visualizations the lesson's worked example may use, chosen from the catalog below. Pick the ones that let the learner observe this lesson's mechanism; prefer one. Use [] for "test" lessons and when none fits. The lesson author can only use the blocks you list.
-${blockCatalog()}
+${blockCatalog(blocks)}
 - Make lesson titles brief and specific (2–5 words).
 - "language": the plan's main programming language for the editor and coding lessons.
 - Use seniority and experience to set the pace. Infer concept familiarity from the learner's own description. Draw examples from their known languages, tools, and work situations.
@@ -91,8 +92,9 @@ ${blockCatalog()}
 }
 
 export function planTask({ description, minutesPerDay, style }: Profile) {
+  const blocks = availableBlockSpecs()
   return {
-    schema: planSchema,
+    schema: planSchema(blocks),
     prompt: `Create a personalized programming study plan made of short lessons arranged in a sequence of modules.
 
 ## Learner description (in their own words)
@@ -102,11 +104,12 @@ ${description}
 - Time per day: ${minutesPerDay} min
 - Learning style: ${STYLE_LABEL[style] || STYLE_LABEL.balanced}
 
-${planRules()}`,
+${planRules(blocks)}`,
   }
 }
 
 export function refinePlanTask({ description, minutesPerDay, style, plan, feedback }: Profile & { plan: Plan; feedback: string }) {
+  const blocks = availableBlockSpecs()
   const slim = {
     ...plan,
     modules: plan.modules.map((m) => ({
@@ -117,7 +120,7 @@ export function refinePlanTask({ description, minutesPerDay, style, plan, feedba
     })),
   }
   return {
-    schema: planSchema,
+    schema: planSchema(blocks),
     prompt: `Revise the existing study plan using the learner's feedback. Keep lessons marked "done": true unchanged, with identical titles in the same order at the beginning of their module, unless the learner explicitly asks otherwise.
 
 ## Learner description
@@ -130,7 +133,7 @@ ${JSON.stringify(slim, null, 1)}
 ## Learner feedback
 ${feedback}
 
-${planRules()}
+${planRules(blocks)}
 Return the complete revised plan.`,
   }
 }
@@ -233,7 +236,7 @@ export function lessonTask({ profile, plan, moduleIndex, lessonIndex, weakSpots,
   const lesson = mod.lessons[lessonIndex]
   const lang = plan.language || 'javascript'
   // Only the blocks the planner chose for this lesson reach the prompt and schema.
-  const blocks = selectBlocks(lesson.blocks)
+  const blocks = selectBlocks(lesson.blocks, availableBlockSpecs())
   const blockIds = blocks.map((block) => block.id)
   const designVisualization = blockIds.includes('system-sim')
     ? ' Use an appropriate visualization in the worked example, including system-sim where interaction helps.'
