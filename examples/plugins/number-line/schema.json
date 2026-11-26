@@ -1,0 +1,15 @@
+{
+  "instruction": { "type": "string" },
+  "min": { "type": "number" },
+  "max": { "type": "number" },
+  "step": { "type": "number" },
+  "start": { "type": "number" },
+  "points": {
+    "type": "array",
+    "items": { "type": "object", "properties": { "value": { "type": "number" }, "label": { "type": "string" } } }
+  },
+  "notes": {
+    "type": "array",
+    "items": { "type": "object", "properties": { "from": { "type": "number" }, "say": { "type": "string" } } }
+  }
+}

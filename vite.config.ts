@@ -5,7 +5,11 @@ export default defineConfig({
   plugins: [vue()],
   server: {
     port: 5173,
-    proxy: { '/api': { target: 'http://127.0.0.1:3141', ws: true } },
+    proxy: {
+      '/api': { target: 'http://127.0.0.1:3141', ws: true },
+      // Installed plugins are served by the API server from the data directory.
+      '/plugins': { target: 'http://127.0.0.1:3141' },
+    },
   },
   build: { chunkSizeWarningLimit: 6000 },
   test: {

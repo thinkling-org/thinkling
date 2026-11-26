@@ -13,6 +13,7 @@ import { WebSocketServer } from 'ws'
 import * as SB from './sandbox.ts'
 import { registerDictation } from './dictation.ts'
 import { registerSetup, features } from './setup.ts'
+import { registerPlugins } from './plugins.ts'
 import { initializeLocale, localeForRequest, runWithRequestLocale, t } from './locale.ts'
 import { normalizeLocale } from '../src/lib/languages.ts'
 
@@ -213,6 +214,7 @@ export async function startServer({ host, port, resourceRoot = PROJECT_ROOT, sys
 
   registerDictation(app, resourceRoot)
   registerSetup(app, resourceRoot)
+  registerPlugins(app)
   app.use(routes)
 
   const index = path.join(DIST, 'index.html')

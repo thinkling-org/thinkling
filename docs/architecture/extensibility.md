@@ -1,6 +1,6 @@
 # Extensibility architecture
 
-Status: accepted direction. Stages 1–3 done (2026-11-26).
+Status: accepted direction. Stages 1–4 done (2026-11-26).
 
 ## Goal
 
@@ -127,6 +127,26 @@ The desktop app does not load the frontend from files. A local Express server (`
 - Installing: an in-app **Extensions** screen. Install from a `.thinkling` file (zip, drag and drop) first; later from a list hosted as static JSON (not a marketplace). Plugins can be disabled and uninstalled.
 - A lesson that uses a missing block shows a placeholder: *"This lesson uses Math Graph. Install it"*, never an error.
 
+### As implemented (stage 4)
+
+Plugins live in `<data>/plugins/<folder>/`, where `<data>` is the data directory (`THINKLING_DATA`; the desktop app uses `%APPDATA%\Thinkling\data`). A working example is `examples/plugins/number-line` (plain JavaScript, no build step); its README describes the files and how to install it.
+
+Server (`server/plugins.ts`):
+
+- `loadPlugins()` reads every folder on each call (cheap, so a copied-in plugin is picked up by the next AI task). Invalid plugins are reported, never thrown.
+- Validation: `id` is `publisher/name` and cannot shadow a built-in or an earlier plugin; `version` is semver; `engine` must accept `BLOCK_API_VERSION` (caret ranges); every manifest path must stay inside the plugin folder; the schema must be an object of properties without `type`; locales map strings to strings.
+- Limits keep one plugin from flooding prompts: summary ≤ 300 characters, instructions ≤ 4,000, schema ≤ 8,000.
+- `strictSchema` adds `required` and `additionalProperties: false` to every nested object, so authors list properties only.
+- `GET /api/plugins` returns `{ plugins, errors }`. `/plugins/<folder>/*` serves files with `no-cache`; missing files are 404 (never the app page), dotfiles and path traversal are refused. In development Vite proxies `/plugins` to the API server.
+- `availableBlockSpecs()` (built-in + valid plugins) feeds the planner catalog, the plan schema's `blocks` enum and `selectBlocks`. Lessons from plans made before stage 2 still get built-in blocks only.
+
+Renderer (`src/blocks/installed.ts`):
+
+- `main.ts` calls `loadInstalledBlocks()` alongside loading the saved state and waits for it at most 3 seconds. `installedBlocks` is reactive, so a slower plugin still appears in an open lesson.
+- Each entry is loaded with a native `import()`. The module's default export must have `normalize`, `describe` and `mount`; otherwise the plugin is listed in `pluginProblems` and the others still load.
+- `registry.blockDefinition()` looks up built-ins first, then installed blocks. The host adds `type` to normalized data, so plugins need not copy it.
+- This module is separate from `registry.ts`, so loading plugins does not pull the built-in block views into the main bundle.
+
 ## Security
 
 Electron is configured well (`sandbox: true`, `contextIsolation`, no Node in the renderer). However, the desktop session attaches the auth header to **every** request from the app origin. Plugin code running in the main frame can therefore call the whole `/api/*`, including the Docker sandbox and state writes.
@@ -194,7 +214,7 @@ Built-in blocks may import app modules; external plugins cannot and use `ctx` in
 1. **Internal registry, no behavior change.** *(done)* `BlockSpec` (data) and `BlockDefinition` (code) interfaces. The 10 visualizations move to `src/blocks/<id>/`. `server/prompts.ts` builds the visualization schema and instructions from the registry. `LearnCard.vue`, the tutor context and the examples composable read from the registry. The generated prompt and schema stay byte-for-byte identical.
 2. **Catalog and per-lesson block selection.** *(done; `tags` deferred)* `summary`/`tags` on specs, a `blocks` field on plan lessons, and the lesson prompt contains only the selected specs.
 3. **Data/code split and `mount()`.** *(done)* Built-in blocks described by the same manifest shape as external ones; the `vueBlock` adapter; the SDK surface above exposed through `ctx`; versioned block data. Not done: removing the `code-comparison` special case in `LearnCard.vue`. Lesson navigation drives the comparison's steps (Next/Back walk through them before leaving the card), so it now goes through generic host props and `ctx.emit`, but `LearnCard` still knows it by id. Making this generic needs a "stepper" capability blocks can declare; that waits until a second block needs it.
-4. **Runtime loader.** `<userData>/plugins`, `GET /api/plugins`, dynamic `import()`, and an example plugin in `examples/` built separately from the app. This proves installation without a rebuild.
+4. **Runtime loader.** *(done)* `<userData>/plugins`, `GET /api/plugins`, dynamic `import()`, and an example plugin in `examples/` built separately from the app. This proves installation without a rebuild.
 5. **Extensions screen.** Install from file, disable, uninstall, placeholder for missing blocks.
 6. **Later.** Remote catalog, iframe isolation, pluggable *exercise types* with a grading contract (correct / almost / wrong and a score feed progress and spaced repetition), so non-programming domains stop being squeezed into `code` and `choice`.
 
