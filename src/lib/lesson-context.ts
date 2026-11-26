@@ -1,4 +1,4 @@
-import { describeVisualization, readLessonVisualization } from './lesson-visualizations.ts'
+import { describeVisualization, readLessonVisualization } from '../blocks/registry.ts'
 import type { Exercise, ExerciseResult, TestRun, WorkspaceFile } from '../domain.ts'
 
 export function buildLessonChatContext({ exercise, answer, result, title, moduleTitle, experience, files, testRun }: {

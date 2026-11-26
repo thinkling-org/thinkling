@@ -1,18 +1,9 @@
 // Prompts and JSON schemas for each AI task.
-// Strict schemas require all fields and disallow additional properties.
-// Codex requires this format. Claude accepts the same schemas unchanged.
+// Schemas are strict (see src/blocks/schema.ts). Lesson visualizations come from the block catalog.
 
-const str = { type: 'string' }
-const int = { type: 'integer' }
-const bool = { type: 'boolean' }
-const arr = (items) => ({ type: 'array', items })
-const obj = (properties) => ({
-  type: 'object',
-  properties,
-  required: Object.keys(properties),
-  additionalProperties: false,
-})
-
+import { arr, bool, int, obj, str } from '../src/blocks/schema.ts'
+import { BLOCK_IDS, blockCatalog, selectBlocks, visualizationInstructions, visualizationSchema } from '../src/blocks/catalog.ts'
+import type { BlockSpec } from '../src/blocks/schema.ts'
 import { envFor } from './sandbox.ts'
 import { languageName } from '../src/lib/languages.ts'
 import type { Exercise, Plan, Profile, Runtime, TestRun, WorkspaceFile } from '../src/domain.ts'
@@ -61,6 +52,7 @@ const planSchema = obj({
           title: str,
           kind: { type: 'string', enum: LESSON_KINDS },
           focus: str,
+          blocks: arr({ type: 'string', enum: BLOCK_IDS }),
         }),
       ),
     }),
@@ -90,6 +82,8 @@ function planRules() {
   - "test": a module assessment. This is always the last lesson of each module.
 - Choose "kind" based on the skill, not the plan's programming language. Use "code" and "output" only for reading or writing code, such as implementing a token bucket or an idempotent consumer. Use "design" or "theory" for estimation, architecture, trade-offs, and failure behavior, even if the learner requests coding tasks. Most lessons in a system design plan should use these two kinds.
 - "focus": one sentence about a concrete skill the learner will acquire or reinforce.
+- "blocks": 0–2 interactive visualizations the lesson's worked example may use, chosen from the catalog below. Pick the ones that let the learner observe this lesson's mechanism; prefer one. Use [] for "test" lessons and when none fits. The lesson author can only use the blocks you list.
+${blockCatalog()}
 - Make lesson titles brief and specific (2–5 words).
 - "language": the plan's main programming language for the editor and coding lessons.
 - Use seniority and experience to set the pace. Infer concept familiarity from the learner's own description. Draw examples from their known languages, tools, and work situations.
@@ -119,7 +113,7 @@ export function refinePlanTask({ description, minutesPerDay, style, plan, feedba
       title: m.title,
       week: m.week,
       description: m.description,
-      lessons: m.lessons.map((l) => ({ title: l.title, kind: l.kind, focus: l.focus, done: l.status === 'done' })),
+      lessons: m.lessons.map((l) => ({ title: l.title, kind: l.kind, focus: l.focus, blocks: l.blocks, done: l.status === 'done' })),
     })),
   }
   return {
@@ -143,117 +137,7 @@ Return the complete revised plan.`,
 
 // ---------------------------------------------------------------- lesson
 
-const num = { type: 'number' }
-const namedValue = obj({ name: str, value: str })
-const codeVariantSchema = obj({ label: str, code: str, outcome: str, steps: arr(obj({ line: int, say: str })) })
-const visualizationSchema = {
-  anyOf: [
-    { type: 'null' },
-    obj({ type: { type: 'string', enum: ['code-comparison'] }, variants: arr(codeVariantSchema) }),
-    obj({
-      type: { type: 'string', enum: ['linear-regression'] },
-      instruction: str,
-      xLabel: str,
-      yLabel: str,
-      points: arr(obj({ x: { type: 'number' }, y: { type: 'number' } })),
-    }),
-    obj({
-      type: { type: 'string', enum: ['code-definitions'] },
-      instruction: str,
-      code: str,
-      terms: arr(obj({ token: str, title: str, kind: str, definition: str, example: str })),
-    }),
-    obj({
-      type: { type: 'string', enum: ['step-trace'] },
-      instruction: str,
-      code: str,
-      steps: arr(obj({ line: int, say: str, variables: arr(namedValue), output: str })),
-    }),
-    obj({
-      type: { type: 'string', enum: ['state-inspector'] },
-      instruction: str,
-      code: str,
-      label: str,
-      layout: { type: 'string', enum: ['stack', 'queue', 'list'] },
-      steps: arr(obj({ line: int, say: str, items: arr(obj({ label: str, status: str, details: arr(namedValue) })) })),
-    }),
-    obj({
-      type: { type: 'string', enum: ['value-chart'] },
-      instruction: str,
-      xLabel: str,
-      yLabel: str,
-      xs: arr(num),
-      series: arr(obj({ label: str, values: arr(num) })),
-      yMax: num,
-      notes: arr(obj({ from: num, say: str })),
-    }),
-    obj({
-      type: { type: 'string', enum: ['logic-circuit'] },
-      instruction: str,
-      inputs: arr(obj({ id: str, label: str, on: bool })),
-      outputs: arr(obj({ label: str, expression: str })),
-      notes: arr(obj({ pattern: str, say: str })),
-    }),
-    obj({
-      type: { type: 'string', enum: ['step-ordering'] },
-      instruction: str,
-      steps: arr(obj({ text: str, indent: int })),
-      success: str,
-      hint: str,
-    }),
-    obj({
-      type: { type: 'string', enum: ['diagnosis'] },
-      instruction: str,
-      symptom: str,
-      checks: arr(obj({ name: str, detail: str, action: str, result: str, ok: bool })),
-      options: arr(obj({ text: str, correct: bool, why: str })),
-    }),
-    obj({
-      type: { type: 'string', enum: ['system-sim'] },
-      instruction: str,
-      duration: int,
-      costUnit: str,
-      sources: arr(obj({
-        id: str, label: str, rate: num, burstSize: num, burstEvery: int, burstOffset: int, burstLength: int, limited: bool,
-        phases: arr(obj({ from: int, to: int, rate: num })),
-      })),
-      nodes: arr(obj({
-        id: str,
-        label: str,
-        kind: { type: 'string', enum: ['limiter', 'cache', 'service', 'queue', 'store'] },
-        capacity: num,
-        instances: int,
-        latencyMs: num,
-        hitRate: num,
-        maxQueue: num,
-        algorithm: { type: 'string', enum: ['', 'fixed', 'sliding', 'token', 'leaky'] },
-        limit: num,
-        window: int,
-        burst: num,
-        copies: int,
-        store: str,
-        failMode: { type: 'string', enum: ['', 'open', 'closed', 'local'] },
-      })),
-      path: arr(str),
-      failures: arr(obj({ node: str, from: int, to: int, label: str })),
-      controls: arr(obj({
-        label: str,
-        options: arr(obj({ label: str, detail: str, cost: num, set: arr(obj({ node: str, param: str, value: str })) })),
-      })),
-      goals: arr(obj({
-        label: str,
-        metric: { type: 'string', enum: ['errorRate', 'latency', 'passedPerWindow', 'utilization', 'cost'] },
-        target: str,
-        op: { type: 'string', enum: ['<=', '>='] },
-        value: num,
-        window: int,
-        hint: str,
-      })),
-    }),
-  ],
-}
-
-const exerciseSchema = obj({
+const exerciseSchema = (blocks: readonly BlockSpec[]) => obj({
   type: { type: 'string', enum: ['learn', 'choice', 'code', 'open'] },
   stage: { type: 'string', enum: ['learn', 'practice', 'check', 'challenge'] },
   prompt: str,
@@ -268,7 +152,7 @@ const exerciseSchema = obj({
   hints: arr(str),
   syntax: arr(obj({ title: str, code: str, explanation: str })),
   prerequisites: arr(obj({ term: str, explanation: str })),
-  visualization: visualizationSchema,
+  visualization: visualizationSchema(blocks),
   title: str,
   requirements: arr(str),
   toolbox: arr(obj({ name: str, description: str })),
@@ -285,7 +169,7 @@ const exerciseSchema = obj({
   testCommand: str,
 })
 
-const lessonSchema = obj({
+const lessonSchema = (blocks: readonly BlockSpec[]) => obj({
   intro: obj({
     summary: str,
     outcome: str,
@@ -294,7 +178,7 @@ const lessonSchema = obj({
     focus: str,
     hero: arr(obj({ text: str, label: str, kind: { type: 'string', enum: ['input', 'operation', 'value', 'result', 'symbol'] } })),
   }),
-  exercises: arr(exerciseSchema),
+  exercises: arr(exerciseSchema(blocks)),
   flashcards: arr(obj({ front: str, back: str })),
 })
 
@@ -348,6 +232,17 @@ export function lessonTask({ profile, plan, moduleIndex, lessonIndex, weakSpots,
   const mod = plan.modules[moduleIndex]
   const lesson = mod.lessons[lessonIndex]
   const lang = plan.language || 'javascript'
+  // Only the blocks the planner chose for this lesson reach the prompt and schema.
+  const blocks = selectBlocks(lesson.blocks)
+  const blockIds = blocks.map((block) => block.id)
+  const designVisualization = blockIds.includes('system-sim')
+    ? ' Use an appropriate visualization in the worked example, including system-sim where interaction helps.'
+    : blocks.length ? ' Use an appropriate visualization in the worked example.' : ''
+  const visualizationRules = blocks.length
+    ? `- Use "visualization" only for "learn" cards when it helps the learner observe the mechanism. Otherwise use null.
+${visualizationInstructions(blocks)}
+  Choose the visualization that best demonstrates the mechanism. It is optional unless the sequence specifies otherwise.`
+    : '- Set "visualization" to null on every card.'
   const earlier = plan.modules
     .slice(0, moduleIndex + 1)
     .flatMap((m, mi) => m.lessons
@@ -360,10 +255,10 @@ export function lessonTask({ profile, plan, moduleIndex, lessonIndex, weakSpots,
 2. At least three "practice" exercises, normally four. Start with predicting a result or identifying one operation, then ask the learner to complete one gap, change one thing, and briefly explain a choice. Include at least one productive task ("open" or "code"), not only multiple-choice questions. These are ungraded attempts with retry and optional help.
 3. One or two "check" exercises applying the same mechanism to a new, similar example with less scaffolding: ${CHECK_BY_KIND[lesson.kind] || CHECK_BY_KIND.mixed}. Do not introduce a new requirement or unfamiliar syntax here.
 4. Optionally one final "choice" at stage "challenge", only on previously demonstrated mechanisms and within the total of 7–9 steps.
-${lesson.kind === 'design' ? 'Use decisions, predictions, small calculations and explanations for practice; do not include code exercises. Use an appropriate visualization in the worked example, including system-sim where interaction helps.' : 'When the check asks for code, include at least two earlier code exercises at stage practice: a tiny completion with most of the code supplied, followed by a small modification with less scaffolding. Do not jump from recognition quizzes to writing a complete program.'}
+${lesson.kind === 'design' ? `Use decisions, predictions, small calculations and explanations for practice; do not include code exercises.${designVisualization}` : 'When the check asks for code, include at least two earlier code exercises at stage practice: a tiny completion with most of the code supplied, followed by a small modification with less scaffolding. Do not jump from recognition quizzes to writing a complete program.'}
 Every practice exercise must have a full explanation and hints. Use small, genuinely different variants of the same skill so that after reading a solution the learner can try again in the next task instead of copying the same answer.`
   return {
-    schema: lessonSchema,
+    schema: lessonSchema(blocks),
     prompt: `Prepare one short lesson.
 
 ## Learner
@@ -402,26 +297,7 @@ ${sequence}
 ## Exercise format
 All fields are required. Use "" / [] / 0 / null for unused fields.
 - "learn": "title" names one concept. "prompt" explains a practical problem, the mechanism and what to watch (up to 4 sentences or about 70 words). "code" is a worked example of up to 8 lines, only when the concept is a code construct. Use "" for estimation, architecture and trade-offs. Do not wrap calculations in functions. Set "codeLanguage", "explanation" (why it works, 1–2 sentences) and "keyPoints" (2–3 short rules).
-- Use "visualization" only for "learn" cards when it helps the learner observe the mechanism. Otherwise use null.
-  - "code-comparison": exactly two "variants" sharing the same context when a single decision changes the outcome. Each variant has a short "label", "code", a one-sentence "outcome" and 2–4 "steps". A step has a 1-based "line" and one sentence in "say" about the operation or intermediate result. Reusing a line is fine. Show the result in the final step. Introduce the example in at most two sentences in "prompt". Other explanations should complement the steps. Set the card's main "code" to "".
-  - "linear-regression": fitting a line, residuals or mean squared error. Provide 5–12 numeric "points", at least two distinct x values, a meaningful trend and visible scatter. Use units in "xLabel" and "yLabel" when needed. In "instruction" ask the learner to adjust the line with the slider and watch the vertical segments. The app calculates the fit, slider positions and error. Explain what the segments mean and why smaller MSE is a better fit. Any code example must use identical points.
-  - "code-definitions": code has functions, keywords, fields (e.g. packet headers) or symbols the learner may not know. "code" is at most 8 lines. Each of 2–5 "terms" has the exact "token" from the code, a "title" (e.g. "Array.filter(fn)"), "kind" (e.g. "array method"), "definition" (1–2 sentences describing behavior and return value), and an "example" (1–3 lines or ""). Set the card's main "code" to "".
-  - "step-trace": when execution order matters. Use 4–10 "steps", each changing one thing. "line" is 1-based. "say" explains what happens and why. "variables" is the full tracked state after the step [{name, value}], with 1–4 variables and consistent names once defined. Values are strings. "output" is all output so far or "". Set the card's main "code" to "".
-  - "state-inspector": a changing call stack, queue, list, routing table or set of registers. "label" names the structure. "layout" is "stack", "queue" or "list". The last stack entry is active. Provide 3–8 "steps", each with "line" (0 without code), "say" and full "items" after the step starting from the bottom of the stack or front of the queue. Items have {label, status, details}; "details" contains [{name, value}]. Visualization "code" is optional. Set the card's main "code" to "".
-  - "value-chart": a result that changes with one parameter. Use 8–40 increasing "xs" and 1–5 "series", each with accurately calculated "values" matching the "xs" length. "yMax" is 0 for automatic scaling or a cap when one series would flatten the others. Provide 1–3 "notes" [{from, say}] shown as x reaches their threshold. "instruction" says what to adjust and observe.
-  - "logic-circuit": logic gates, Boolean conditions, or series and parallel switches. Use 1–4 "inputs" [{id, label, on}] with short IDs, and 1–4 "outputs" [{label, expression}]. Expressions use input IDs, parentheses and AND, OR, XOR, NOT. "notes" [{pattern, say}] describe selected configurations, with patterns as 0/1 strings in input order. The app computes the truth table.
-  - "step-ordering": the learner arranges an algorithm, procedure, or configuration. Use 3–7 distinct, short "steps" in correct order, with "indent" in 0–2. The app shuffles them. "success" says what to notice, and "hint" helps without revealing the order.
-  - "diagnosis": finding the cause of a failure. "symptom" is the observed problem. Use 3–6 "checks" [{name, detail, action, result, ok}] in the order of the data or current path. "action" names a check or tool, "result" reports the observation and "ok" says whether it is normal. Use 3–4 diagnosis "options", exactly one with "correct": true, each with "why" explaining which checks support or rule it out.
-  - "system-sim": for choosing settings and seeing their impact under load or outages in architecture, rate limits, caching, queues, scaling and fault tolerance. The app simulates each second and calculates charts and goals. Describe the scenario only:
-    - "duration" is 120–900 seconds. "costUnit" names a cost unit (e.g. "Redis nodes") or "".
-    - "sources": 1–4 traffic classes. "rate" is steady requests/s. Optional bursts: "burstSize" requests/s for "burstLength" seconds every "burstEvery" seconds starting at "burstOffset" (0 means none). "phases" are intervals of alternate rates [{from, to, rate}]. "limited": true means one key subject to limiting, false means many keys checked but never rejected.
-    - "nodes": 2–6 nodes. "path" contains node IDs in flow order, excluding "store". Node types: "limiter" ("algorithm": fixed | sliding | token | leaky, "limit" requests per "window" seconds, "burst" token allowance or leaky queue size, "copies" independent counters when "store" is "", "store" shared counter node ID, "failMode": open | closed | local during store outage); "cache" ("hitRate" 0–1, pass-through during outage); "service"/"queue" ("capacity" requests/s per instance × "instances", "maxQueue" waiting slots, excess rejected, "latencyMs" rises with load); "store" (one operation per limit check, overload increases check time). Use 0 or "" for unused fields.
-    - "failures": 0–2 outages [{node, from, to, label}].
-    - "controls": 2–4 controls with 2–4 options each. Each option has "set" [{node, param, value}] with text values (e.g. {"node":"gw","param":"algorithm","value":"sliding"}). Set "store" to "" to disable shared counting. "cost" is the option cost. The all-first-options configuration must fail at least one goal. Limit the total to 512 combinations.
-    - "goals": 2–4. Supported "metric" values: errorRate (percent of rejected requests for traffic class "target"), latency (worst mean response time of the class in ms), passedPerWindow (maximum requests served in any "window" seconds), utilization (highest load of node "target" in percent), and cost (sum of option costs, "target" = ""). "op" is usually "<=". "hint" points to what to inspect without revealing the option.
-    - Work out 1–2 winning combinations, with wrong choices missing different goals. The app checks every combination and rejects unsolvable scenarios. Account for token bucket bursts, fixed windows admitting nearly 2× the limit at boundaries, and independent counters multiplying the limit by "copies".
-    - Follow a "system-sim" card with an "open" exercise asking the learner to justify their settings and trade-offs. Put criteria in "keyPoints".
-  Choose the visualization that best demonstrates the mechanism. It is optional unless the sequence specifies otherwise.
+${visualizationRules}
 - "practice": use "choice", "open" or "code". State one small action in "prompt". Include "explanation" describing why the completed attempt works. For code tasks, give a usable scaffold and tests checking only that small requirement. These exercises can be retried and do not contribute to grades or XP.
 - "hints": 2–3 short Markdown hints for each practice and check, progressing from a question or observation to a concrete next step. Avoid the complete solution. Set "hint" to the first hint for compatibility. Use [] and "" for unused hints.
 - "syntax": 1–3 reminders [{title, code, explanation}] for code practice and code checks. Use small analogous examples with different values, showing only relevant syntax or commands. They must not be the finished answer to the current task. Use [] when syntax is not needed. This content is lesson data; the UI must not need language-specific teaching rules.

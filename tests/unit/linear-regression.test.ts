@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildRegressionModel, evaluateRegression } from '../../src/lib/linear-regression.ts'
+import { buildRegressionModel, evaluateRegression } from '../../src/blocks/linear-regression/regression.ts'
 
 describe('linear regression', () => {
   it('finds a zero-error fit for points on a straight line', () => {

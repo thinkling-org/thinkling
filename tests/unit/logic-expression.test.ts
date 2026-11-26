@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { readLessonVisualization } from '../../src/lib/lesson-visualizations.ts'
-import { compileLogic } from '../../src/lib/logic-expression.ts'
+import { readLessonVisualization } from '../../src/blocks/registry.ts'
+import { compileLogic } from '../../src/blocks/logic-circuit/expression.ts'
 
 describe('compileLogic', () => {
   it('evaluates a known input whose name is also an object property', () => {

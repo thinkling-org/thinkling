@@ -1,0 +1,18 @@
+export default {
+  "Put the steps in order": "Układanie kroków",
+  "Your order": "Twoja kolejność",
+  "right position": "dobre miejsce",
+  "wrong position": "złe miejsce",
+  "Undo: {0}": "Cofnij: {0}",
+  "Empty slot": "Puste miejsce",
+  "Blocks · click to add": "Klocki · kliknij, żeby dodać",
+  "Blocks to arrange": "Klocki do ułożenia",
+  "Start over": "Od nowa",
+  "Revise": "Popraw",
+  "Check": "Sprawdź",
+  "Ready? Click Check.": "Gotowe? Kliknij Sprawdź.",
+  "Click a block to append it. Click a placed block to undo it.": "Kliknij klocek, żeby dodać go na koniec. Kliknij ułożony, żeby go cofnąć.",
+  "Good work. Every step is in the right position.": "Dobrze, wszystkie kroki są na swoim miejscu.",
+  "of": "z",
+  "in the right position.": "na swoim miejscu.",
+}

@@ -4,17 +4,7 @@ import { computed, ref } from 'vue'
 import Markdown from '../Markdown.vue'
 import CodeBlock from '../CodeBlock.vue'
 import Icon from '../Icon.vue'
-import CodeComparison from './visualizations/CodeComparison.vue'
-import LinearRegression from './visualizations/LinearRegression.vue'
-import CodeDefinitions from './visualizations/CodeDefinitions.vue'
-import StepTrace from './visualizations/StepTrace.vue'
-import StateInspector from './visualizations/StateInspector.vue'
-import ValueChart from './visualizations/ValueChart.vue'
-import LogicCircuit from './visualizations/LogicCircuit.vue'
-import StepOrdering from './visualizations/StepOrdering.vue'
-import Diagnosis from './visualizations/Diagnosis.vue'
-import SystemSim from './visualizations/SystemSim.vue'
-import { readLessonVisualization } from '../../lib/lesson-visualizations.ts'
+import { blockDefinition, readLessonVisualization } from '../../blocks/registry.ts'
 
 const props = defineProps({
   exercise: { type: Object, required: true },
@@ -23,31 +13,17 @@ const props = defineProps({
 const activeVariant = defineModel('activeVariant', { type: Number, default: 0 })
 const emit = defineEmits(['trace', 'review-concept'])
 const savedTerms = ref(new Set())
-const visualizations = {
-  'code-comparison': CodeComparison,
-  'linear-regression': LinearRegression,
-  'code-definitions': CodeDefinitions,
-  'step-trace': StepTrace,
-  'state-inspector': StateInspector,
-  'value-chart': ValueChart,
-  'logic-circuit': LogicCircuit,
-  'step-ordering': StepOrdering,
-  diagnosis: Diagnosis,
-  'system-sim': SystemSim,
-}
-const WITH_CODE = ['code-comparison', 'code-definitions', 'step-trace', 'state-inspector']
 const visualization = computed(() => readLessonVisualization(props.exercise))
+const block = computed(() => visualization.value && blockDefinition(visualization.value.type))
+// The comparison shares its active variant and step with lesson navigation.
 const isComparison = computed(() => visualization.value?.type === 'code-comparison')
 const visualizationProps = computed(() => {
-  const type = visualization.value?.type
   if (isComparison.value) return { codeLanguage: language.value, modelValue: activeVariant.value, step: props.comparisonStep }
-  return WITH_CODE.includes(type) ? { codeLanguage: language.value } : {}
+  return block.value?.usesCodeLanguage ? { codeLanguage: language.value } : {}
 })
 const language = computed(() => props.exercise.codeLanguage || 'javascript')
 // Use the lesson’s worked example in place of a separate code listing.
-const ownsCode = computed(() => visualization.value?.type === 'state-inspector'
-  ? !!visualization.value.code
-  : WITH_CODE.includes(visualization.value?.type))
+const ownsCode = computed(() => !!block.value?.ownsCode?.(visualization.value))
 
 function saveConcept(concept) {
   emit('review-concept', concept)
@@ -62,8 +38,8 @@ function saveConcept(concept) {
     <Markdown tag="h1" fit-heading class="title" :src="exercise.title || t('New concept')" inline />
     <Markdown class="body" :src="exercise.prompt" />
     <component
-      v-if="visualization"
-      :is="visualizations[visualization.type]"
+      v-if="block"
+      :is="block.component"
       :config="visualization"
       v-bind="visualizationProps"
       @update:model-value="activeVariant = $event"
