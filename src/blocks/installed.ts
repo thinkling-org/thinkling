@@ -16,6 +16,8 @@ export interface InstalledPluginInfo {
   summary: string
   entry: string
   locales: Record<string, Record<string, string>>
+  /** The manifest declares an exercise mode (API 1.1). */
+  exercise?: boolean
 }
 
 export interface PluginProblem {
@@ -49,6 +51,7 @@ export function toBlockDefinition(info: InstalledPluginInfo, module: unknown): B
     if (typeof code[name] !== 'function') throw new Error(`the entry's default export has no ${name}() function`)
   }
   if (code.ownsCode !== undefined && typeof code.ownsCode !== 'function') throw new Error('ownsCode must be a function')
+  if (info.exercise && typeof code.grade !== 'function') throw new Error('the manifest declares an exercise, but the entry has no grade() function')
   return markRaw({
     id: info.id,
     version: info.version,
@@ -62,6 +65,8 @@ export function toBlockDefinition(info: InstalledPluginInfo, module: unknown): B
     describe: code.describe.bind(code),
     mount: code.mount.bind(code),
     ...(code.ownsCode && { ownsCode: code.ownsCode.bind(code) }),
+    // Exercise schema and instructions stay on the server too; the renderer only grades.
+    ...(info.exercise && { exercise: { schema: {}, instructions: '' }, grade: code.grade.bind(code) }),
   })
 }
 

@@ -56,12 +56,13 @@ describe('installed plugins', () => {
       folder: 'number-line',
       enabled: true,
       id: 'examples/number-line',
-      version: '1.0.0',
-      engine: '^1.0.0',
+      version: '1.1.0',
+      engine: '^1.1.0',
       name: 'Number line',
       summary: expect.stringContaining('number line'),
       entry: '/plugins/number-line/index.js',
       locales: { pl: expect.objectContaining({ 'Marker: {0}': 'Znacznik: {0}' }) },
+      exercise: true,
     }])
     const points = specs[0].schema.points as any
     // Authors list properties only; Thinkling makes nested objects strict for the providers.
@@ -91,6 +92,26 @@ describe('installed plugins', () => {
       huge: expect.stringContaining('instructions'),
       twin: expect.stringContaining('already installed'),
       typed: expect.stringContaining('"type"'),
+    })
+  })
+
+  it('loads an exercise mode with its own strict task schema and instructions', async () => {
+    await installExample()
+    const [spec] = loadPlugins(plugins).specs
+    expect(Object.keys(spec.exercise.schema)).toEqual(['min', 'max', 'step', 'start', 'points', 'target', 'tolerance'])
+    expect((spec.exercise.schema.points as any).items).toMatchObject({ required: ['value', 'label'], additionalProperties: false })
+    expect(spec.exercise.instructions).toMatch(/^the learner marks a value/)
+  })
+
+  it('rejects an exercise mode that the declared API cannot have, or whose files are missing', async () => {
+    await writePlugin('old-api', { exercise: { schema: 'schema.json', instructions: 'instructions.md' } })
+    await writePlugin('no-files', { engine: '^1.1.0', exercise: { schema: 'task.json', instructions: 'task.md' } })
+    await writePlugin('outside', { engine: '^1.1.0', exercise: { schema: '../x.json', instructions: 'instructions.md' } })
+    const errors = Object.fromEntries(loadPlugins(plugins).errors.map((e) => [e.folder, e.error]))
+    expect(errors).toEqual({
+      'old-api': expect.stringContaining('needs block API 1.1'),
+      'no-files': expect.stringContaining('exercise.schema'),
+      outside: expect.stringContaining('outside the plugin folder'),
     })
   })
 
@@ -131,11 +152,11 @@ const exampleManifest = async (changes: Record<string, unknown>) =>
 describe('installing, disabling and removing plugins', () => {
   it('installs a .thinkling archive into a folder named after the id, and updates it', async () => {
     const first = installPlugin(await archive(EXAMPLE), plugins)
-    expect(first).toMatchObject({ plugin: { id: 'examples/number-line', folder: 'examples.number-line', version: '1.0.0' }, previousVersion: null })
+    expect(first).toMatchObject({ plugin: { id: 'examples/number-line', folder: 'examples.number-line', version: '1.1.0' }, previousVersion: null })
 
-    const update = await archive(EXAMPLE, { prefix: 'number-line/', change: { 'manifest.json': await exampleManifest({ version: '1.1.0' }) } })
-    expect(installPlugin(update, plugins)).toMatchObject({ plugin: { version: '1.1.0' }, previousVersion: '1.0.0' })
-    expect(loadPlugins(plugins).plugins.map((p) => `${p.folder}@${p.version}`)).toEqual(['examples.number-line@1.1.0'])
+    const update = await archive(EXAMPLE, { prefix: 'number-line/', change: { 'manifest.json': await exampleManifest({ version: '1.2.0' }) } })
+    expect(installPlugin(update, plugins)).toMatchObject({ plugin: { version: '1.2.0' }, previousVersion: '1.1.0' })
+    expect(loadPlugins(plugins).plugins.map((p) => `${p.folder}@${p.version}`)).toEqual(['examples.number-line@1.2.0'])
     // Staging and replaced folders are cleaned up.
     expect((await readdir(plugins)).filter((name) => name.startsWith('.'))).toEqual([])
   })
@@ -150,10 +171,10 @@ describe('installing, disabling and removing plugins', () => {
     installPlugin(await archive(EXAMPLE), plugins)
     const reject = async (bytes: Uint8Array, message: string) => {
       expect(() => installPlugin(bytes, plugins)).toThrow(message)
-      expect(loadPlugins(plugins)).toMatchObject({ plugins: [{ version: '1.0.0' }], errors: [] })
+      expect(loadPlugins(plugins)).toMatchObject({ plugins: [{ version: '1.1.0' }], errors: [] })
     }
     await reject(zipSync({ 'manifest.json': strToU8('{}'), '../evil.js': strToU8('x') }), 'unsafe path')
-    await reject(await archive(EXAMPLE, { change: { 'manifest.json': await exampleManifest({ version: '1.2.0', engine: '^9.0.0' }) } }), 'does not support')
+    await reject(await archive(EXAMPLE, { change: { 'manifest.json': await exampleManifest({ version: '1.3.0', engine: '^9.0.0' }) } }), 'does not support')
     await reject(await archive(EXAMPLE, { change: { 'manifest.json': await exampleManifest({ id: 'step-trace' }) } }), '"id"')
     await reject(zipSync({ 'readme.txt': strToU8('hi') }), 'manifest.json not found')
     await reject(strToU8('not a zip'), 'not a valid .thinkling')
@@ -261,6 +282,15 @@ describe('plugins in prompts', () => {
     expect(lesson.prompt).toContain('  - "examples/number-line": a value on a scale')
     const visualization = lesson.schema.properties.exercises.items.properties.visualization
     expect(visualization.anyOf.map((s) => s.type === 'null' ? null : s.properties.type.enum[0])).toEqual([null, 'examples/number-line'])
+  })
+
+  it('offers an installed plugin as an interactive exercise in lessons that use it', async () => {
+    await installExample()
+    const lesson = lessonTask({ profile, plan: plan(['examples/number-line']), moduleIndex: 0, lessonIndex: 0 })
+    const exercise = lesson.schema.properties.exercises.items.properties
+    expect(exercise.type.enum).toContain('interactive')
+    expect(exercise.interaction.anyOf[1].properties.target).toEqual({ type: 'number' })
+    expect(lesson.prompt).toContain('  - "examples/number-line": the learner marks a value on a number line')
   })
 
   it('keeps plugins out of lessons from plans made before blocks were chosen', async () => {
