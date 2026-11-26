@@ -228,3 +228,40 @@ describe('sandbox verification API', () => {
     }
   })
 })
+
+describe('sandbox file creation API', () => {
+  it('creates nested files, rejects invalid paths and preserves existing file contents on conflict', async () => {
+    const origin = await runServer(['en'])
+    const url = `${origin}/api/sandbox/editor-files/file`
+    const request = (path: unknown, method = 'POST', content?: string) => fetch(url, {
+      method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ path, content }),
+    })
+    try {
+      for (const path of ['', undefined, '../escape.txt', '/absolute.txt', 'C:\\outside.txt', 'src/../escape.txt', 'src/']) {
+        const invalid = await request(path)
+        expect(invalid.status).toBe(400)
+        expect(await invalid.json()).toEqual({ error: 'Enter a valid relative file path' })
+      }
+      const created = await request('src/helper.txt')
+      expect(created.status).toBe(200)
+      expect(await created.json()).toEqual({ mtime: expect.any(Number) })
+      const listed = await fetch(`${origin}/api/sandbox/editor-files/files`)
+      expect(await listed.json()).toContainEqual(expect.objectContaining({ path: 'src/helper.txt', dir: false, size: 0 }))
+      const initial = await fetch(`${url}?path=src%2Fhelper.txt`)
+      expect(await initial.json()).toMatchObject({ content: '' })
+      expect((await request('src/helper.txt', 'PUT', 'keep my work')).status).toBe(200)
+      const duplicate = await request('src/helper.txt')
+      expect(duplicate.status).toBe(400)
+      expect(await duplicate.json()).toEqual({ error: 'A file or folder already exists at this path' })
+      const saved = await fetch(`${url}?path=src%2Fhelper.txt`)
+      expect(await saved.json()).toMatchObject({ content: 'keep my work' })
+      const directory = await request('src')
+      expect(directory.status).toBe(400)
+    } finally {
+      const workspace = join(dataDirectory, 'workspaces', 'editor-files')
+      await rm(join(workspace, 'src', 'helper.txt'), { force: true })
+      await rmdir(join(workspace, 'src'))
+      await rmdir(workspace)
+    }
+  })
+})

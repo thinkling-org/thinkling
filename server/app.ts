@@ -172,6 +172,7 @@ routes.post('/api/sandbox/open', (req, res) =>
 
 routes.get('/api/sandbox/:ws/files', wrap((req) => SB.listFiles(SB.safeId(req.params.ws))))
 routes.get('/api/sandbox/:ws/file', wrap((req) => SB.readFile(req.params.ws, req.query.path)))
+routes.post('/api/sandbox/:ws/file', wrap((req) => SB.createFile(req.params.ws, req.body?.path)))
 routes.put('/api/sandbox/:ws/file', wrap((req) => SB.writeFile(req.params.ws, req.body?.path, req.body?.content)))
 routes.delete('/api/sandbox/:ws/file', wrap((req) => (SB.deletePath(req.params.ws, req.query.path), { ok: true })))
 

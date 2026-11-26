@@ -163,8 +163,12 @@ export function useSandboxWorkspace(props: Readonly<WorkspaceOptions>) {
   }
 
   async function createFile(path: string) {
-    await sandbox.write(props.wsId, path, '')
+    path = path.trim().replaceAll('\\', '/')
+    const current = generation
+    await sandbox.create(props.wsId, path)
+    if (disposed || current !== generation) return
     await refresh()
+    if (disposed || current !== generation) return
     await openFile(path)
   }
 

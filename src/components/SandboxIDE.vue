@@ -54,11 +54,6 @@ const activeIssues = computed(() =>
     .filter((i) => (i.file || props.mainFile) === active.value),
 )
 
-async function newFile() {
-  const name = prompt(t('Path for the new file (e.g. src/Helper.php):'))?.trim()
-  if (name) await createFile(name)
-}
-
 async function runTests() {
   if (!props.testCommand) return null
   if (running.value || phase.value !== 'ready') return run.value
@@ -168,8 +163,8 @@ defineExpose({ runTests, userFiles, showReview: () => (panel.value = 'review') }
         :entries="tree"
         :active="active"
         :is-test="isTest"
+        :create-file="createFile"
         @open="openFile"
-        @create="newFile"
         @refresh="refresh"
       />
 

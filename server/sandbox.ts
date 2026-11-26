@@ -294,6 +294,25 @@ export function readFile(wsId, rel) {
   return { content: fs.readFileSync(p, 'utf8'), mtime: st.mtimeMs }
 }
 
+export function createFile(wsId, rel: unknown) {
+  if (typeof rel !== 'string' || !rel.trim() || /^[/\\]/.test(rel) || /[\x00<>:"|?*]/.test(rel)) {
+    throw new Error(t('Enter a valid relative file path'))
+  }
+  const normalized = rel.replaceAll('\\', '/')
+  if (normalized.split('/').some((part) => !part || part === '.' || part === '..')) {
+    throw new Error(t('Enter a valid relative file path'))
+  }
+  const p = resolveInWs(wsId, normalized)
+  fs.mkdirSync(path.dirname(p), { recursive: true })
+  try {
+    fs.writeFileSync(p, '', { flag: 'wx' })
+  } catch (err) {
+    if (err.code === 'EEXIST') throw new Error(t('A file or folder already exists at this path'))
+    throw err
+  }
+  return { mtime: fs.statSync(p).mtimeMs }
+}
+
 export function writeFile(wsId, rel, content) {
   const p = resolveInWs(wsId, rel)
   fs.mkdirSync(path.dirname(p), { recursive: true })

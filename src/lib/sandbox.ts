@@ -27,6 +27,7 @@ export const sandbox = {
     ndjson<{ env: string; files: WorkspaceEntry[] }>('/api/sandbox/open', { wsId, language, files, reset }, onProgress),
   files: (ws: string) => getJSON<WorkspaceEntry[]>(`/api/sandbox/${ws}/files`),
   read: (ws: string, path: string) => getJSON<FileContents>(`/api/sandbox/${ws}/file?path=${enc(path)}`),
+  create: (ws: string, path: string) => post<{ mtime: number }>(`/api/sandbox/${ws}/file`, { path }),
   write: (ws: string, path: string, content: string) => post<{ mtime: number }>(`/api/sandbox/${ws}/file`, { path, content }, 'PUT'),
   run: (ws: string, cmd: string, { parse = false } = {}) => post<TestRun>(`/api/sandbox/${ws}/run`, { cmd, parse }),
   verify: ({ language, files, testCommand }: { language: string; files: WorkspaceFile[]; testCommand: string }, onProgress?: Progress) =>
