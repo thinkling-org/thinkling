@@ -1,6 +1,6 @@
 # Extensibility architecture
 
-Status: accepted direction. Stages 1–5 done (2026-11-26).
+Status: accepted direction. Stages 1–6 done (2026-11-26).
 
 ## Goal
 
@@ -72,6 +72,30 @@ A *block* is an interactive lesson component (today: a visualization on a learn 
 Host guarantees: `BlockHost.vue` owns `el` (rendered with `display: contents`, so the block's root lays out as a direct child of the card), calls `update` when props change and `unmount` before removing it. A block that throws in `mount`, `update`, `unmount`, `normalize` or `describe` is logged and skipped; the lesson keeps working.
 
 Data versioning: when a lesson is generated, the store stamps each visualization with `blockVersion` (`stampBlockVersion` in `catalog.ts`). `readLessonVisualization` passes it to `normalize`; data saved before versioning reports `1.0.0`.
+
+### Exercise mode (API 1.1)
+
+A block can also be a task the learner *does*, graded by the block itself: deterministic, local, no AI call. This is what lets a domain such as maths have real practice instead of multiple choice about a picture. API 1.1 is backward compatible: 1.0 blocks keep working as visualizations only.
+
+| Part | Addition |
+|---|---|
+| Spec / manifest | `exercise: { schema, instructions }`: the task data, including the answer key (e.g. `target`, `tolerance`), and how the model should pose such a task. A plugin declares it with `"exercise": { "schema": "<file>", "instructions": "<file>" }` and needs `"engine": "^1.1.0"`. |
+| Module | `grade(data, answer, ctx) → { verdict: "correct" \| "almost" \| "wrong", score: 0–1, feedback? }`. Required when the spec declares an exercise. `ctx` gives `t`, `locale` and `formatNumber` for the feedback. |
+| `normalize` | Receives `{ version, mode }`; `mode` is `"exercise"` for task data. |
+| `mount` props | `mode: "exercise"`, `answer` (the saved answer, to restore it) and `result` (the grade, once checked; the block locks input and may reveal the correct answer; cleared again when a practice attempt is retried). |
+| `ctx.answer(value, { complete })` | Reports the learner's answer. Until it is complete the Check button stays disabled. The event name `answer` is reserved. |
+
+The host side:
+
+- A new exercise type, `interactive`, carries the task in `interaction` (`{ type: <block id>, ...task data }`). The lesson schema and prompt offer it only when one of the lesson's chosen blocks has an exercise mode, so other lessons' prompts are unchanged.
+- `checkInteractive` (in `useLessonAssessment`) grades like a quiz: at the check stage the score goes to progress, a correct answer gives 10 XP (5 for almost), a mistake creates a flashcard from the prompt and explanation. Practice stays ungraded and can be retried; challenge is not scored.
+- A generated lesson is rejected if an interactive exercise cannot be checked (invalid data or no grader), so learners never meet a broken task.
+- If the block is missing or turned off later, the exercise shows the missing-extension notice and is skipped without counting toward accuracy or mastery.
+- The tutor chat gets the block's description of the task, the learner's answer and the result.
+
+Built-in example: `step-ordering` (order the steps; correct when every step is in place, almost from 60%). Plugin example: `examples/number-line` (mark a value; correct within the tolerance, almost one slider step away; the line then shows the right position).
+
+Checked with a real model: in three generated lessons (two maths, one JavaScript) the tutor chose interactive exercises on its own, including at the check stage. All six tasks were valid, every number-line target was reachable with the chosen step and graded "correct", and no reference mark gave the answer away.
 
 ### Why `mount()` and not a shared Vue component
 
@@ -236,6 +260,7 @@ Built-in blocks may import app modules; external plugins cannot and use `ctx` in
 3. **Data/code split and `mount()`.** *(done)* Built-in blocks described by the same manifest shape as external ones; the `vueBlock` adapter; the SDK surface above exposed through `ctx`; versioned block data. Not done: removing the `code-comparison` special case in `LearnCard.vue`. Lesson navigation drives the comparison's steps (Next/Back walk through them before leaving the card), so it now goes through generic host props and `ctx.emit`, but `LearnCard` still knows it by id. Making this generic needs a "stepper" capability blocks can declare; that waits until a second block needs it.
 4. **Runtime loader.** *(done)* `<userData>/plugins`, `GET /api/plugins`, dynamic `import()`, and an example plugin in `examples/` built separately from the app. This proves installation without a rebuild.
 5. **Extensions screen.** *(done)* Install from file, disable, uninstall, placeholder for missing blocks.
-6. **Later.** Remote catalog, iframe isolation, pluggable *exercise types* with a grading contract (correct / almost / wrong and a score feed progress and spaced repetition), so non-programming domains stop being squeezed into `code` and `choice`.
+6. **Exercise mode.** *(done, API 1.1)* Blocks as interactive exercises with a grading contract (correct / almost / wrong and a score feed progress and spaced repetition), so non-programming domains stop being squeezed into `code` and `choice`. See "Exercise mode (API 1.1)".
+7. **Later.** Remote catalog, iframe isolation, domain-neutral core prompts (they still introduce the tutor as a programming tutor), knowledge packs, and a generic "stepper" capability to replace the `code-comparison` special case.
 
 Stages 1–2 fix the token problem. Stages 3–5 deliver "install math without GitHub".
