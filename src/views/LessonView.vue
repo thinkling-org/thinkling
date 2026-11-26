@@ -7,6 +7,7 @@ import { getAiProvider } from '../lib/ai-providers.ts'
 import { useLessonAssessment } from '../composables/useLessonAssessment.ts'
 import { useLessonExamples } from '../composables/useLessonExamples.ts'
 import { useLessonSession } from '../composables/useLessonSession.ts'
+import { provideLessonSupport } from '../composables/useLessonSupport.ts'
 import { buildLessonChatContext } from '../lib/lesson-context.ts'
 import { play } from '../lib/sfx.ts'
 import Icon from '../components/Icon.vue'
@@ -21,10 +22,12 @@ import OpenExercise from '../components/exercises/OpenExercise.vue'
 import LearnCard from '../components/exercises/LearnCard.vue'
 import ChoiceExercise from '../components/exercises/ChoiceExercise.vue'
 import CodeExercise from '../components/exercises/CodeExercise.vue'
+import ExerciseSupport from '../components/exercises/ExerciseSupport.vue'
 
 const route = useRoute()
 const router = useRouter()
 const app = useApp()
+const support = provideLessonSupport()
 
 const lessonId = computed(() => route.params.id as string)
 const {
@@ -37,15 +40,22 @@ const stage = useTemplateRef('stage')
 const codeEditor = useTemplateRef('codeEditor')
 const {
   answers, issues, result, answeredCount, busy, xp, canCheck, codeRetrying,
-  initialize, reset, accuracyFor, check, retryExercise, skipExercise, dontKnow,
+  initialize, reset, accuracyFor, masteryFor, check, retryExercise, skipExercise, dontKnow, revealSolution,
 } = useLessonAssessment({
   currentExercise: exercise,
   title: () => meta.value?.title,
   editor: codeEditor,
+  isAssisted: support.isAssisted,
+  onSolution: (id) => support.mark(id, 'solution'),
   onFeedback: (selector) => nextTick(() => {
     stage.value?.querySelector(selector)?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
   }),
 })
+
+function resetLesson(loadedExercises) {
+  support.reset()
+  reset(loadedExercises)
+}
 
 const progress = computed(() => {
   if (phase.value === 'summary') return 100
@@ -121,7 +131,7 @@ function goToExercise(index: number) {
     exerciseIndex.value = index
     return
   }
-  finish(xp.value, accuracyFor(exercises.value))
+  finish(xp.value, accuracyFor(exercises.value), masteryFor(exercises.value))
   play('complete')
 }
 
@@ -229,7 +239,7 @@ const wide = computed(() => phase.value === 'play' && exercise.value?.type === '
       :provider-name="providerName"
       :generation="gen"
       :error="loadError"
-      @retry="regenerate(reset)"
+      @retry="regenerate(resetLesson)"
     />
 
     <main v-else-if="phase === 'intro'" class="stage">
@@ -243,6 +253,7 @@ const wide = computed(() => phase.value === 'play' && exercise.value?.type === '
       :xp="summary.xp"
       :accuracy="summary.accuracy"
       :elapsed="summary.elapsed"
+      :mastery="summary.mastery"
     />
 
     <!-- Exercises -->
@@ -294,6 +305,7 @@ const wide = computed(() => phase.value === 'play' && exercise.value?.type === '
           :busy="busy"
           @submit="check"
         />
+        <ExerciseSupport v-if="exercise.type === 'choice' || exercise.type === 'open'" :exercise="exercise" :busy="busy" />
       </div>
     </main>
 
@@ -335,10 +347,11 @@ const wide = computed(() => phase.value === 'play' && exercise.value?.type === '
       @next="next"
       @retry="retryExercise"
       @skip="skip"
+      @solution="revealSolution"
       @trace="openTrace"
     />
 
-    <AskDrawer ref="drawer" :open="drawerOpen" :context="drawerContext" :load-context="loadChatContext" @close="drawerOpen = false" />
+    <AskDrawer ref="drawer" :open="drawerOpen" :context="drawerContext" :load-context="loadChatContext" @close="drawerOpen = false" @help="exercise && support.mark(exercise.id, 'tutor')" />
   </div>
 </template>
 

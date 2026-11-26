@@ -68,7 +68,8 @@ defineExpose({
         :language="language"
         :file-name="fileName"
         :run="lastRun"
-        :show-solution="!!result"
+        :show-solution="!!result?.solutionRevealed || (exercise.stage !== 'practice' && !!result)"
+        :busy="busy"
       />
       <SandboxIDE
         v-if="sandboxMode"

@@ -2,7 +2,7 @@ import { computed, onScopeDispose, shallowRef } from 'vue'
 import type { Ref } from 'vue'
 import { estimateLesson, getLessonPaces } from '../lib/lesson-options.ts'
 import { useApp } from '../stores/app.ts'
-import type { CachedLesson, Exercise } from '../domain.ts'
+import type { CachedLesson, Exercise, LessonMastery } from '../domain.ts'
 
 const MAX_LESSON_SECONDS = 3 * 60 * 60
 
@@ -19,7 +19,7 @@ export function useLessonSession(lessonId: Readonly<Ref<string>>) {
   const loadError = shallowRef('')
   const level = shallowRef(0)
   const exerciseIndex = shallowRef(0)
-  const summary = shallowRef<{ accuracy: number; xp: number; elapsed: string } | null>(null)
+  const summary = shallowRef<{ accuracy: number; xp: number; elapsed: string; mastery?: LessonMastery } | null>(null)
   const meta = computed(() => app.findLesson(lessonId.value))
   const lesson = computed(() => app.lessons[lessonId.value])
   const intro = computed(() => lesson.value?.intro)
@@ -67,12 +67,13 @@ export function useLessonSession(lessonId: Readonly<Ref<string>>) {
     app.addTime(Math.min(elapsedSeconds(), MAX_LESSON_SECONDS))
   }
 
-  function finish(xp: number, accuracy: number) {
+  function finish(xp: number, accuracy: number, mastery?: LessonMastery) {
     const bonus = app.completeLesson(lessonId.value, { xp }) || 0
     commitTime()
     const seconds = Math.round(elapsedSeconds())
     summary.value = {
       accuracy,
+      mastery,
       xp: xp + bonus,
       elapsed: `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`,
     }

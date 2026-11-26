@@ -30,7 +30,11 @@ const lessonContent: LessonContent = {
   exercises: [
     { id: 'learn', type: 'learn', stage: 'learn', prompt: 'A promise can be settled only once.' },
     { id: 'practice', type: 'choice', stage: 'practice', prompt: 'Which states are final?', hint: 'Think about settlement.', explanation: 'Fulfillment and rejection are final.' },
+    { id: 'explain', type: 'open', stage: 'practice', prompt: 'Explain settlement in one sentence.', hints: ['Which states can still change?'], explanation: 'A settled promise is fulfilled or rejected.' },
+    { id: 'predict', type: 'choice', stage: 'practice', prompt: 'Can fulfillment change?', hints: ['Consider settlement.'], explanation: 'The first settlement wins.' },
+    { id: 'modify', type: 'open', stage: 'practice', prompt: 'Describe how rejection differs.', hints: ['Think of a failed operation.'], explanation: 'Rejection represents a failed operation.' },
     { id: 'check', type: 'open', stage: 'check', prompt: 'What does a pending state mean?' },
+    { id: 'transfer', type: 'open', stage: 'check', prompt: 'Explain the result of resolving twice.' },
   ],
   flashcards: [{ front: 'Which promise states are final?', back: 'Fulfilled and rejected.' }],
 }
@@ -171,7 +175,7 @@ describe('learning plan', () => {
     expect(store.gen.status).toBe('done')
     expect(store.currentLesson?.id).toBe(first.id)
     expect(second.status).toBe('locked')
-    const cached: CachedLesson = { ...lessonContent, format: 3, generatedAt: Date.now() }
+    const cached: CachedLesson = { ...lessonContent, format: 4, generatedAt: Date.now() }
     store.lessons[first.id] = cached
     store.lessons[second.id] = cached
 
@@ -206,6 +210,30 @@ describe('learning plan', () => {
     expect(requests).toHaveLength(1)
   })
 
+  it('replaces an unfinished old lesson with the guided format on next load', async () => {
+    fetchResponse.mockResolvedValueOnce(resultResponse(planDescription)).mockResolvedValueOnce(resultResponse(lessonContent))
+    await store.generatePlan(profile)
+    store.docker = { available: false }
+    const id = store.currentLesson!.id
+    store.lessons[id] = { ...lessonContent, exercises: [{ ...lessonContent.exercises[0], id: `${id}-e0` }], format: 3, generatedAt: 1 }
+    expect(store.lessonReady(id)).toBe(false)
+    await store.ensureLesson(id)
+    expect(store.lessons[id].format).toBe(4)
+    expect(store.lessons[id].exercises).toHaveLength(7)
+    expect(store.lessons[id].exercises[0].id).toBe(`${id}-v4-e0`)
+  })
+
+  it('preserves completed lessons in the old format without regenerating them', async () => {
+    fetchResponse.mockResolvedValueOnce(resultResponse(planDescription))
+    await store.generatePlan(profile)
+    const id = store.currentLesson!.id
+    store.lessons[id] = { ...lessonContent, format: 3, generatedAt: 1 }
+    store.plan!.modules[0].lessons[0].status = 'done'
+    expect(store.lessonReady(id)).toBe(true)
+    await expect(store.ensureLesson(id)).resolves.toMatchObject({ format: 3, generatedAt: 1 })
+    expect(fetchResponse.mock.calls.filter(([url]) => url === '/api/ai/lesson')).toHaveLength(0)
+  })
+
   it('makes a failed generation visible and allows retrying it', async () => {
     fetchResponse
       .mockResolvedValueOnce(Response.json({ error: 'Provider unavailable' }, { status: 503 }))
@@ -227,7 +255,6 @@ describe('learning plan', () => {
     const lesson: LessonContent = {
       ...lessonContent,
       exercises: [
-        ...lessonContent.exercises.slice(0, 2),
         {
           id: 'double', type: 'code', stage: 'check', prompt: 'Double the input.',
           files: [{ path: 'main.py', content: 'def double(n): return n' }],
@@ -238,7 +265,9 @@ describe('learning plan', () => {
       ],
     }
     fetchResponse
-      .mockResolvedValueOnce(resultResponse({ ...planDescription, language: 'Python' }))
+      .mockResolvedValueOnce(resultResponse({ ...planDescription, language: 'Python', modules: [{
+        ...planDescription.modules[0], lessons: [{ ...planDescription.modules[0].lessons[0], kind: 'test' }],
+      }] }))
       .mockResolvedValueOnce(resultResponse(lesson))
     if (run) {
       fetchResponse
@@ -253,8 +282,8 @@ describe('learning plan', () => {
 
     await store.ensureLesson(id)
 
-    expect(store.persisted().lessons[id].exercises[2]).toMatchObject({
-      id: `${id}-e2`, runtime: 'docker', codeLanguage: 'python', testsStatus: status,
+    expect(store.persisted().lessons[id].exercises[0]).toMatchObject({
+      id: `${id}-v4-e0`, runtime: 'docker', codeLanguage: 'python', testsStatus: status,
       ...(run ? { testsTotal: 1 } : {}),
     })
     expect(store.lessonReady(id)).toBe(true)
@@ -274,7 +303,7 @@ describe('learning plan', () => {
     fetchResponse.mockResolvedValueOnce(resultResponse(planDescription)).mockResolvedValueOnce(resultResponse(refined))
     await store.generatePlan(profile)
     const [completed, outdated] = store.allLessons
-    const cached: CachedLesson = { ...lessonContent, format: 3, generatedAt: Date.now() }
+    const cached: CachedLesson = { ...lessonContent, format: 4, generatedAt: Date.now() }
     store.lessons[completed.id] = cached
     store.lessons[outdated.id] = cached
     store.completeLesson(completed.id, { xp: 1 })

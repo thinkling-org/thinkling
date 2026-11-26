@@ -1,5 +1,5 @@
 import type { Ref } from 'vue'
-import type { CodeIssue, CodeReview, Exercise, ExerciseResult, Grade, TestRun, WorkspaceFile } from '../domain.ts'
+import type { CodeIssue, CodeReview, Exercise, ExerciseResult, Grade, LessonMastery, TestRun, WorkspaceFile } from '../domain.ts'
 
 interface ExerciseEditor {
   runnable: boolean
@@ -15,11 +15,13 @@ import { ai } from '../lib/api.ts'
 import { allTestsPassed } from '../lib/runner.ts'
 import { play, prepareSfx } from '../lib/sfx.ts'
 
-export function useLessonAssessment({ currentExercise, title, editor, onFeedback }: {
+export function useLessonAssessment({ currentExercise, title, editor, onFeedback, isAssisted = () => false, onSolution = () => {} }: {
   currentExercise: Readonly<Ref<Exercise | undefined>>
   title: () => string | undefined
   editor: Readonly<Ref<ExerciseEditor | null>>
   onFeedback: (selector: string) => void
+  isAssisted?: (id: string) => boolean
+  onSolution?: (id: string) => void
 }) {
   const app = useApp()
   const answers = reactive<Record<string, string | number | null>>({})
@@ -40,7 +42,7 @@ export function useLessonAssessment({ currentExercise, title, editor, onFeedback
 
   const canCheck = computed(() => {
     if (!currentExercise.value || busy.value) return false
-    if (result.value && !(currentExercise.value.type === 'code' && result.value.retry)) return false
+    if (result.value && !result.value.retry) return false
     const answer = answers[currentExercise.value.id]
     if (currentExercise.value.type === 'choice') return answer !== null && answer !== undefined
     if (currentExercise.value.type === 'open') return String(answer || '').trim().length >= 3
@@ -57,10 +59,10 @@ export function useLessonAssessment({ currentExercise, title, editor, onFeedback
   }
 
   function checkChoice(exercise: Exercise) {
-    if (exercise.stage === 'practice') return revealPractice(exercise, true)
     const ok = answers[exercise.id] === exercise.correctIndex
-    results[exercise.id] = { status: ok ? 'correct' : 'wrong' }
+    results[exercise.id] = { status: ok ? 'correct' : 'wrong', assisted: isAssisted(exercise.id) }
     onFeedback('.explain')
+    if (exercise.stage === 'practice') return
     if (exercise.stage === 'challenge') return
     if (exercise.warmup) {
       // The warm-up before a concept card does not count toward the score or create a flashcard.
@@ -75,18 +77,22 @@ export function useLessonAssessment({ currentExercise, title, editor, onFeedback
     }
   }
 
-  function revealPractice(exercise: Exercise, submitted = false) {
-    play(submitted ? (answers[exercise.id] === exercise.correctIndex ? 'correct' : 'almost') : 'pop')
-    results[exercise.id] = { status: 'practice' }
+  function revealSolution() {
+    const exercise = currentExercise.value
+    if (!exercise || busy.value || exercise.stage !== 'practice') return
+    onSolution(exercise.id)
+    results[exercise.id] = { status: 'practice', assisted: true, solutionRevealed: true }
     onFeedback('.explain')
   }
 
   async function checkOpen(exercise: Exercise) {
     busy.value = true
+    const assisted = isAssisted(exercise.id)
     try {
       const data = await ai<Grade>('gradeOpen', { exercise, answer: answers[exercise.id], level: app.plan?.level })
       const status = data.verdict || (data.score >= 8 ? 'correct' : data.score >= 5 ? 'almost' : 'wrong')
-      results[exercise.id] = { status, data }
+      results[exercise.id] = { status, data, assisted }
+      if (exercise.stage === 'practice') return
       app.recordAnswer({ score: (data.score || 0) / 10, weakSpot: data.weakSpot })
       xp.value += Math.max(1, data.score || 0)
       if (data.flashcard?.front) app.addFlashcards([data.flashcard], t('from a mistake in lesson: {0}', [title()]))
@@ -99,9 +105,18 @@ export function useLessonAssessment({ currentExercise, title, editor, onFeedback
 
   async function checkCode(exercise: Exercise) {
     busy.value = true
+    const assisted = isAssisted(exercise.id)
     try {
       let run: TestRun | null = null
       if (editor.value?.runnable) run = await editor.value.runAll()
+      if (exercise.stage === 'practice' && run && exercise.testsStatus === 'verified') {
+        const passed = allTestsPassed(run)
+        results[exercise.id] = {
+          status: passed ? 'correct' : 'wrong', assisted,
+          data: { passed, summary: passed ? t('This part works. Try a similar task next.') : t('Check the failing test and change one thing. You can use a hint and try again.') },
+        }
+        return
+      }
       editor.value?.showReview()
       const payload: { exercise: Exercise; testResults: TestRun | null; level?: string; files?: WorkspaceFile[]; code?: string | number | null } = { exercise, testResults: run, level: app.plan?.level }
       if (exercise.runtime === 'docker') payload.files = await editor.value.getFiles()
@@ -111,8 +126,9 @@ export function useLessonAssessment({ currentExercise, title, editor, onFeedback
       const testsOk = !run || allTestsPassed(run) || exercise.testsStatus === 'unverified'
       const status = data.passed && testsOk ? 'correct' : data.score >= 5 ? 'almost' : 'wrong'
       const prev = results[exercise.id]?.status
-      results[exercise.id] = { status, data }
+      results[exercise.id] = { status, data, assisted }
       issues[exercise.id] = data.issues || []
+      if (exercise.stage === 'practice') return
       if (!prev || prev === 'error') {
         app.recordAnswer({ score: (data.score || 0) / 10, weakSpot: data.weakSpot })
         xp.value += status === 'correct' ? 20 : status === 'almost' ? 10 : 3
@@ -128,7 +144,8 @@ export function useLessonAssessment({ currentExercise, title, editor, onFeedback
   }
 
   function retryExercise() {
-    if (result.value.status === 'error') delete results[currentExercise.value.id]
+    if (!result.value || busy.value) return
+    if (result.value.status === 'error' || currentExercise.value.stage === 'practice') delete results[currentExercise.value.id]
     else result.value.retry = true
   }
 
@@ -140,7 +157,7 @@ export function useLessonAssessment({ currentExercise, title, editor, onFeedback
       if (!status || id !== previousId || status === previousStatus) return
       if (status === 'correct') play('correct')
       else if (status === 'almost') play('almost')
-      else if (status === 'wrong') play(currentExercise.value?.warmup ? 'almost' : 'wrong')
+      else if (status === 'wrong') play(currentExercise.value?.warmup || currentExercise.value?.stage === 'practice' ? 'almost' : 'wrong')
       else if (status === 'unknown') play('pop', 0.8)
     },
   )
@@ -154,7 +171,7 @@ export function useLessonAssessment({ currentExercise, title, editor, onFeedback
   function skipExercise() {
     const exercise = currentExercise.value
     if (!exercise || busy.value || result.value) return
-    if (exercise.stage === 'practice') return revealPractice(exercise)
+    if (exercise.stage === 'practice') return revealSolution()
     results[exercise.id] = { status: 'skipped' }
     if (!exercise.warmup) app.recordAnswer({ score: 0 })
   }
@@ -163,6 +180,8 @@ export function useLessonAssessment({ currentExercise, title, editor, onFeedback
   function dontKnow() {
     const exercise = currentExercise.value
     if (!exercise || busy.value || result.value) return
+    if (exercise.stage === 'practice') return revealSolution()
+    onSolution(exercise.id)
     results[exercise.id] = { status: 'unknown' }
     app.recordAnswer({ score: 0 })
     app.addFlashcards([{ front: exercise.prompt, back: exercise.referenceAnswer }], t('“I don\'t know” in lesson: {0}', [title()]))
@@ -170,6 +189,7 @@ export function useLessonAssessment({ currentExercise, title, editor, onFeedback
   }
 
   function reset(exercises: Exercise[]) {
+    xp.value = 0
     for (const state of [answers, results, issues]) {
       for (const key of Object.keys(state)) delete state[key]
     }
@@ -184,8 +204,18 @@ export function useLessonAssessment({ currentExercise, title, editor, onFeedback
     return graded.length ? Math.round((correct / graded.length) * 100) : 100
   }
 
+  function masteryFor(exercises: Exercise[]): LessonMastery {
+    const checks = exercises.filter(({ stage }) => stage === 'check')
+    const correct = checks.filter(({ id }) => results[id]?.status === 'correct')
+    return {
+      independent: correct.filter(({ id }) => !results[id].assisted).length,
+      assisted: correct.filter(({ id }) => results[id].assisted).length,
+      total: checks.length,
+    }
+  }
+
   return {
     answers, issues, result, answeredCount, busy, xp, canCheck, codeRetrying,
-    initialize, reset, accuracyFor, check, retryExercise, skipExercise, dontKnow,
+    initialize, reset, accuracyFor, masteryFor, check, retryExercise, skipExercise, dontKnow, revealSolution,
   }
 }

@@ -28,7 +28,7 @@ Write concise, technical explanations without filler or emoji. Format prose in M
 Return only data that conforms to the supplied JSON schema.`
 
 export const SYSTEM_CHAT = `You are Codenoms, a programming tutor. Adapt your explanation to what the learner knows about the concept.
-Answer directly and concisely in Markdown, using language-tagged code fences. Avoid emoji and stock openings such as "Great question." Do not use tools.`
+Answer directly and concisely in Markdown, using language-tagged code fences. Help the learner produce an answer: diagnose one obstacle, explain only what is needed and invite one small next attempt. Ask at most one focused question at a time when it helps. Supply missing syntax with a tiny analogous example rather than demanding the learner guess unfamiliar notation. By default, offer a next step rather than the complete solution; provide the complete solution when the learner explicitly requests it. After showing a solution, invite them to solve a similar task with less help. Avoid emoji and stock openings such as "Great question." Do not use tools.`
 
 export const SYSTEM_GRADE = `You are Codenoms, a programming tutor. Assess what the learner understood after a lesson and help them take the next step.
 Keep feedback concise and use Markdown. Base your comments on what the learner actually wrote. Do not use tools.
@@ -265,6 +265,8 @@ const exerciseSchema = obj({
   referenceAnswer: str,
   keyPoints: arr(str),
   hint: str,
+  hints: arr(str),
+  syntax: arr(obj({ title: str, code: str, explanation: str })),
   prerequisites: arr(obj({ term: str, explanation: str })),
   visualization: visualizationSchema,
   title: str,
@@ -309,7 +311,7 @@ const RUNNABLE = ['javascript', 'typescript']
 function dockerRules(lang) {
   const env = envFor(lang)
   return `The app runs "code" exercises in Docker (${env?.label || lang}, Bash, /workspace), without network access. Use only the language standard library. Package installation commands will not work. The learner has an editor, file tree and terminal.
-- "files": 1–3 small starter files [{path, content}], with relative paths (e.g. "src/Cart.php"), signatures, and TODO comments. Omit the solution.
+- "files": 1–3 small starter files [{path, content}], with relative paths, signatures, and TODO comments. In guided practice, provide working surrounding code and leave only one small targeted gap or change; do not ask for an entire program. Omit the completed solution.
 - "testFiles": files [{path, content}] under "tests/". Use a minimal custom harness in plain ${lang}. Print exactly one stdout line per test:
     PASS <test name>
     FAIL <test name> :: <briefly: expected X, got Y>
@@ -325,7 +327,7 @@ function codeRules(lang: string, runtime?: string) {
   if (runtime === 'docker') return dockerRules(lang)
   if (RUNNABLE.includes(lang) && runtime !== 'review') {
     return `The browser runs "code" exercises in ${lang} automatically:
-- "starterCode": a function or class signature with a TODO comment, without the solution. Use regular declarations (\`function foo(){}\`, \`class Foo {}\`) and omit import/export/require.
+- "starterCode": use regular declarations (\`function foo(){}\`, \`class Foo {}\`) and omit import/export/require. In guided practice provide working surrounding code and one small TODO for the learner to complete or change. In independent checks use a minimal scaffold with familiar signatures. Omit the completed solution.
 - "tests": plain JavaScript, including for TypeScript lessons. Refer to the starter declarations by name. Available globals:
   \`test(name, async () => {...})\`, \`expect(x).toBe/toEqual/toBeTruthy/toBeFalsy/toContain/toHaveLength/toBeCloseTo/toBeGreaterThan/toBeLessThan/toBeInstanceOf/toThrow(msg?)\`, \`.not\`, \`await expect(promise).rejects.toThrow()\`, \`await sleep(ms)\`, \`mockFn(impl?)\` (with \`.calls\` argument arrays and \`.contexts\` for this values).
   Write 3–6 deterministic tests that finish in under 2 s altogether (timers around 100 ms at most). Avoid the DOM, network and imports.
@@ -353,18 +355,13 @@ export function lessonTask({ profile, plan, moduleIndex, lessonIndex, weakSpots,
       .map((l) => l.focus || l.title))
   const sequence = lesson.kind === 'test'
     ? 'After the introduction, include 4–6 exercises based on completed lessons in this module, all with stage "check". Choose a mix of "choice", "code" and "open" appropriate for the material and the learner’s goal. Use "code" only for coding skills, and use "open" or "choice" for design decisions and estimates.'
-    : lesson.kind === 'design'
-      ? `After the introduction, follow this exact order:
-1. One or two "learn" cards at stage "learn" with "code" and "codeLanguage" set to "". Use a "system-sim" visualization when learners can adjust settings and observe the effect under load or during an outage. Otherwise use "diagnosis", "state-inspector", "value-chart" or "step-ordering" when appropriate. Explain numbers and worked examples in words or short Markdown calculations.
-2. One "choice" at stage "practice" involving the same decision in a similar scenario, with a hint and a full explanation. Include code only when the question concerns a configuration snippet or API contract.
-3. Stage "check": ${CHECK_BY_KIND.design}.
-4. Optionally one final "choice" at stage "challenge": an interview-style question about a trade-off based on the demonstrated mechanism.
-Do not include "code" exercises in this lesson.`
-    : `After the introduction, follow this exact order:
-1. One or two "learn" cards at stage "learn" with a concrete worked example.
-2. One "choice" at stage "practice" applying the demonstrated mechanism to a similar example. Include a hint and a full explanation. The app can reveal the solution without assigning a grade.
-3. Stage "check": ${CHECK_BY_KIND[lesson.kind] || CHECK_BY_KIND.mixed}.
-4. Optionally one final "choice" at stage "challenge" if it fits the learner's goal. It can be an interview question but must use mechanisms explained in the lesson.`
+    : `Build 7–9 short steps in this order, increasing independence gradually:
+1. One or two "learn" cards with a concrete worked example and the syntax or notation needed to reproduce it. Explain one small concept at a time.
+2. At least three "practice" exercises, normally four. Start with predicting a result or identifying one operation, then ask the learner to complete one gap, change one thing, and briefly explain a choice. Include at least one productive task ("open" or "code"), not only multiple-choice questions. These are ungraded attempts with retry and optional help.
+3. One or two "check" exercises applying the same mechanism to a new, similar example with less scaffolding: ${CHECK_BY_KIND[lesson.kind] || CHECK_BY_KIND.mixed}. Do not introduce a new requirement or unfamiliar syntax here.
+4. Optionally one final "choice" at stage "challenge", only on previously demonstrated mechanisms and within the total of 7–9 steps.
+${lesson.kind === 'design' ? 'Use decisions, predictions, small calculations and explanations for practice; do not include code exercises. Use an appropriate visualization in the worked example, including system-sim where interaction helps.' : 'When the check asks for code, include at least two earlier code exercises at stage practice: a tiny completion with most of the code supplied, followed by a small modification with less scaffolding. Do not jump from recognition quizzes to writing a complete program.'}
+Every practice exercise must have a full explanation and hints. Use small, genuinely different variants of the same skill so that after reading a solution the learner can try again in the next task instead of copying the same answer.`
   return {
     schema: lessonSchema,
     prompt: `Prepare one short lesson.
@@ -399,6 +396,8 @@ ${sequence}
 - Senior or Lead experience alone does not establish familiarity with patterns, libraries or APIs. Explain the necessary concept at first use. For a factory, show how a function creates an object before naming the pattern. For bind, show what it returns and how it changes invocation.
 - When a card depends on a concept that may need review, put its short name in "prerequisites[].term" and a plain-language explanation with a simpler concrete Markdown example in "prerequisites[].explanation". Explain the minimum needed for the card in its main text as well.
 - Practice and the first check should apply only the demonstrated mechanism and closely match the example. Save traps and subtleties for an optional challenge or later assessment.
+- Keep each practice task small enough for a focused attempt. Increase the learner's contribution gradually while reducing prefilled code. Have them predict, complete, modify, explain and reproduce; do not pad the lesson with more passive theory or repeated recognition quizzes.
+- Reminders of syntax remain available in independent checks. Help is tracked separately from correctness; practice mistakes do not lower the lesson score. Never assume knowledge of a programming language solely from seniority in another language.
 
 ## Exercise format
 All fields are required. Use "" / [] / 0 / null for unused fields.
@@ -423,7 +422,9 @@ All fields are required. Use "" / [] / 0 / null for unused fields.
     - Work out 1–2 winning combinations, with wrong choices missing different goals. The app checks every combination and rejects unsolvable scenarios. Account for token bucket bursts, fixed windows admitting nearly 2× the limit at boundaries, and independent counters multiplying the limit by "copies".
     - Follow a "system-sim" card with an "open" exercise asking the learner to justify their settings and trade-offs. Put criteria in "keyPoints".
   Choose the visualization that best demonstrates the mechanism. It is optional unless the sequence specifies otherwise.
-- "practice": use "hint" to direct attention to part of the example or suggest a first step without giving away the correct option. "explanation" covers the solution regardless of the selected answer. Use "" for "hint" at other stages.
+- "practice": use "choice", "open" or "code". State one small action in "prompt". Include "explanation" describing why the completed attempt works. For code tasks, give a usable scaffold and tests checking only that small requirement. These exercises can be retried and do not contribute to grades or XP.
+- "hints": 2–3 short Markdown hints for each practice and check, progressing from a question or observation to a concrete next step. Avoid the complete solution. Set "hint" to the first hint for compatibility. Use [] and "" for unused hints.
+- "syntax": 1–3 reminders [{title, code, explanation}] for code practice and code checks. Use small analogous examples with different values, showing only relevant syntax or commands. They must not be the finished answer to the current task. Use [] when syntax is not needed. This content is lesson data; the UI must not need language-specific teaching rules.
 - "open": one focused question about the mechanism. State any subquestions in "prompt". Give a concise "referenceAnswer" and one "keyPoints" criterion for each distinct part. Optional "code" if needed.
 - "choice": use a question in "prompt", optional "code" and "codeLanguage", 3–4 "options", zero-based "correctIndex", and a 2–4 sentence Markdown "explanation". For output questions, use exact output, one correct answer and distractors based on typical mistakes.
 - "code": use "title", "prompt", 3–5 "requirements", and 2–5 "toolbox" entries [{name, description}] for relevant functions, methods or constructs. Describe behavior without giving away the order or solution. Set "toolbox" to [] for other exercise types. If tests check exact output, state it in "requirements" and put the exact output, including required spaces and line breaks, in "expectedOutput". Use "" for "expectedOutput" when output is not explicitly required, including other exercise types. Also fill "example" with a short usage example in Markdown: prose remains prose; code and terminal commands use fenced blocks with the appropriate language tag. Fill "codeLanguage", "fileName", "starterCode", "tests" and "solution".
@@ -564,6 +565,7 @@ ${(exercise.keyPoints || []).map((k) => `- ${k}`).join('\n') || '(grade from the
 ${answer || '(no answer)'}
 
 ## Grading rules
+${exercise.stage === 'practice' ? '- This is guided, ungraded practice. Keep feedback gentle and focused on one next action. The score is internal feedback, not a lesson grade. Suggest a small next attempt and do not introduce additional requirements.\n' : ''}
 - Identify the explicit requirements of the question. Use the reference and guidance as aids. Count different phrasings of one mechanism as one criterion. Details outside the question are optional.
 - Accept answers in the learner's own words, equivalent code, and clear implications. Repeating operation names or prior values does not earn separate points.
 - Weight requirements by importance. Give credit for a correct approach without exact syntax. If the question explicitly requests a declaration or code, distinguish a syntax omission from skipping the entire requirement.
@@ -643,6 +645,7 @@ ${numbered}
 
 ## Format
 - "passed": true only if the requirements are satisfied. If tests ran and any failed, use false.
+${exercise.stage === 'practice' ? '- This is a small ungraded practice attempt. Review only its stated requirement, give one concrete next step, and encourage a retry. Do not treat the unfinished surrounding learning sequence as missing requirements.\n' : ''}
 - "score": 0–10.
 - "headline": one short sentence for the footer.
 - "summary": 2–4 sentences of Markdown feedback.

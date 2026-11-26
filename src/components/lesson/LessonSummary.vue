@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { t } from '../../lib/i18n.ts'
 import Gem from '../Gem.vue'
+import type { PropType } from 'vue'
+import type { LessonMastery } from '../../domain.ts'
 
 defineProps({
   title: { type: String, required: true },
@@ -8,6 +10,7 @@ defineProps({
   xp: { type: Number, required: true },
   accuracy: { type: Number, required: true },
   elapsed: { type: String, required: true },
+  mastery: { type: Object as PropType<LessonMastery>, default: null },
 })
 </script>
 
@@ -33,6 +36,10 @@ defineProps({
           <dd>{{ elapsed }}</dd>
         </div>
       </dl>
+      <p v-if="mastery" class="mastery">
+        {{ t('Solved on your own: {0} / {1}', [mastery.independent, mastery.total]) }}<br />
+        {{ t('Solved with support: {0}', [mastery.assisted]) }}
+      </p>
     </div>
   </main>
 </template>
@@ -89,4 +96,5 @@ defineProps({
 .points dd { color: var(--yellow); }
 .accuracy dd { color: var(--green-light); }
 .time dd { color: var(--blue-light); }
+.mastery { margin: 0; color: var(--text-3); line-height: 1.6; }
 </style>

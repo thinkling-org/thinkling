@@ -3,6 +3,8 @@ import { t } from '../../lib/i18n.ts'
 import { computed, shallowRef, watch } from 'vue'
 import CodeBlock from '../CodeBlock.vue'
 import Markdown from '../Markdown.vue'
+import ExerciseSupport from './ExerciseSupport.vue'
+import { useLessonSupport } from '../../composables/useLessonSupport.ts'
 import { allTestsPassed } from '../../lib/runner.ts'
 import type { PropType } from 'vue'
 import type { Exercise, TestRun } from '../../domain.ts'
@@ -13,7 +15,9 @@ const props = defineProps({
   fileName: { type: String, required: true },
   run: { type: Object as PropType<TestRun>, default: null },
   showSolution: Boolean,
+  busy: Boolean,
 })
+const support = useLessonSupport()
 
 const tools = computed(() => (props.exercise.toolbox || []).filter((tool) => tool?.name?.trim()))
 
@@ -22,6 +26,7 @@ const activeTool = computed(() => tools.value.find((tool) => tool.name === openT
 watch(() => props.exercise.id, () => { openTool.value = null })
 
 function toggleTool(name) {
+  support?.mark(props.exercise.id, 'syntax')
   openTool.value = openTool.value === name ? null : name
 }
 
@@ -51,10 +56,12 @@ const failNote = computed(() => {
 <template>
   <section class="task" :aria-label="t('Exercise')">
     <header class="head">
-      <span class="kicker">{{ t('Exercise') }}</span>
+      <span class="kicker">{{ props.exercise.stage === 'practice' ? t('Guided practice · no grade') : t('Exercise') }}</span>
       <Markdown tag="h1" fit-heading class="title" :src="exercise.title || t('Exercise')" inline />
       <Markdown class="desc" :src="exercise.prompt" />
     </header>
+
+    <ExerciseSupport :exercise="exercise" :busy="busy" />
 
     <div v-if="exercise.expectedOutput" class="group">
       <span class="label">{{ t('Expected output') }}</span>
@@ -98,11 +105,11 @@ const failNote = computed(() => {
       <span class="label">{{ t('Example') }}</span>
       <Markdown :src="exercise.example" class="ex-md" />
     </div>
-    <details v-if="showSolution && exercise.solution" class="card box sol">
+    <details v-if="showSolution && exercise.solution" class="card box sol" :open="exercise.stage === 'practice'" @toggle="($event.target as HTMLDetailsElement).open && support?.mark(exercise.id, 'solution')">
       <summary class="label">{{ t('Reference solution') }}</summary>
       <CodeBlock :code="exercise.solution" :language="language" :file-name="fileName" />
     </details>
-    <details v-if="showSolution && exercise.solutionFiles?.length" class="card box sol">
+    <details v-if="showSolution && exercise.solutionFiles?.length" class="card box sol" :open="exercise.stage === 'practice'" @toggle="($event.target as HTMLDetailsElement).open && support?.mark(exercise.id, 'solution')">
       <summary class="label">{{ t('Reference solution') }}</summary>
       <CodeBlock v-for="f in exercise.solutionFiles" :key="f.path" :code="f.content" :language="language" :file-name="f.path" />
     </details>

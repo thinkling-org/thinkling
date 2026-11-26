@@ -3,8 +3,9 @@ import { defineStore } from 'pinia'
 import { ai, getJSON, putJSON } from '../lib/api.ts'
 import { newCard, schedule } from '../lib/srs.ts'
 import { normalizeLocale, preferredLocale } from '../lib/languages.ts'
+import { LESSON_FORMAT, validateLessonFlow } from '../lib/lesson-flow.ts'
 import type {
-  AppStatus, CachedLesson, Exercise, FlashcardText, LessonContent, LessonIntro, LessonKind, LessonLocation,
+  AppStatus, CachedLesson, Exercise, FlashcardText, LessonContent, LessonLocation,
   PersistedState, Plan, PlanDescription, PlanPreview, Profile, ProviderId, Rating, Runtime, SandboxStatus,
 } from '../domain.ts'
 
@@ -74,26 +75,6 @@ function refreshStatuses(plan: Plan) {
       currentSet = true
     }
   }
-}
-
-// Regenerate unfinished lessons that use an older format.
-const LESSON_FORMAT = 3
-
-function validateLessonFlow(kind: LessonKind, intro: LessonIntro, exercises: Exercise[]) {
-  if (![intro?.outcome, intro?.relevance, intro?.focus].every((value) => typeof value === 'string' && value.trim())) {
-    throw new Error(t('The model did not generate a complete lesson introduction.'))
-  }
-  const stages = exercises.map(({ stage }) => stage).join(' ')
-  const validOrder = kind === 'test'
-    ? exercises.length > 0 && exercises.every(({ type, stage }) => type !== 'learn' && stage === 'check')
-    : /^(learn ){1,2}practice check( challenge)?$/.test(stages)
-      && exercises.every(({ type, stage, hint, explanation }) => {
-        if (stage === 'learn') return type === 'learn'
-        if (stage === 'practice') return type === 'choice' && hint?.trim() && explanation?.trim()
-        if (stage === 'challenge') return type === 'choice'
-        return type !== 'learn'
-      })
-  if (!validOrder) throw new Error(t('The model returned the lesson stages in the wrong order.'))
 }
 
 let saveTimer: ReturnType<typeof setTimeout> | null = null
@@ -358,7 +339,7 @@ export const useApp = defineStore('app', {
             .filter((e) => e && e.type)
             .map((e, i): Exercise => ({
               ...e,
-              id: `${id}-e${i}`,
+              id: `${id}-v${LESSON_FORMAT}-e${i}`,
               ...(e.type === 'code'
                 ? runtime === 'docker' && e.testCommand && e.files?.length
                   ? { runtime: 'docker', codeLanguage: String(this.plan.language).toLowerCase() }

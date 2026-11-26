@@ -88,6 +88,18 @@ export interface ToolDescription {
   description: string
 }
 
+export interface SyntaxExample {
+  title: string
+  code: string
+  explanation: string
+}
+
+export interface LessonMastery {
+  independent: number
+  assisted: number
+  total: number
+}
+
 export interface LessonIntro {
   summary?: string
   outcome?: string
@@ -111,6 +123,8 @@ export interface Exercise {
   referenceAnswer?: string
   keyPoints?: string[]
   hint?: string
+  hints?: string[]
+  syntax?: SyntaxExample[]
   prerequisites?: Concept[]
   visualization?: Record<string, unknown>
   comparison?: Record<string, unknown>
@@ -194,6 +208,8 @@ export interface ExerciseResult {
   data?: Partial<CodeReview>
   error?: string
   retry?: boolean
+  assisted?: boolean
+  solutionRevealed?: boolean
 }
 
 export interface FlashcardText {

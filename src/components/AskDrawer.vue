@@ -13,7 +13,7 @@ const props = defineProps({
   context: { type: String, default: '' },
   loadContext: { type: Function as PropType<() => Promise<string>>, default: null },
 })
-const emit = defineEmits(['close'])
+const emit = defineEmits(['close', 'help'])
 const app = useApp()
 
 const messages = ref<{ role: 'user' | 'assistant'; content: string; error?: boolean }[]>([])
@@ -49,6 +49,7 @@ async function run(task: 'chat' | 'explain', payload: unknown, userText: string)
     })
     if (ctrl !== request) return
     messages.value.push({ role: 'assistant', content: String(text) })
+    emit('help')
     play('blip')
   } catch (err) {
     if (ctrl === request && err.name !== 'AbortError') {

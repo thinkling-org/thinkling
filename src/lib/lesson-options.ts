@@ -30,7 +30,7 @@ export function getLessonPaces(exercises: Exercise[], kind?: LessonKind) {
 }
 
 export function estimateLesson(exercises: Exercise[], completed: boolean) {
-  const minutes = exercises.reduce((sum, exercise) => sum + (MINUTES_BY_EXERCISE[exercise.type] || 1), 0)
+  const minutes = exercises.reduce((sum, exercise) => sum + (exercise.stage === 'practice' && exercise.type === 'code' ? 2 : MINUTES_BY_EXERCISE[exercise.type] || 1), 0)
   const graded = exercises.filter((exercise) => exercise.stage === 'check')
   const xp = graded.reduce((sum, exercise) => sum + (exercise.type === 'code' ? 20 : 10), 0)
   return { minutes: Math.max(1, minutes), count: exercises.length, xp: xp + (completed ? 5 : 20) }

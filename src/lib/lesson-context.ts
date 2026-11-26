@@ -12,6 +12,7 @@ export function buildLessonChatContext({ exercise, answer, result, title, module
   testRun?: TestRun | null
 }) {
   const parts = [`Lesson: ${title} (${moduleTitle})`, `Exercise type: ${exercise.type}`]
+  parts.push(`Learning stage: ${exercise.stage === 'practice' ? 'guided practice, not graded; help the learner make one small attempt at a time' : exercise.stage}`)
   if (experience) parts.push(`Learner background and goal: ${experience}`)
   if (exercise.type === 'learn') {
     parts.push(`Knowledge card: ${exercise.title}\n${exercise.prompt}${exercise.code ? `\n\nExample:\n\`\`\`\n${exercise.code}\n\`\`\`` : ''}\n\nExplanation: ${exercise.explanation}`)

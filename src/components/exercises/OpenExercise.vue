@@ -4,6 +4,7 @@ import { ref, onMounted } from 'vue'
 import Markdown from '../Markdown.vue'
 import CodeBlock from '../CodeBlock.vue'
 import Icon from '../Icon.vue'
+import { useLessonSupport } from '../../composables/useLessonSupport.ts'
 
 defineProps({
   exercise: { type: Object, required: true },
@@ -13,6 +14,7 @@ defineProps({
   busy: Boolean,
 })
 const emit = defineEmits(['update:modelValue', 'submit'])
+const support = useLessonSupport()
 const showModel = ref(false)
 const ta = ref(null)
 onMounted(() => ta.value?.focus())
@@ -26,7 +28,7 @@ const POINT = {
 
 <template>
   <div class="ex">
-    <span class="kind label">{{ t('Open question') }}</span>
+    <span class="kind label">{{ exercise.stage === 'practice' ? t('Guided practice · no grade') : t('Open question') }}</span>
     <Markdown tag="h1" fit-heading class="q" :src="exercise.prompt" />
     <CodeBlock v-if="exercise.code" :code="exercise.code" :language="exercise.codeLanguage" />
 
@@ -39,7 +41,7 @@ const POINT = {
         rows="6"
         :value="modelValue"
         :readonly="!!result || busy"
-        :placeholder="t('Answer in your own words, as in an interview. Press Ctrl+Enter to submit.')"
+        :placeholder="exercise.stage === 'practice' ? t('Try a short answer in your own words. You can use a hint.') : t('Answer in your own words, as in an interview. Press Ctrl+Enter to submit.')"
         @input="emit('update:modelValue', ($event.target as HTMLTextAreaElement).value)"
         @keydown.ctrl.enter.prevent="emit('submit')"
       />
@@ -50,7 +52,7 @@ const POINT = {
       <span>{{ providerName }} {{ t('is reading your answer…') }}</span>
     </div>
 
-    <div v-if="result?.status === 'unknown'" class="card feedback">
+    <div v-if="result?.status === 'unknown' || result?.solutionRevealed" class="card feedback">
       <span class="label" style="color: var(--purple-link)">{{ t('Reference answer') }}</span>
       <Markdown :src="exercise.referenceAnswer" class="ptxt" />
       <template v-if="exercise.keyPoints?.length">
@@ -64,7 +66,7 @@ const POINT = {
     </div>
 
     <div v-if="result?.data" class="card feedback">
-      <span class="tag grade" :class="result.status === 'correct' ? 'tag-green' : result.status === 'almost' ? 'tag-yellow' : 'tag-red'">
+      <span v-if="exercise.stage !== 'practice'" class="tag grade" :class="result.status === 'correct' ? 'tag-green' : result.status === 'almost' ? 'tag-yellow' : 'tag-red'">
         {{ result.data.score }} / 10
       </span>
       <Markdown v-for="(p, i) in result.data.points" :key="i" :src="p.text" class="ptxt">
@@ -72,7 +74,7 @@ const POINT = {
           <span class="pi" :style="{ color: POINT[p.kind]?.color }"><Icon :name="POINT[p.kind]?.icon || 'bulb'" :size="18" :stroke="3" /></span>
         </template>
       </Markdown>
-      <button class="link-btn" :aria-expanded="showModel" @click="showModel = !showModel">{{ showModel ? t('Hide') : t('Show') }} {{ t('reference answer') }}</button>
+      <button class="link-btn" :aria-expanded="showModel" @click="showModel = !showModel; showModel && support?.mark(exercise.id, 'solution')">{{ showModel ? t('Hide') : t('Show') }} {{ t('reference answer') }}</button>
       <Markdown v-if="showModel" class="model" :src="result.data.modelAnswer || exercise.referenceAnswer" />
     </div>
   </div>

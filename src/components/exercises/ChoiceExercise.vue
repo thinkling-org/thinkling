@@ -34,11 +34,6 @@ function state(i) {
     <span v-else class="kind label">{{ isOutput ? t('What does this code print?') : 'Quiz' }}</span>
     <Markdown tag="h1" fit-heading class="q" :src="exercise.prompt" />
     <CodeBlock v-if="exercise.code" :code="exercise.code" :language="exercise.codeLanguage" />
-    <details v-if="isPractice && exercise.hint && !result" class="card hint">
-      <summary>{{ t('Show hint') }}</summary>
-      <Markdown :src="exercise.hint" />
-    </details>
-
     <div role="radiogroup" :aria-label="t('Answers')" class="opts" :class="{ grid: short }">
       <button
         v-for="(o, i) in exercise.options"
