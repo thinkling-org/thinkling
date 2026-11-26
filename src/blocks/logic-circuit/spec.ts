@@ -3,6 +3,8 @@ import type { BlockSpec } from '../schema.ts'
 
 export const spec: BlockSpec = {
   id: 'logic-circuit',
+  version: '1.0.0',
+  engine: '^1.0.0',
   summary: 'Interactive logic gates, Boolean conditions or switches with a computed truth table.',
   schema: {
     instruction: str,

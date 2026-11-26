@@ -3,6 +3,8 @@ import type { BlockSpec } from '../schema.ts'
 
 export const spec: BlockSpec = {
   id: 'code-definitions',
+  version: '1.0.0',
+  engine: '^1.0.0',
   summary: 'A short code snippet with explanations of unfamiliar functions, keywords, fields or symbols.',
   schema: {
     instruction: str,

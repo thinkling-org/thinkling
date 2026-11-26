@@ -1,6 +1,8 @@
 import CodeComparison from './CodeComparison.vue'
 import { hasText, lineCount, validLine } from '../helpers.ts'
 import type { BlockDefinition } from '../types.ts'
+import { vueBlock } from '../vue-block.ts'
+import { catalogs } from './messages.ts'
 import { spec } from './spec.ts'
 
 /** Valid explanation steps of one variant; older lessons kept them under `trace.steps`. */
@@ -16,8 +18,8 @@ export function readComparisonSteps(variant) {
 
 export const block: BlockDefinition = {
   ...spec,
-  component: CodeComparison,
-  usesCodeLanguage: true,
+  mount: vueBlock(CodeComparison),
+  locales: catalogs,
   ownsCode: () => true,
 
   normalize(visualization) {

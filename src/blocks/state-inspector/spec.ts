@@ -3,6 +3,8 @@ import type { BlockSpec } from '../schema.ts'
 
 export const spec: BlockSpec = {
   id: 'state-inspector',
+  version: '1.0.0',
+  engine: '^1.0.0',
   summary: 'Step-by-step view of a changing call stack, queue, list, routing table or set of registers.',
   schema: {
     instruction: str,

@@ -1,8 +1,9 @@
 import fs from 'node:fs'
 import path from 'node:path'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { configureLocale } from '../../src/lib/i18n.ts'
-import { BLOCK_SPECS, visualizationInstructions, visualizationSchema } from '../../src/blocks/catalog.ts'
+import { BLOCK_SPECS, UNVERSIONED, stampBlockVersion, visualizationInstructions, visualizationSchema } from '../../src/blocks/catalog.ts'
+import { BLOCK_API_VERSION } from '../../src/blocks/schema.ts'
 import { blockDefinition, describeVisualization, readLessonVisualization, registeredBlockIds } from '../../src/blocks/registry.ts'
 
 const BLOCKS_DIR = path.resolve(import.meta.dirname, '../../src/blocks')
@@ -68,6 +69,38 @@ describe('lesson blocks', () => {
       configureLocale(() => 'en')
     }
     expect(t('Compare example variants')).toBe('Compare example variants')
+  })
+
+  it('declares a version, a supported API range, a mount function and translations for every block', () => {
+    for (const id of registeredBlockIds()) {
+      const block = blockDefinition(id)
+      expect(block.version, id).toMatch(/^\d+\.\d+\.\d+$/)
+      expect(block.engine, id).toBe(`^${BLOCK_API_VERSION.split('.')[0]}.0.0`)
+      expect(typeof block.mount, id).toBe('function')
+      expect(block.locales?.pl, id).toBeTypeOf('object')
+    }
+  })
+
+  it('stamps the producing block version and hands it back to normalize', () => {
+    const stamped = stampBlockVersion({ type: 'step-ordering', steps: [] })
+    expect(stamped.blockVersion).toBe(blockDefinition('step-ordering').version)
+    expect(stampBlockVersion({ type: 'math/graph' })).toEqual({ type: 'math/graph' })
+
+    const block = blockDefinition('diagnosis')
+    const normalize = vi.spyOn(block, 'normalize')
+    readLessonVisualization({ type: 'learn', visualization: { type: 'diagnosis', blockVersion: '2.1.0' } })
+    readLessonVisualization({ type: 'learn', visualization: { type: 'diagnosis' } })
+    expect(normalize.mock.calls.map((call) => call[1])).toEqual([{ version: '2.1.0' }, { version: UNVERSIONED }])
+    normalize.mockRestore()
+  })
+
+  it('treats a crashing normalizer as invalid data', () => {
+    const block = blockDefinition('diagnosis')
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const normalize = vi.spyOn(block, 'normalize').mockImplementation(() => { throw new Error('boom') })
+    expect(readLessonVisualization({ type: 'learn', visualization: { type: 'diagnosis' } })).toBeNull()
+    normalize.mockRestore()
+    error.mockRestore()
   })
 
   it('ignores unknown block types instead of failing', () => {

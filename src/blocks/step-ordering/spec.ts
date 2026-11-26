@@ -3,6 +3,8 @@ import type { BlockSpec } from '../schema.ts'
 
 export const spec: BlockSpec = {
   id: 'step-ordering',
+  version: '1.0.0',
+  engine: '^1.0.0',
   summary: 'The learner arranges the steps of an algorithm, procedure or configuration in the correct order.',
   schema: {
     instruction: str,

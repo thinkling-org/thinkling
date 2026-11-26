@@ -1,11 +1,14 @@
 import ValueChart from './ValueChart.vue'
 import { hasText, list } from '../helpers.ts'
 import type { BlockDefinition } from '../types.ts'
+import { vueBlock } from '../vue-block.ts'
+import { catalogs } from './messages.ts'
 import { spec } from './spec.ts'
 
 export const block: BlockDefinition = {
   ...spec,
-  component: ValueChart,
+  mount: vueBlock(ValueChart),
+  locales: catalogs,
 
   normalize({ instruction, xLabel, yLabel, xs, series, yMax, notes }) {
     if (![instruction, xLabel, yLabel].every(hasText)) return null

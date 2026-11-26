@@ -1,11 +1,14 @@
 import StepOrdering from './StepOrdering.vue'
 import { hasText, list, numbered } from '../helpers.ts'
 import type { BlockDefinition } from '../types.ts'
+import { vueBlock } from '../vue-block.ts'
+import { catalogs } from './messages.ts'
 import { spec } from './spec.ts'
 
 export const block: BlockDefinition = {
   ...spec,
-  component: StepOrdering,
+  mount: vueBlock(StepOrdering),
+  locales: catalogs,
 
   normalize({ instruction, steps, success, hint }) {
     if (!hasText(instruction)) return null

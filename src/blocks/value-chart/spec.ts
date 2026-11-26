@@ -3,6 +3,8 @@ import type { BlockSpec } from '../schema.ts'
 
 export const spec: BlockSpec = {
   id: 'value-chart',
+  version: '1.0.0',
+  engine: '^1.0.0',
   summary: 'A chart of one or more results against a parameter the learner sweeps, with notes at key thresholds.',
   schema: {
     instruction: str,
