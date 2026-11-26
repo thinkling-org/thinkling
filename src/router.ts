@@ -13,6 +13,7 @@ export const router = createRouter({
     { path: '/flashcards', component: () => import('./views/FlashcardsView.vue') },
     { path: '/review', component: () => import('./views/ReviewView.vue') },
     { path: '/settings', component: () => import('./views/SettingsView.vue') },
+    { path: '/extensions', component: () => import('./views/ExtensionsView.vue') },
     { path: '/setup', component: () => import('./views/SetupView.vue') },
     { path: '/sandbox', component: () => import('./views/PlaygroundView.vue') },
     { path: '/:pathMatch(.*)*', redirect: '/' },

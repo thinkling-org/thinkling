@@ -12,7 +12,7 @@ import { loadPlugins } from '../../server/plugins.ts'
 
 const EXAMPLES = resolve(import.meta.dirname, '../../examples/plugins')
 // Stands in for the browser fetching /plugins/<folder>/<file> from the server.
-const importFromExamples = (url: string) => import(pathToFileURL(resolve(EXAMPLES, url.replace(/^\/plugins\//, ''))).href)
+const importFromExamples = (url: string) => import(pathToFileURL(resolve(EXAMPLES, url.replace(/^\/plugins\//, '').replace(/\?.*$/, ''))).href)
 const listExamples = async () => {
   const { plugins, errors } = loadPlugins(EXAMPLES)
   return { plugins, errors }
@@ -77,8 +77,8 @@ describe('an installed plugin', () => {
     })
     expect([...installedBlocks.keys()]).toEqual(['examples/number-line'])
     expect(pluginProblems).toEqual([
-      { plugin: 'old', error: 'manifest.json not found' },
-      { plugin: 'test/broken', error: "the entry's default export has no describe() function" },
+      { plugin: 'old', folder: 'old', error: 'manifest.json not found' },
+      { plugin: 'test/broken', folder: undefined, error: "the entry's default export has no describe() function" },
     ])
     warn.mockRestore()
   })
