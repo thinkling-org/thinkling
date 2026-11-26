@@ -2,11 +2,14 @@ import LogicCircuit from './LogicCircuit.vue'
 import { compileLogic, isLogicOperator } from './expression.ts'
 import { hasText, list } from '../helpers.ts'
 import type { BlockDefinition } from '../types.ts'
+import { vueBlock } from '../vue-block.ts'
+import { catalogs } from './messages.ts'
 import { spec } from './spec.ts'
 
 export const block: BlockDefinition = {
   ...spec,
-  component: LogicCircuit,
+  mount: vueBlock(LogicCircuit),
+  locales: catalogs,
 
   normalize({ instruction, inputs, outputs, notes }) {
     if (!hasText(instruction)) return null

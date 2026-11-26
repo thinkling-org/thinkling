@@ -1,6 +1,6 @@
 # Extensibility architecture
 
-Status: accepted direction. Stages 1–2 done (2026-11-26).
+Status: accepted direction. Stages 1–3 done (2026-11-26).
 
 ## Goal
 
@@ -36,13 +36,42 @@ A *block* is an interactive lesson component (today: a visualization on a learn 
 | `schema` | JSON schema properties of the block's data (strict: all fields required, no extra properties). |
 | `instructions` | Instructions for the model: when to use the block and how to fill it. |
 
-**Code half**: runs only in the renderer.
+**Code half**: runs only in the renderer. Types: `BlockModule` in `src/blocks/types.ts`.
 
 | Function | Purpose |
 |---|---|
-| `normalize(data)` | Validate and normalize model output; return `null` to reject. Domain checks live here (for example `system-sim` simulates every configuration and rejects unsolvable scenarios). |
+| `normalize(data, { version })` | Validate and normalize model output or stored data; return `null` to reject. Domain checks live here (for example `system-sim` simulates every configuration and rejects unsolvable scenarios). `version` is the block version that produced the data, for migrations. |
 | `describe(data)` | Plain-text description given to the tutor chat as context. |
-| `mount(el, props, ctx)` | Render the block (stage 3). Returns `{ update(props), unmount() }`. |
+| `mount(el, props, ctx)` | Render into `el`. Returns `{ update(props), unmount() }`. |
+| `ownsCode?(data)` | Optional: the block shows the worked example itself, so the card hides its own code listing. |
+
+### Plugin API v1 (implemented in stage 3)
+
+`BLOCK_API_VERSION` is `1.0.0`; every block declares `engine: "^1.0.0"`.
+
+`props` passed to `mount` and `update`:
+
+| Prop | Meaning |
+|---|---|
+| `data` | The normalized block data. |
+| `codeLanguage` | The lesson's programming language. |
+| others | Host extras for built-in blocks only (today: the comparison's `modelValue` and `step`). |
+
+`ctx`, the only channel to the app:
+
+| Member | Purpose |
+|---|---|
+| `locale` | Current interface language. |
+| `t(message, values?)` | Translates the block's own English messages from its own catalogs (`locales`). |
+| `formatNumber(value, options?)` | Locale-aware number formatting. |
+| `renderMarkdown(el, source, { inline? })` | Sanitized Markdown with the app's styling and glossary. Returns a dispose function; calling it again on the same element replaces the content. |
+| `renderCode(el, { code, language, fileName? })` | Highlighted code in the app's style. |
+| `renderIcon(el, name, { size? })` | One of the app's icons. |
+| `emit(event, payload?)` | Event to the host, e.g. `update:modelValue`. |
+
+Host guarantees: `BlockHost.vue` owns `el` (rendered with `display: contents`, so the block's root lays out as a direct child of the card), calls `update` when props change and `unmount` before removing it. A block that throws in `mount`, `update`, `unmount`, `normalize` or `describe` is logged and skipped; the lesson keeps working.
+
+Data versioning: when a lesson is generated, the store stamps each visualization with `blockVersion` (`stampBlockVersion` in `catalog.ts`). `readLessonVisualization` passes it to `normalize`; data saved before versioning reports `1.0.0`.
 
 ### Why `mount()` and not a shared Vue component
 
@@ -52,7 +81,7 @@ The plugin API is framework-agnostic:
 - plugin authors can use any framework or plain canvas/SVG;
 - props are serializable data and all communication goes through `ctx` (events, translation, theme), so external plugins can later be moved into a sandboxed iframe without changing the API.
 
-Built-in blocks stay Vue components wrapped with a `vueBlock(Component)` adapter. Theming is exposed through CSS variables.
+Built-in blocks stay Vue components wrapped with `vueBlock(Component)` (`src/blocks/vue-block.ts`). It mounts each block as its own small Vue app, passes `data` as the `config` prop plus only the host props the component declares, forwards the component's declared events to `ctx.emit`, and provides `ctx` under `BLOCK_CONTEXT` for `inject`. Blocks therefore cannot rely on the host app's plugins (Pinia, router) or provide/inject; module-level state such as the glossary is shared. Theming is exposed through CSS variables.
 
 ## Token budget: three levels
 
@@ -116,20 +145,25 @@ A block is one self-contained folder: data, logic, view and translations.
 
 ```
 src/blocks/
-├── schema.ts            BlockSpec type and strict-schema helpers (server-safe)
-├── catalog.ts           BLOCK_SPECS, visualizationSchema(), visualizationInstructions() (server-safe)
-├── types.ts             BlockDefinition: spec + normalize, describe, component
+├── schema.ts            BlockSpec (manifest shape), BLOCK_API_VERSION, strict-schema helpers (server-safe)
+├── catalog.ts           BLOCK_SPECS, selectBlocks, schema/instructions builders, stampBlockVersion (server-safe)
+├── types.ts             public API: BlockModule, BlockProps, BlockContext, BlockInstance, BlockDefinition
 ├── registry.ts          renderer registry: readLessonVisualization, describeVisualization
+├── context.ts           the app's BlockContext implementation
+├── vue-block.ts         vueBlock(Component) adapter and BLOCK_CONTEXT injection key
+├── BlockHost.vue        mounts a block through mount() and keeps it in sync
 ├── helpers.ts           shared normalizer helpers
 ├── shared/              UI shared by several built-in blocks (StepControls), with its own messages
 └── <id>/
-    ├── spec.ts          data half: id, schema, instructions
-    ├── index.ts         code half: normalize, describe, component
+    ├── spec.ts          data half: id, version, engine, summary, schema, instructions
+    ├── index.ts         code half: normalize, describe, mount: vueBlock(View), locales
     ├── <Name>.vue       view
     ├── <logic>.ts       domain logic, when the block has any (simulation.ts, regression.ts, expression.ts)
-    ├── messages.ts      the block's own t()
+    ├── messages.ts      the block's catalogs and its own t()
     └── locales/pl.ts    the block's translations
 ```
+
+Built-in blocks have no `manifest.json` file: `spec.ts` is the manifest in TypeScript form, with the same fields. For external plugins (stage 4) the loader builds the same `BlockSpec` from `manifest.json`, `schema.json` and `instructions.md`.
 
 Adding a built-in block means one folder plus one line in `catalog.ts` and one in `registry.ts`. `tests/unit/blocks.test.ts` fails if the two lists diverge.
 
@@ -142,24 +176,24 @@ Translations belong to the module that uses them, so a plugin ships its own and 
 - `tests/unit/blocks.test.ts` fails when a block calls `t()` with a message missing from its own `locales/pl.ts`, or imports the app's `t`.
 - For external plugins (stage 4) the catalogs become `locales/<lang>.json` data files listed in the manifest, and `ctx.t` replaces the import of `messages.ts`. Adding an interface language later means adding a file per plugin, not touching the app.
 
-## What blocks still import from the app (future SDK surface)
+## What built-in blocks still import from the app
 
-Built-in blocks may import app modules. External plugins cannot. Everything below must be offered through `ctx` (or an SDK package) in stage 3:
+Built-in blocks may import app modules; external plugins cannot and use `ctx` instead. Each import below has its `ctx` equivalent since stage 3. The built-in views keep the direct imports because rewriting their templates around `ctx` would add risk without changing behavior.
 
-| Import | Used by | Becomes |
+| Import | Used by | Plugin equivalent |
 |---|---|---|
 | `components/Markdown.vue` | 9 files | `ctx.renderMarkdown` |
 | `components/CodeBlock.vue` | 4 files | `ctx.renderCode` |
-| `components/Icon.vue` | 3 files | `ctx.icon` or a bundled icon set |
-| `components/CodeTutor.vue` | code-comparison | stays built-in only (tied to lesson navigation) |
-| `lib/i18n.ts` `numberFormatter`, `uiLocale` | value-chart, linear-regression, system-sim | `ctx.locale`, `ctx.formatNumber` |
+| `components/Icon.vue` | 3 files | `ctx.renderIcon` |
+| `components/CodeTutor.vue` | code-comparison | none; stays built-in only (tied to lesson navigation) |
+| `lib/i18n.ts` `numberFormatter`, `uiLocale` | value-chart, linear-regression, system-sim | `ctx.formatNumber`, `ctx.locale` |
 | `vue` | all views | not shared; plugins bundle their own framework |
 
 ## Stages
 
 1. **Internal registry, no behavior change.** *(done)* `BlockSpec` (data) and `BlockDefinition` (code) interfaces. The 10 visualizations move to `src/blocks/<id>/`. `server/prompts.ts` builds the visualization schema and instructions from the registry. `LearnCard.vue`, the tutor context and the examples composable read from the registry. The generated prompt and schema stay byte-for-byte identical.
 2. **Catalog and per-lesson block selection.** *(done; `tags` deferred)* `summary`/`tags` on specs, a `blocks` field on plan lessons, and the lesson prompt contains only the selected specs.
-3. **Data/code split and `mount()`.** Built-in blocks described by the same manifest shape as external ones; the `vueBlock` adapter; the SDK surface above exposed through `ctx`; versioned block data. Remove the `code-comparison` special case in `LearnCard.vue` (its step state is shared with lesson navigation).
+3. **Data/code split and `mount()`.** *(done)* Built-in blocks described by the same manifest shape as external ones; the `vueBlock` adapter; the SDK surface above exposed through `ctx`; versioned block data. Not done: removing the `code-comparison` special case in `LearnCard.vue`. Lesson navigation drives the comparison's steps (Next/Back walk through them before leaving the card), so it now goes through generic host props and `ctx.emit`, but `LearnCard` still knows it by id. Making this generic needs a "stepper" capability blocks can declare; that waits until a second block needs it.
 4. **Runtime loader.** `<userData>/plugins`, `GET /api/plugins`, dynamic `import()`, and an example plugin in `examples/` built separately from the app. This proves installation without a rebuild.
 5. **Extensions screen.** Install from file, disable, uninstall, placeholder for missing blocks.
 6. **Later.** Remote catalog, iframe isolation, pluggable *exercise types* with a grading contract (correct / almost / wrong and a score feed progress and spaced repetition), so non-programming domains stop being squeezed into `code` and `choice`.

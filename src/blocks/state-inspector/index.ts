@@ -1,13 +1,14 @@
 import StateInspector from './StateInspector.vue'
-import { t } from './messages.ts'
+import { catalogs, t } from './messages.ts'
 import { hasText, lineCount, list, numbered, pairs, validLine } from '../helpers.ts'
 import type { BlockDefinition } from '../types.ts'
+import { vueBlock } from '../vue-block.ts'
 import { spec } from './spec.ts'
 
 export const block: BlockDefinition = {
   ...spec,
-  component: StateInspector,
-  usesCodeLanguage: true,
+  mount: vueBlock(StateInspector),
+  locales: catalogs,
   // The code listing is optional here; without it the card keeps its own example.
   ownsCode: (visualization) => !!visualization.code,
 

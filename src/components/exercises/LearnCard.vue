@@ -4,7 +4,9 @@ import { computed, ref } from 'vue'
 import Markdown from '../Markdown.vue'
 import CodeBlock from '../CodeBlock.vue'
 import Icon from '../Icon.vue'
+import BlockHost from '../../blocks/BlockHost.vue'
 import { blockDefinition, readLessonVisualization } from '../../blocks/registry.ts'
+import type { BlockProps } from '../../blocks/types.ts'
 
 const props = defineProps({
   exercise: { type: Object, required: true },
@@ -17,10 +19,15 @@ const visualization = computed(() => readLessonVisualization(props.exercise))
 const block = computed(() => visualization.value && blockDefinition(visualization.value.type))
 // The comparison shares its active variant and step with lesson navigation.
 const isComparison = computed(() => visualization.value?.type === 'code-comparison')
-const visualizationProps = computed(() => {
-  if (isComparison.value) return { codeLanguage: language.value, modelValue: activeVariant.value, step: props.comparisonStep }
-  return block.value?.usesCodeLanguage ? { codeLanguage: language.value } : {}
-})
+const blockProps = computed<BlockProps>(() => ({
+  data: visualization.value,
+  codeLanguage: language.value,
+  ...(isComparison.value && { modelValue: activeVariant.value, step: props.comparisonStep }),
+}))
+
+function onBlockEvent(name: string, payload: unknown) {
+  if (isComparison.value && name === 'update:modelValue') activeVariant.value = payload as number
+}
 const language = computed(() => props.exercise.codeLanguage || 'javascript')
 // Use the lesson’s worked example in place of a separate code listing.
 const ownsCode = computed(() => !!block.value?.ownsCode?.(visualization.value))
@@ -37,13 +44,7 @@ function saveConcept(concept) {
     <span class="kind label"><Icon name="bulb" :size="16" :stroke="2.6" />{{ t('Knowledge card') }}</span>
     <Markdown tag="h1" fit-heading class="title" :src="exercise.title || t('New concept')" inline />
     <Markdown class="body" :src="exercise.prompt" />
-    <component
-      v-if="block"
-      :is="block.component"
-      :config="visualization"
-      v-bind="visualizationProps"
-      @update:model-value="activeVariant = $event"
-    />
+    <BlockHost v-if="block" :block="block" :block-props="blockProps" @event="onBlockEvent" />
     <div v-if="!ownsCode && exercise.code?.trim()" class="example">
       <button type="button" class="btn btn-ghost btn-sm" @click="$emit('trace')" @keydown.enter.stop>
         <Icon name="play" :size="16" />{{ t('Trace the example') }}

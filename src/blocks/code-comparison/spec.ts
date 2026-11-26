@@ -3,6 +3,8 @@ import type { BlockSpec } from '../schema.ts'
 
 export const spec: BlockSpec = {
   id: 'code-comparison',
+  version: '1.0.0',
+  engine: '^1.0.0',
   summary: 'Two variants of the same code side by side, stepped line by line, for when a single decision changes the outcome.',
   schema: {
     variants: arr(obj({ label: str, code: str, outcome: str, steps: arr(obj({ line: int, say: str })) })),

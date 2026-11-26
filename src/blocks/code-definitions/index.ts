@@ -1,12 +1,14 @@
 import CodeDefinitions from './CodeDefinitions.vue'
 import { hasText, list } from '../helpers.ts'
 import type { BlockDefinition } from '../types.ts'
+import { vueBlock } from '../vue-block.ts'
+import { catalogs } from './messages.ts'
 import { spec } from './spec.ts'
 
 export const block: BlockDefinition = {
   ...spec,
-  component: CodeDefinitions,
-  usesCodeLanguage: true,
+  mount: vueBlock(CodeDefinitions),
+  locales: catalogs,
   ownsCode: () => true,
 
   normalize({ instruction, code, terms }) {

@@ -3,6 +3,8 @@ import type { BlockSpec } from '../schema.ts'
 
 export const spec: BlockSpec = {
   id: 'diagnosis',
+  version: '1.0.0',
+  engine: '^1.0.0',
   summary: 'Troubleshooting a failure: follow checks along the data path, then pick the cause.',
   schema: {
     instruction: str,

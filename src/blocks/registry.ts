@@ -9,6 +9,7 @@ import { block as logicCircuit } from './logic-circuit/index.ts'
 import { block as stepOrdering } from './step-ordering/index.ts'
 import { block as diagnosis } from './diagnosis/index.ts'
 import { block as systemSim } from './system-sim/index.ts'
+import { UNVERSIONED } from './catalog.ts'
 import type { BlockDefinition } from './types.ts'
 
 export { readComparisonSteps } from './code-comparison/index.ts'
@@ -31,11 +32,24 @@ export function readLessonVisualization(exercise) {
   if (exercise?.type !== 'learn') return null
   // Older lessons stored a comparison directly on the exercise.
   const visualization = exercise.visualization ?? { type: 'code-comparison', variants: exercise.comparison }
-  return BLOCKS.get(visualization?.type)?.normalize(visualization) ?? null
+  const block = BLOCKS.get(visualization?.type)
+  if (!block) return null
+  try {
+    return block.normalize(visualization, { version: visualization.blockVersion ?? UNVERSIONED }) ?? null
+  } catch (err) {
+    // Treat a crashing normalizer like invalid data instead of breaking the lesson.
+    console.error(`[block ${block.id}] normalize failed`, err)
+    return null
+  }
 }
 
 /** Describe a normalized visualization for the tutor chat. */
 export function describeVisualization(visualization) {
   if (!visualization) return ''
-  return BLOCKS.get(visualization.type)?.describe(visualization) ?? ''
+  try {
+    return BLOCKS.get(visualization.type)?.describe(visualization) ?? ''
+  } catch (err) {
+    console.error(`[block ${visualization.type}] describe failed`, err)
+    return ''
+  }
 }

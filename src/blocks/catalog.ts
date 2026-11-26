@@ -20,6 +20,15 @@ export const BLOCK_SPECS: readonly BlockSpec[] = [
 
 export const BLOCK_IDS = BLOCK_SPECS.map((spec) => spec.id)
 
+/** Stored data written before blocks were versioned counts as the first version. */
+export const UNVERSIONED = '1.0.0'
+
+/** Record which block version produced the data, so a later version can migrate it. */
+export function stampBlockVersion<T extends { type?: unknown }>(visualization: T): T & { blockVersion?: string } {
+  const spec = BLOCK_SPECS.find((candidate) => candidate.id === visualization?.type)
+  return spec ? { ...visualization, blockVersion: spec.version } : visualization
+}
+
 /**
  * Blocks the lesson generator may use, in catalog order. Lessons from plans made
  * before the planner chose blocks have no `blocks` field and get every block.

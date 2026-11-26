@@ -3,6 +3,8 @@ import type { BlockSpec } from '../schema.ts'
 
 export const spec: BlockSpec = {
   id: 'linear-regression',
+  version: '1.0.0',
+  engine: '^1.0.0',
   summary: 'A scatter plot where the learner fits a line with a slider and watches residuals and mean squared error.',
   schema: {
     instruction: str,

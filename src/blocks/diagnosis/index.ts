@@ -1,11 +1,14 @@
 import Diagnosis from './Diagnosis.vue'
 import { hasText, list } from '../helpers.ts'
 import type { BlockDefinition } from '../types.ts'
+import { vueBlock } from '../vue-block.ts'
+import { catalogs } from './messages.ts'
 import { spec } from './spec.ts'
 
 export const block: BlockDefinition = {
   ...spec,
-  component: Diagnosis,
+  mount: vueBlock(Diagnosis),
+  locales: catalogs,
 
   normalize({ instruction, symptom, checks, options }) {
     if (![instruction, symptom].every(hasText)) return null

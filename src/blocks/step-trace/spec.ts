@@ -3,6 +3,8 @@ import type { BlockSpec } from '../schema.ts'
 
 export const spec: BlockSpec = {
   id: 'step-trace',
+  version: '1.0.0',
+  engine: '^1.0.0',
   summary: 'A line-by-line execution trace with variable values and output, for when execution order matters.',
   schema: {
     instruction: str,

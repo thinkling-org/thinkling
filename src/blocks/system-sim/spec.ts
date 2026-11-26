@@ -3,6 +3,8 @@ import type { BlockSpec } from '../schema.ts'
 
 export const spec: BlockSpec = {
   id: 'system-sim',
+  version: '1.0.0',
+  engine: '^1.0.0',
   summary: 'A load simulation of an architecture (rate limits, caches, queues, scaling, outages) where the learner picks settings to meet goals.',
   schema: {
     instruction: str,

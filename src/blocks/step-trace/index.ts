@@ -1,12 +1,14 @@
 import StepTrace from './StepTrace.vue'
 import { formatPairs, lineCount, list, numbered, pairs, validLine, hasText } from '../helpers.ts'
 import type { BlockDefinition } from '../types.ts'
+import { vueBlock } from '../vue-block.ts'
+import { catalogs } from './messages.ts'
 import { spec } from './spec.ts'
 
 export const block: BlockDefinition = {
   ...spec,
-  component: StepTrace,
-  usesCodeLanguage: true,
+  mount: vueBlock(StepTrace),
+  locales: catalogs,
   ownsCode: () => true,
 
   normalize({ instruction, code, steps }) {

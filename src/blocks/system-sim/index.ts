@@ -1,6 +1,8 @@
 import SystemSim from './SystemSim.vue'
 import { checkScenario } from './simulation.ts'
 import type { BlockDefinition } from '../types.ts'
+import { vueBlock } from '../vue-block.ts'
+import { catalogs } from './messages.ts'
 import { spec } from './spec.ts'
 
 // Cache validation results because validation evaluates every combination of controls.
@@ -8,7 +10,8 @@ const checkedScenarios = new WeakMap()
 
 export const block: BlockDefinition = {
   ...spec,
-  component: SystemSim,
+  mount: vueBlock(SystemSim),
+  locales: catalogs,
 
   normalize(visualization) {
     if (!checkedScenarios.has(visualization)) {
