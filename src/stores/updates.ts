@@ -1,10 +1,20 @@
 import { defineStore } from 'pinia'
-import { readonly, shallowRef } from 'vue'
+import { computed, readonly, shallowRef } from 'vue'
 import type { DesktopUpdateState, UpdateAction } from '../lib/desktop-updates.ts'
 
 export const useDesktopUpdates = defineStore('desktop-updates', () => {
   const state = shallowRef<DesktopUpdateState | null>(null)
   const pending = shallowRef(false)
+  const promptDismissed = shallowRef(false)
+  const showStartupPrompt = computed(() => !promptDismissed.value
+    && state.value?.status === 'available' && state.value.promptAtStartup === true)
+
+  function dismissPrompt() {
+    if (promptDismissed.value) return
+    promptDismissed.value = true
+    // Acknowledge in Electron too, so reloading the renderer does not reopen the popup.
+    window.thinklingUpdates?.dismissPrompt().catch(console.error)
+  }
 
   function connect() {
     const bridge = window.thinklingUpdates
@@ -35,5 +45,5 @@ export const useDesktopUpdates = defineStore('desktop-updates', () => {
     }
   }
 
-  return { state: readonly(state), pending: readonly(pending), connect, act }
+  return { state: readonly(state), pending: readonly(pending), showStartupPrompt, dismissPrompt, connect, act }
 })

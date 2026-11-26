@@ -84,6 +84,20 @@ app.on('browser-window-created', (_event, window) => {
       const evaluate = (code) => page.executeJavaScript(code)
       await waitFor(() => evaluate('Boolean(window.flushThinklingSave && document.querySelector("#app").textContent.length)'), 'frontend mount')
       assert.equal((await evaluate('window.thinklingUpdates.getState()')).status, 'available')
+      await waitFor(() => evaluate('Boolean(document.querySelector(".update-prompt")?.open)'), 'startup update popup')
+      assert.equal(await evaluate('document.querySelector(".prompt-title").textContent'), 'Dostępna aktualizacja')
+      assert.equal(await evaluate('document.activeElement.classList.contains("prompt-later")'), true)
+      await evaluate('new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))')
+      fs.writeFileSync(path.join(root, 'release/update-prompt.png'), (await window.capturePage()).toPNG())
+      await evaluate('document.querySelector(".prompt-later").click()')
+      await waitFor(() => evaluate('!document.querySelector(".update-prompt").open'), 'dismissed startup popup')
+      await waitFor(async () => !(await evaluate('window.thinklingUpdates.getState()')).promptAtStartup, 'dismissal acknowledged in Electron')
+      await new Promise(resolve => {
+        page.once('did-finish-load', resolve)
+        page.reload()
+      })
+      await waitFor(() => evaluate('Boolean(window.flushThinklingSave && document.querySelector("#app").textContent.length)'), 'frontend remount')
+      assert.equal(await evaluate('document.querySelector(".update-prompt").open'), false)
       await evaluate('history.pushState({}, "", "/settings"); dispatchEvent(new PopStateEvent("popstate"))')
       await waitFor(() => evaluate('Boolean(document.querySelector(".desktop-update.compact button"))'), 'available update button')
       assert.equal(downloads, 0)
@@ -91,6 +105,7 @@ app.on('browser-window-created', (_event, window) => {
       assert.equal(await evaluate('typeof require'), 'undefined')
       assert.equal(await evaluate('document.querySelectorAll(".desktop-update").length'), 2)
       assert.equal(await evaluate('document.querySelector(".app-version").textContent'), `v${app.getVersion()}`)
+      assert.equal(await evaluate('document.querySelector(".update-prompt").open'), false)
 
       // Another window with the same preload cannot use privileged update commands.
       const stranger = new BrowserWindow({ show: false, webPreferences: {

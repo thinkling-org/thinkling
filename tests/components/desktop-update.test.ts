@@ -23,6 +23,7 @@ beforeEach(() => {
     check: vi.fn().mockResolvedValue(initial),
     download: vi.fn().mockResolvedValue(initial),
     install: vi.fn().mockResolvedValue(initial),
+    dismissPrompt: vi.fn().mockResolvedValue(initial),
     onState: vi.fn((listener) => { receive = listener; return vi.fn() }),
   }
   window.thinklingUpdates = bridge

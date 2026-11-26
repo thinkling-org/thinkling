@@ -9,6 +9,7 @@ export interface DesktopUpdateState {
   availableVersion?: string
   percent?: number
   retry?: UpdateAction
+  promptAtStartup?: boolean
 }
 
 export interface DesktopUpdates {
@@ -16,5 +17,6 @@ export interface DesktopUpdates {
   check(): Promise<DesktopUpdateState>
   download(): Promise<DesktopUpdateState>
   install(): Promise<DesktopUpdateState>
+  dismissPrompt(): Promise<DesktopUpdateState>
   onState(listener: (state: DesktopUpdateState) => void): () => void
 }

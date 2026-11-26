@@ -69,7 +69,9 @@ wybrać katalog danych; poprzednia zmienna `CODENOMS_DATA` nadal działa jako op
 Wewnętrzny identyfikator aplikacji Windows i nazwy zasobów Dockera również pozostają bez zmian.
 
 Zainstalowana aplikacja Windows sprawdza publiczne [GitHub Releases](https://github.com/thinkling-org/thinkling/releases)
-przy uruchomieniu i co sześć godzin. Przycisk **Dostępna aktualizacja** rozpoczyna pobieranie, pokazuje
+przy uruchomieniu i co sześć godzin. Aktualizacja znaleziona przy starcie otwiera okno z przyciskami
+**Pobierz aktualizację** i **Później**. Można je zamknąć przyciskiem Później lub Escape; pojawia się raz
+na sesję aplikacji. Sprawdzanie okresowe i ręczne korzysta z przycisku w nagłówku. Przycisk **Dostępna aktualizacja** rozpoczyna pobieranie, pokazuje
 postęp, a następnie zmienia się w **Uruchom ponownie i zaktualizuj**. Pobieranie i restart wymagają
 kliknięcia. Zwykłe zamknięcie aplikacji nie instaluje pobranej aktualizacji. W ustawieniach są wersja,
 ręczne sprawdzanie i lista zmian. W przeglądarce te elementy są ukryte, a w desktopowym trybie developerskim

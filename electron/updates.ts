@@ -17,6 +17,7 @@ export function createDesktopUpdates({ updater, enabled, currentVersion, prepare
 }) {
   let state: DesktopUpdateState = { status: enabled ? 'idle' : 'disabled', currentVersion }
   let operation: UpdateAction | undefined
+  let promptAtStartup = false
   updater.autoDownload = false
   updater.autoInstallOnAppQuit = false
   updater.allowPrerelease = false
@@ -34,7 +35,10 @@ export function createDesktopUpdates({ updater, enabled, currentVersion, prepare
   }
 
   updater.on('update-available', (info) => {
-    if (state.status === 'checking') set({ currentVersion, status: 'available', availableVersion: info.version })
+    if (state.status === 'checking') set({
+      currentVersion, status: 'available', availableVersion: info.version,
+      ...(promptAtStartup ? { promptAtStartup: true } : {}),
+    })
   })
   updater.on('update-not-available', () => {
     if (state.status === 'checking') set({ currentVersion, status: 'current' })
@@ -69,10 +73,15 @@ export function createDesktopUpdates({ updater, enabled, currentVersion, prepare
 
   return {
     getState: () => ({ ...state }),
-    async check() {
+    dismissPrompt() {
+      if (state.promptAtStartup) set({ ...state, promptAtStartup: false })
+      return { ...state }
+    },
+    async check(notifyAtStartup = false) {
       // Do not discard an available or downloaded installer on periodic checks.
       if (!enabled || operation || !['idle', 'current', 'error'].includes(state.status)
         || (state.status === 'error' && state.retry !== 'check')) return { ...state }
+      promptAtStartup = notifyAtStartup
       set({ currentVersion, status: 'checking' })
       return run('check', () => updater.checkForUpdates())
     },

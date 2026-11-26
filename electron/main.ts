@@ -126,6 +126,7 @@ async function start() {
     'updates:check': updates.check,
     'updates:download': updates.download,
     'updates:install': updates.install,
+    'updates:dismiss-prompt': updates.dismissPrompt,
   }
   for (const [channel, handler] of Object.entries(handlers)) {
     ipcMain.handle(channel, (event) => {
@@ -135,7 +136,7 @@ async function start() {
     })
   }
   if (app.isPackaged && process.platform === 'win32') {
-    page.once('did-finish-load', () => { if (!quitting) void updates.check() })
+    page.once('did-finish-load', () => { if (!quitting) void updates.check(true) })
     updateTimer = setInterval(() => { if (!quitting) void updates.check() }, 6 * 60 * 60 * 1_000)
     updateTimer.unref()
   }

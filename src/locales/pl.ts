@@ -1,4 +1,9 @@
 export default {
+  "An update is available": "Dostępna aktualizacja",
+  "Thinkling {0} is ready to download.": "Thinkling {0} jest gotowy do pobrania.",
+  "You can keep using the app while it downloads. Restart when you are ready.": "Podczas pobierania możesz dalej korzystać z aplikacji. Uruchom ją ponownie w dogodnym momencie.",
+  "Later": "Później",
+  "Download update": "Pobierz aktualizację",
   "Installed version: {0}": "Zainstalowana wersja: {0}",
   "Application updates": "Aktualizacje aplikacji",
   "Update available · {0}": "Dostępna aktualizacja · {0}",

@@ -33,6 +33,16 @@ beforeEach(() => vi.spyOn(console, 'error').mockImplementation(() => {}))
 afterEach(() => vi.restoreAllMocks())
 
 describe('desktop update lifecycle', () => {
+  it('requests a popup only for an update discovered by the startup check', async () => {
+    const startup = setup()
+    expect(await startup.updates.check(true)).toMatchObject({ status: 'available', promptAtStartup: true })
+    expect(startup.updater.downloadUpdate).not.toHaveBeenCalled()
+    expect(startup.updates.dismissPrompt().promptAtStartup).toBe(false)
+    expect(startup.updates.getState().status).toBe('available')
+    const background = setup()
+    expect((await background.updates.check()).promptAtStartup).toBeUndefined()
+  })
+
   it('never contacts the update feed in development or on unsupported platforms', async () => {
     const { updater, updates, prepareInstall } = setup(false)
     await updates.check()

@@ -8,6 +8,7 @@ const updates: DesktopUpdates = {
   check: () => ipcRenderer.invoke('updates:check'),
   download: () => ipcRenderer.invoke('updates:download'),
   install: () => ipcRenderer.invoke('updates:install'),
+  dismissPrompt: () => ipcRenderer.invoke('updates:dismiss-prompt'),
   onState(listener) {
     const receive = (_event: Electron.IpcRendererEvent, state: DesktopUpdateState) => listener(state)
     ipcRenderer.on('updates:changed', receive)

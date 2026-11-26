@@ -71,7 +71,9 @@ overrides the data directory; the previous `CODENOMS_DATA` variable remains supp
 The internal Windows application ID and Docker resource names also remain stable for compatibility.
 
 Installed Windows builds check public [GitHub Releases](https://github.com/thinkling-org/thinkling/releases)
-at startup and every six hours. The header offers a download when a newer stable version is available,
+at startup and every six hours. A startup update opens a popup with **Download update** and **Later**.
+Dismiss it with Later or Escape; it appears once per app session. Periodic and manual checks use the
+header without interrupting the current activity. The header offers a download when a newer stable version is available,
 shows download progress, and then offers **Restart and update**. Downloading and restarting both require
 a click. Closing the app normally does not install a pending update. Settings shows the current version,
 a manual update check, and release notes. Update controls are hidden in the browser; development desktop
