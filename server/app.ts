@@ -11,7 +11,6 @@ import { readState, writeState } from './store.ts'
 import * as P from './prompts.ts'
 import { WebSocketServer } from 'ws'
 import * as SB from './sandbox.ts'
-import { registerSpeech } from './speech.ts'
 import { registerDictation } from './dictation.ts'
 import { registerSetup, features } from './setup.ts'
 import { initializeLocale, localeForRequest, runWithRequestLocale, t } from './locale.ts'
@@ -213,7 +212,6 @@ export async function startServer({ host, port, resourceRoot = PROJECT_ROOT, sys
   app.use(express.json({ limit: '5mb' }))
 
   registerDictation(app, resourceRoot)
-  registerSpeech(app, resourceRoot)
   registerSetup(app, resourceRoot)
   app.use(routes)
 

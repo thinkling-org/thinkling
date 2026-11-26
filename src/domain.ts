@@ -256,7 +256,6 @@ export interface Settings extends ProviderPreference {
   jsRuntime: 'browser' | 'docker'
   setupDone: boolean
   locale: string
-  voiceDesign?: Record<string, number>
 }
 
 export interface PersistedState {
@@ -286,7 +285,7 @@ export interface ProviderStatus {
 export interface AppStatus {
   port?: number
   providers: Partial<Record<ProviderId, ProviderStatus>>
-  features?: { dictation?: boolean; voice?: boolean }
+  features?: { dictation?: boolean }
   error?: boolean
 }
 
