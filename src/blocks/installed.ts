@@ -84,12 +84,11 @@ let loaderOptions = {
 }
 
 /**
- * Bring the loaded blocks in line with what is installed: load new and updated plugins,
- * drop disabled and removed ones. Never throws: a broken plugin is reported in
- * pluginProblems and the rest still load. Options replace the fetch and import used
- * (tests) and are kept for later reloads.
+ * Load new and updated plugins and drop disabled or removed ones. A plugin import
+ * failure is reported without blocking the others; a listing failure preserves the
+ * last known catalog. Loader overrides are retained for subsequent reloads.
  */
-export async function loadInstalledBlocks(options: Partial<typeof loaderOptions> = {}) {
+export async function loadInstalledBlocks(options: Partial<typeof loaderOptions> = {}): Promise<void> {
   loaderOptions = { ...loaderOptions, ...options }
   try {
     let list: PluginList
@@ -99,28 +98,44 @@ export async function loadInstalledBlocks(options: Partial<typeof loaderOptions>
       console.warn('[plugins] could not list installed plugins', err)
       return
     }
-    const enabled = list.plugins.filter((info) => info.enabled !== false)
-    installedPlugins.splice(0, installedPlugins.length, ...list.plugins)
-    const problems: PluginProblem[] = list.errors.map(({ folder, error }) => ({ plugin: folder, folder, error }))
-    for (const id of [...installedBlocks.keys()]) {
-      if (!enabled.some((info) => info.id === id)) installedBlocks.delete(id)
-    }
-    await Promise.all(enabled.map(async (info) => {
-      const loaded = installedBlocks.get(info.id)
-      if (loaded?.version === info.version) return
-      try {
-        // The version in the URL makes the browser fetch an updated entry instead of its cached module.
-        const definition = toBlockDefinition(info, await loaderOptions.importModule(`${info.entry}?v=${encodeURIComponent(info.version)}`))
-        if (loaded) pluginState.restartRecommended = true
-        installedBlocks.set(info.id, definition)
-      } catch (err) {
-        problems.push({ plugin: info.id, folder: info.folder, error: err?.message || String(err) })
-      }
-    }))
-    pluginProblems.splice(0, pluginProblems.length, ...problems)
-    for (const problem of problems) console.warn(`[plugins] ${problem.plugin}: ${problem.error}`)
+    await synchronizeInstalledBlocks(list)
   } finally {
     pluginState.ready = true
+  }
+}
+
+async function synchronizeInstalledBlocks(list: PluginList): Promise<void> {
+  const enabled = list.plugins.filter((info) => info.enabled !== false)
+  const enabledIds = new Set(enabled.map((info) => info.id))
+  installedPlugins.splice(0, installedPlugins.length, ...list.plugins)
+  for (const id of installedBlocks.keys()) {
+    if (!enabledIds.has(id)) installedBlocks.delete(id)
+  }
+
+  const problems: PluginProblem[] = list.errors.map(({ folder, error }) => ({ plugin: folder, folder, error }))
+  await Promise.all(enabled.map(async (info) => {
+    const problem = await loadPluginBlock(info)
+    if (problem) problems.push(problem)
+  }))
+  pluginProblems.splice(0, pluginProblems.length, ...problems)
+  for (const problem of problems) console.warn(`[plugins] ${problem.plugin}: ${problem.error}`)
+}
+
+async function loadPluginBlock(info: InstalledPluginInfo): Promise<PluginProblem | null> {
+  const loaded = installedBlocks.get(info.id)
+  if (loaded?.version === info.version) return null
+
+  try {
+    // A versioned URL bypasses the browser's cache when an entry is updated.
+    const url = `${info.entry}?v=${encodeURIComponent(info.version)}`
+    const module = await loaderOptions.importModule(url)
+    const definition = toBlockDefinition(info, module)
+    if (loaded) pluginState.restartRecommended = true
+    installedBlocks.set(info.id, definition)
+    return null
+  } catch (err) {
+    // An unsuccessful update keeps the last working definition available to lessons.
+    return { plugin: info.id, folder: info.folder, error: err?.message || String(err) }
   }
 }
 

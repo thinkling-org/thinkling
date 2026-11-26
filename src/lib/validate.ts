@@ -15,82 +15,110 @@ interface Verification {
 }
 type Repair = Partial<Exercise> & { note?: string }
 
-/** Run the test suite in a container with the solution and the starter files. */
-async function verifyDocker(ex: Exercise, language: string, onStage?: Stage): Promise<Verification> {
-  let cur = { files: ex.files, testFiles: ex.testFiles, solutionFiles: ex.solutionFiles, testCommand: ex.testCommand }
+interface VerificationRuns {
+  solutionRun: TestRun
+  starterRun: TestRun
+}
+
+/** Runtime-specific execution and repair; the verification policy is shared. */
+interface VerificationAdapter<Patch extends Partial<Exercise>> {
+  run(patch: Patch): Promise<VerificationRuns>
+  repair(patch: Patch, runs: VerificationRuns): Promise<{ patch: Patch; note: string }>
+  afterRepair?(): void
+}
+
+export async function verifyExercise(exercise: Exercise, planLanguage?: string, { onStage }: { onStage?: Stage } = {}): Promise<Verification> {
+  if (exercise.runtime === 'docker') return verifyDocker(exercise, String(planLanguage || exercise.codeLanguage).toLowerCase(), onStage)
+  if (exercise.runtime === 'review') return { status: 'review-only' }
+  const language = String(exercise.codeLanguage || planLanguage || 'javascript').toLowerCase()
+  if (!RUNNABLE.includes(language)) return { status: 'review-only' }
+
+  return verifyBrowser(exercise, language, onStage)
+}
+
+async function verifyWithRepair<Patch extends Partial<Exercise>>(
+  initial: Patch,
+  adapter: VerificationAdapter<Patch>,
+  onStage?: Stage,
+): Promise<Verification> {
+  let current = initial
   let note = ''
   for (let attempt = 0; attempt < 2; attempt++) {
-    let solutionRun: TestRun
-    let starterRun: TestRun
+    let runs: VerificationRuns
     try {
-      onStage?.('validating')
-      solutionRun = await sandbox.verify(
-        { language, files: mergeFiles(cur.files, cur.solutionFiles, cur.testFiles), testCommand: cur.testCommand },
-        (m) => onStage?.('building', m),
-      )
-      onStage?.('validating')
-      starterRun = await sandbox.verify({ language, files: mergeFiles(cur.files, cur.testFiles), testCommand: cur.testCommand })
+      runs = await adapter.run(current)
     } catch (err: unknown) {
       return { status: 'unverified', note: err instanceof Error ? err.message : String(err) }
     }
+
+    const { solutionRun, starterRun } = runs
     const ok = allTestsPassed(solutionRun) && failsSomething(starterRun)
-    const patch = attempt > 0 ? cur : undefined
+    const patch = attempt > 0 ? current : undefined
     if (ok) return { status: 'verified', patch, fixed: attempt > 0, total: solutionRun.results.length, note }
     if (attempt === 1) return { status: 'unverified', patch, note }
+
     onStage?.('fixing')
     try {
-      const fix = await ai<Repair>('fixTests', { exercise: { ...ex, ...cur }, language, solutionRun, starterRun, runtime: 'docker' })
-      cur = {
-        files: fix.files?.length ? fix.files : cur.files,
-        testFiles: fix.testFiles?.length ? fix.testFiles : cur.testFiles,
-        solutionFiles: fix.solutionFiles?.length ? fix.solutionFiles : cur.solutionFiles,
-        testCommand: fix.testCommand?.trim() || cur.testCommand,
-      }
-      note = fix.note || ''
+      const repaired = await adapter.repair(current, runs)
+      current = repaired.patch
+      note = repaired.note
     } catch {
       return { status: 'unverified' }
     }
+    adapter.afterRepair?.()
   }
   return { status: 'unverified' }
 }
 
 const failsSomething = (run: TestRun) => !!run && !run.timedOut && (!!run.compileError || run.results.some((r) => !r.ok))
 
-export async function verifyExercise(ex: Exercise, planLanguage?: string, { onStage }: { onStage?: Stage } = {}): Promise<Verification> {
-  if (ex.runtime === 'docker') return verifyDocker(ex, String(planLanguage || ex.codeLanguage).toLowerCase(), onStage)
-  if (ex.runtime === 'review') return { status: 'review-only' }
-  const language = String(ex.codeLanguage || planLanguage || 'javascript').toLowerCase()
-  if (!RUNNABLE.includes(language)) return { status: 'review-only' }
-
-  let cur = { tests: ex.tests, solution: ex.solution, starterCode: ex.starterCode }
-  let note = ''
-  for (let attempt = 0; attempt < 2; attempt++) {
-    let solutionRun: TestRun
-    let starterRun: TestRun
-    try {
-      solutionRun = await runTests({ code: cur.solution, tests: cur.tests, language })
-      starterRun = await runTests({ code: cur.starterCode, tests: cur.tests, language })
-    } catch (err: unknown) {
-      return { status: 'unverified', note: err instanceof Error ? err.message : String(err) }
-    }
-    const ok = allTestsPassed(solutionRun) && failsSomething(starterRun)
-    const patch = attempt > 0 ? cur : undefined
-    if (ok) return { status: 'verified', patch, fixed: attempt > 0, total: solutionRun.results.length, note }
-    if (attempt === 1) return { status: 'unverified', patch, note }
-
-    onStage?.('fixing')
-    try {
-      const fix = await ai<Repair>('fixTests', { exercise: { ...ex, ...cur }, language, solutionRun, starterRun })
-      cur = {
-        tests: fix.tests?.trim() ? fix.tests : cur.tests,
-        solution: fix.solution?.trim() ? fix.solution : cur.solution,
-        starterCode: fix.starterCode?.trim() ? fix.starterCode : cur.starterCode,
+async function verifyBrowser(exercise: Exercise, language: string, onStage?: Stage): Promise<Verification> {
+  const initial = { tests: exercise.tests, solution: exercise.solution, starterCode: exercise.starterCode }
+  return verifyWithRepair(initial, {
+    async run(current) {
+      const solutionRun = await runTests({ code: current.solution, tests: current.tests, language })
+      const starterRun = await runTests({ code: current.starterCode, tests: current.tests, language })
+      return { solutionRun, starterRun }
+    },
+    async repair(current, runs) {
+      const fix = await ai<Repair>('fixTests', { exercise: { ...exercise, ...current }, language, ...runs })
+      return {
+        patch: {
+          tests: fix.tests?.trim() ? fix.tests : current.tests,
+          solution: fix.solution?.trim() ? fix.solution : current.solution,
+          starterCode: fix.starterCode?.trim() ? fix.starterCode : current.starterCode,
+        },
+        note: fix.note || '',
       }
-      note = fix.note || ''
-    } catch {
-      return { status: 'unverified' }
-    }
-    onStage?.('validating')
-  }
-  return { status: 'unverified' }
+    },
+    afterRepair: () => onStage?.('validating'),
+  }, onStage)
+}
+
+async function verifyDocker(exercise: Exercise, language: string, onStage?: Stage): Promise<Verification> {
+  const initial = { files: exercise.files, testFiles: exercise.testFiles, solutionFiles: exercise.solutionFiles, testCommand: exercise.testCommand }
+  return verifyWithRepair(initial, {
+    async run(current) {
+      onStage?.('validating')
+      const solutionRun = await sandbox.verify(
+        { language, files: mergeFiles(current.files, current.solutionFiles, current.testFiles), testCommand: current.testCommand },
+        (message) => onStage?.('building', message),
+      )
+      onStage?.('validating')
+      const starterRun = await sandbox.verify({ language, files: mergeFiles(current.files, current.testFiles), testCommand: current.testCommand })
+      return { solutionRun, starterRun }
+    },
+    async repair(current, runs) {
+      const fix = await ai<Repair>('fixTests', { exercise: { ...exercise, ...current }, language, ...runs, runtime: 'docker' })
+      return {
+        patch: {
+          files: fix.files?.length ? fix.files : current.files,
+          testFiles: fix.testFiles?.length ? fix.testFiles : current.testFiles,
+          solutionFiles: fix.solutionFiles?.length ? fix.solutionFiles : current.solutionFiles,
+          testCommand: fix.testCommand?.trim() || current.testCommand,
+        },
+        note: fix.note || '',
+      }
+    },
+  }, onStage)
 }

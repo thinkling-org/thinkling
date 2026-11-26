@@ -47,4 +47,52 @@ describe('guided lesson sequence', () => {
     expect(() => validateLessonFlow('test', intro, sequence().filter(({ stage }) => stage === 'check'))).not.toThrow()
     expect(() => validateLessonFlow('test', intro, sequence())).toThrow()
   })
+
+  it.each(['outcome', 'relevance', 'focus'] as const)('requires the introduction field %s', (field) => {
+    expect(() => validateLessonFlow('code', { ...intro, [field]: ' ' }, sequence()))
+      .toThrow('The model did not generate a complete lesson introduction.')
+  })
+
+  it.each([
+    { name: 'too many exercises', change: (items: Exercise[]) => { items.push(...items.slice(-3)) } },
+    { name: 'no learning card', change: (items: Exercise[]) => { items[0] = { ...items[1] } } },
+    { name: 'too many learning cards', change: (items: Exercise[]) => { items.splice(1, 0, { ...items[0] }, { ...items[0] }) } },
+    { name: 'too little guided practice', change: (items: Exercise[]) => { items[3].stage = 'check'; items[4].stage = 'check' } },
+    { name: 'no independent checks', change: (items: Exercise[]) => { items.splice(5, 2, { ...items[2] }, { ...items[3] }) } },
+    { name: 'unknown stage', change: (items: Exercise[]) => { items[1].stage = 'unknown' as Exercise['stage'] } },
+    { name: 'a non-learning task in the learn stage', change: (items: Exercise[]) => { items[0].type = 'choice' } },
+    { name: 'a learning card outside the learn stage', change: (items: Exercise[]) => { items[1].type = 'learn' } },
+    { name: 'only recognition practice', change: (items: Exercise[]) => { items.forEach((item) => { if (item.stage === 'practice') item.type = 'choice' }); items[5].type = 'open' } },
+    { name: 'practice without hints', change: (items: Exercise[]) => { items[2].hints = []; items[2].hint = ' ' } },
+    { name: 'practice without an explanation', change: (items: Exercise[]) => { items[2].explanation = ' ' } },
+    { name: 'coding practice without a syntax example', change: (items: Exercise[]) => { items[2].syntax = [{ title: 'Empty', code: ' ', explanation: 'Empty' }] } },
+    { name: 'a non-choice challenge', change: (items: Exercise[]) => { items.push({ id: 'challenge', type: 'open', stage: 'challenge', prompt: 'Explain' }) } },
+    { name: 'multiple challenges', change: (items: Exercise[]) => { items.push(...['a', 'b'].map((id): Exercise => ({ id, type: 'choice', stage: 'challenge', prompt: 'Predict' }))) } },
+  ])('rejects $name with the existing validation error', ({ change }) => {
+    const exercises = sequence()
+    change(exercises)
+    expect(() => validateLessonFlow('code', intro, exercises))
+      .toThrow('The model returned the lesson stages in the wrong order.')
+  })
+
+  it('accepts two learning cards, a final optional challenge and the legacy single hint', () => {
+    const exercises = sequence()
+    exercises.splice(1, 0, { ...exercises[0], id: 'second-example' })
+    exercises.push({ id: 'challenge', type: 'choice', stage: 'challenge', prompt: 'One more prediction' })
+    exercises[2].hints = []
+    exercises[2].hint = 'Look at the argument'
+    expect(() => validateLessonFlow('code', intro, exercises)).not.toThrow()
+  })
+
+  it('allows design practice without coding and rejects coding tasks in design lessons', () => {
+    expect(() => validateLessonFlow('design', intro, sequence())).toThrow()
+    const exercises = sequence().map((exercise) => exercise.type === 'code' ? { ...exercise, type: 'open' as const } : exercise)
+    expect(() => validateLessonFlow('design', intro, exercises)).not.toThrow()
+  })
+
+  it('requires a nonempty assessment of independent tasks, without learning cards', () => {
+    expect(() => validateLessonFlow('test', intro, [])).toThrow()
+    expect(() => validateLessonFlow('test', intro, [{ ...sequence()[0], stage: 'check' }])).toThrow()
+    expect(() => validateLessonFlow('test', intro, [{ ...sequence()[1], stage: 'check' }])).not.toThrow()
+  })
 })

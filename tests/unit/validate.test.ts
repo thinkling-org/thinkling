@@ -116,6 +116,33 @@ describe('verifyExercise', () => {
     await expect(verifyExercise(exercise)).resolves.toMatchObject({ status: 'unverified', note: 'Attempted repair' })
     expect(fetchResponse).toHaveBeenCalledTimes(1)
   })
+
+  it('returns the attempted patch even when repaired browser tests still fail', async () => {
+    workerResult.mockReturnValue(fail)
+    fetchResponse.mockResolvedValueOnce(stream({ type: 'done', data: { tests: 'repaired tests', note: 'Tried a different assertion' } }))
+
+    await expect(verifyExercise(exercise)).resolves.toEqual({
+      status: 'unverified', note: 'Tried a different assertion',
+      patch: { tests: 'repaired tests', solution: exercise.solution, starterCode: exercise.starterCode },
+    })
+    expect(workerResult).toHaveBeenCalledTimes(4)
+  })
+
+  it('discards a failed repair and only reports unverified', async () => {
+    workerResult.mockReturnValueOnce(pass).mockReturnValueOnce(pass)
+    fetchResponse.mockResolvedValueOnce(stream({ type: 'error', message: 'Repair unavailable' }))
+    const onStage = vi.fn()
+
+    await expect(verifyExercise(exercise, undefined, { onStage })).resolves.toEqual({ status: 'unverified' })
+    expect(onStage.mock.calls).toEqual([['fixing']])
+  })
+
+  it('accepts a starter compile failure as a failing attempt when the reference passes', async () => {
+    workerResult.mockReturnValueOnce(pass).mockReturnValueOnce({ results: [], compileError: 'Incomplete starter' })
+
+    await expect(verifyExercise(exercise)).resolves.toMatchObject({ status: 'verified', fixed: false })
+    expect(fetchResponse).not.toHaveBeenCalled()
+  })
 })
 
 describe('Docker exercise verification', () => {
@@ -146,6 +173,7 @@ describe('Docker exercise verification', () => {
       } },
     ])
     expect(onStage).toHaveBeenCalledWith('building', 'Preparing Python')
+    expect(onStage.mock.calls).toEqual([['validating'], ['building', 'Preparing Python'], ['validating']])
   })
 
   it('repairs failed container tests once and reuses files omitted from the repair', async () => {
@@ -157,13 +185,15 @@ describe('Docker exercise verification', () => {
       .mockResolvedValueOnce(stream({ type: 'done', data: pass }))
       .mockResolvedValueOnce(stream({ type: 'done', data: fail }))
 
-    await expect(verifyExercise(dockerExercise)).resolves.toMatchObject({
+    const onStage = vi.fn()
+    await expect(verifyExercise(dockerExercise, undefined, { onStage })).resolves.toMatchObject({
       status: 'verified', fixed: true, total: 1,
       patch: { files: dockerExercise.files, solutionFiles: dockerExercise.solutionFiles, testFiles: repaired, testCommand: 'python tests.py' },
     })
     expect(fetchResponse.mock.calls.map(([url]) => url)).toEqual([
       '/api/sandbox/verify', '/api/sandbox/verify', '/api/ai/fixTests', '/api/sandbox/verify', '/api/sandbox/verify',
     ])
+    expect(onStage.mock.calls).toEqual([['validating'], ['validating'], ['fixing'], ['validating'], ['validating']])
   })
 
   it('makes infrastructure failures visible without asking the model to repair the exercise', async () => {
