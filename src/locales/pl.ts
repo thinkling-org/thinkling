@@ -750,4 +750,8 @@ export default {
   "This card uses the “{0}” extension, which is not installed.": "Ta karta korzysta z rozszerzenia „{0}”, które nie jest zainstalowane.",
   "Manage extensions": "Zarządzaj rozszerzeniami",
   "Use in lessons": "Używaj w lekcjach",
+  "Interactive task": "Zadanie interaktywne",
+  "This exercise could not be displayed. It does not count toward your score.": "Nie udało się wyświetlić tego zadania. Nie wlicza się do wyniku.",
+  "This exercise needs an extension that is not available. It does not count toward your score.": "To zadanie wymaga rozszerzenia, które nie jest dostępne. Nie wlicza się do wyniku.",
+  "The model returned an interactive exercise that cannot be checked.": "Model zwrócił zadanie interaktywne, którego nie da się sprawdzić.",
 }

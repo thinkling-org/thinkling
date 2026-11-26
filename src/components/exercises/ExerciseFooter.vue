@@ -32,6 +32,7 @@ const feedback = computed(() => {
   if (!result || result.retry) return { tone: 'idle' }
   const { status, error, data } = result
   if (isError.value) return { tone: 'wrong', title: t('Something went wrong'), message: error }
+  if (result.unavailable) return { tone: 'skipped', title: t('Skipped'), message: t('This exercise needs an extension that is not available. It does not count toward your score.') }
   if (isPractice.value) {
     if (result.solutionRevealed) return { tone: 'skipped', title: t('Solution shown'), message: t('This is practice. Help does not lower your score.') }
     return {
@@ -54,6 +55,13 @@ const feedback = computed(() => {
       tone: status,
       title: status === 'correct' ? TITLES.correct : t('Incorrect'),
       message: exercise.trace?.headline || firstSentence(exercise.explanation),
+    }
+  }
+  if (exercise.type === 'interactive') {
+    return {
+      tone: status,
+      title: status === 'wrong' ? t('Incorrect') : TITLES[status],
+      message: status === 'correct' ? firstSentence(exercise.explanation) : data?.feedback || firstSentence(exercise.explanation),
     }
   }
   return { tone: status, title: TITLES[status], message: data?.headline }

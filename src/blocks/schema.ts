@@ -2,8 +2,19 @@
 // This module and every block spec must stay free of Vue and browser APIs,
 // because the server imports them. See docs/architecture/extensibility.md.
 
-/** Version of the block API this app implements. Blocks declare the range they support in `engine`. */
-export const BLOCK_API_VERSION = '1.0.0'
+/**
+ * Version of the block API this app implements. Blocks declare the range they support in `engine`.
+ * 1.1.0 adds exercise mode (BlockSpec.exercise, BlockModule.grade, ctx.answer); 1.0 blocks keep working.
+ */
+export const BLOCK_API_VERSION = '1.1.0'
+
+/** The exercise half of a block's data: a task the learner does in the block and the app grades. */
+export interface BlockExerciseSpec {
+  /** JSON schema properties of the task data, including what grading needs (e.g. the target value). */
+  schema: Record<string, unknown>
+  /** Model instructions: when to pose such a task and how to fill it. */
+  instructions: string
+}
 
 /**
  * The data half of a block, which is also the manifest shape. Built-in blocks write it in
@@ -22,6 +33,8 @@ export interface BlockSpec {
   schema: Record<string, unknown>
   /** Model instructions: when to use the block and how to fill it. Continuation lines are indented by the prompt builder. */
   instructions: string
+  /** Present when the block can also be an interactive, auto-graded exercise (API 1.1). */
+  exercise?: BlockExerciseSpec
 }
 
 // Strict schemas require all fields and disallow additional properties.

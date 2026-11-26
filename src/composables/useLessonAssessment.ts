@@ -13,6 +13,8 @@ import { computed, reactive, shallowRef, watch } from 'vue'
 import { useApp } from '../stores/app.ts'
 import { ai } from '../lib/api.ts'
 import { allTestsPassed } from '../lib/runner.ts'
+import { gradeInteraction } from '../blocks/registry.ts'
+import type { GradeResult } from '../blocks/types.ts'
 import { play, prepareSfx } from '../lib/sfx.ts'
 
 export function useLessonAssessment({ currentExercise, title, editor, onFeedback, isAssisted = () => false, onSolution = () => {} }: {
@@ -24,7 +26,8 @@ export function useLessonAssessment({ currentExercise, title, editor, onFeedback
   onSolution?: (id: string) => void
 }) {
   const app = useApp()
-  const answers = reactive<Record<string, string | number | null>>({})
+  // Interactive exercises store whatever their block reports (e.g. an order or a number).
+  const answers = reactive<Record<string, unknown>>({})
   const results = reactive<Record<string, ExerciseResult>>({})
   const issues = reactive<Record<string, CodeIssue[]>>({})
   const busy = shallowRef(false)
@@ -35,7 +38,7 @@ export function useLessonAssessment({ currentExercise, title, editor, onFeedback
   function initialize(exercises: Exercise[]) {
     for (const exercise of exercises) {
       if (answers[exercise.id] !== undefined) continue
-      answers[exercise.id] = exercise.type === 'choice' ? null : exercise.type === 'code' ? exercise.starterCode || '' : ''
+      answers[exercise.id] = exercise.type === 'choice' || exercise.type === 'interactive' ? null : exercise.type === 'code' ? exercise.starterCode || '' : ''
       if (exercise.type === 'code') issues[exercise.id] = []
     }
   }
@@ -46,6 +49,8 @@ export function useLessonAssessment({ currentExercise, title, editor, onFeedback
     const answer = answers[currentExercise.value.id]
     if (currentExercise.value.type === 'choice') return answer !== null && answer !== undefined
     if (currentExercise.value.type === 'open') return String(answer || '').trim().length >= 3
+    // The block reports null until its answer is complete.
+    if (currentExercise.value.type === 'interactive') return answer !== null && answer !== undefined
     return true
   })
 
@@ -56,6 +61,37 @@ export function useLessonAssessment({ currentExercise, title, editor, onFeedback
     if (exercise.type === 'choice') return checkChoice(exercise)
     if (exercise.type === 'open') return checkOpen(exercise)
     if (exercise.type === 'code') return checkCode(exercise)
+    if (exercise.type === 'interactive') return checkInteractive(exercise)
+  }
+
+  /** The block grades the answer locally and deterministically; no AI call. */
+  function checkInteractive(exercise: Exercise) {
+    let grade: GradeResult
+    try {
+      grade = gradeInteraction(exercise, answers[exercise.id])
+    } catch (err) {
+      results[exercise.id] = { status: 'error', error: err.message }
+      return
+    }
+    results[exercise.id] = {
+      status: grade.verdict,
+      assisted: isAssisted(exercise.id),
+      data: { score: Math.round(grade.score * 10), summary: grade.feedback, feedback: grade.feedback },
+    }
+    onFeedback('.explain')
+    if (exercise.stage === 'practice' || exercise.stage === 'challenge') return
+    app.recordAnswer({ score: grade.score })
+    xp.value += grade.verdict === 'correct' ? 10 : grade.verdict === 'almost' ? 5 : 0
+    if (grade.verdict !== 'correct') {
+      app.addFlashcards([{ front: exercise.prompt, back: exercise.explanation || '' }], t('mistake from lesson: {0}', [title()]))
+    }
+  }
+
+  /** An interactive exercise whose extension is missing or off: move on without affecting the score. */
+  function skipUnavailable() {
+    const exercise = currentExercise.value
+    if (!exercise || result.value) return
+    results[exercise.id] = { status: 'skipped', unavailable: true }
   }
 
   function checkChoice(exercise: Exercise) {
@@ -120,7 +156,7 @@ export function useLessonAssessment({ currentExercise, title, editor, onFeedback
       editor.value?.showReview()
       const payload: { exercise: Exercise; testResults: TestRun | null; level?: string; files?: WorkspaceFile[]; code?: string | number | null } = { exercise, testResults: run, level: app.plan?.level }
       if (exercise.runtime === 'docker') payload.files = await editor.value.getFiles()
-      else payload.code = answers[exercise.id]
+      else payload.code = answers[exercise.id] as string
       const data = await ai<CodeReview>('reviewCode', payload)
       // Use the model’s review when tests have not been verified.
       const testsOk = !run || allTestsPassed(run) || exercise.testsStatus === 'unverified'
@@ -197,15 +233,15 @@ export function useLessonAssessment({ currentExercise, title, editor, onFeedback
   }
 
   function accuracyFor(exercises: Exercise[]) {
-    const graded = exercises.filter((exercise) => exercise.stage
+    const graded = exercises.filter((exercise) => !results[exercise.id]?.unavailable && (exercise.stage
       ? exercise.stage === 'check'
-      : exercise.type !== 'learn' && !exercise.warmup)
+      : exercise.type !== 'learn' && !exercise.warmup))
     const correct = graded.filter((exercise) => results[exercise.id]?.status === 'correct').length
     return graded.length ? Math.round((correct / graded.length) * 100) : 100
   }
 
   function masteryFor(exercises: Exercise[]): LessonMastery {
-    const checks = exercises.filter(({ stage }) => stage === 'check')
+    const checks = exercises.filter(({ id, stage }) => stage === 'check' && !results[id]?.unavailable)
     const correct = checks.filter(({ id }) => results[id]?.status === 'correct')
     return {
       independent: correct.filter(({ id }) => !results[id].assisted).length,
@@ -216,6 +252,6 @@ export function useLessonAssessment({ currentExercise, title, editor, onFeedback
 
   return {
     answers, issues, result, answeredCount, busy, xp, canCheck, codeRetrying,
-    initialize, reset, accuracyFor, masteryFor, check, retryExercise, skipExercise, dontKnow, revealSolution,
+    initialize, reset, accuracyFor, masteryFor, check, retryExercise, skipExercise, skipUnavailable, dontKnow, revealSolution,
   }
 }

@@ -23,10 +23,16 @@ export const BLOCK_IDS = BLOCK_SPECS.map((spec) => spec.id)
 /** Stored data written before blocks were versioned counts as the first version. */
 export const UNVERSIONED = '1.0.0'
 
-/** Record which block version produced the data, so a later version can migrate it. */
-export function stampBlockVersion<T extends { type?: unknown }>(visualization: T): T & { blockVersion?: string } {
-  const spec = BLOCK_SPECS.find((candidate) => candidate.id === visualization?.type)
-  return spec ? { ...visualization, blockVersion: spec.version } : visualization
+/**
+ * Record which block version produced the data, so a later version can migrate it.
+ * `installed` adds plugin versions (the renderer's list of installed plugins).
+ */
+export function stampBlockVersion<T extends { type?: unknown }>(
+  data: T,
+  installed: readonly { id: string; version: string }[] = [],
+): T & { blockVersion?: string } {
+  const spec = [...BLOCK_SPECS, ...installed].find((candidate) => candidate.id === data?.type)
+  return spec ? { ...data, blockVersion: spec.version } : data
 }
 
 /**
@@ -52,4 +58,22 @@ export function visualizationSchema(specs: readonly BlockSpec[] = BLOCK_SPECS) {
 /** Model instructions for the given blocks, as a nested Markdown list. */
 export function visualizationInstructions(specs: readonly BlockSpec[] = BLOCK_SPECS) {
   return specs.map(({ id, instructions }) => `  - "${id}": ${instructions.replaceAll('\n', '\n    ')}`).join('\n')
+}
+
+/** The blocks among `specs` that can be interactive exercises. */
+export const exerciseBlocks = (specs: readonly BlockSpec[]) => specs.filter((spec) => spec.exercise)
+
+/** Schema of an exercise's `interaction`: null or the task data of one exercise-capable block. */
+export function interactionSchema(specs: readonly BlockSpec[]) {
+  const blocks = exerciseBlocks(specs)
+  return blocks.length
+    ? { anyOf: [{ type: 'null' }, ...blocks.map((spec) => blockSchema({ ...spec, schema: spec.exercise.schema }))] }
+    : { type: 'null' }
+}
+
+/** Model instructions for the exercise mode of the given blocks, as a nested Markdown list. */
+export function interactionInstructions(specs: readonly BlockSpec[]) {
+  return exerciseBlocks(specs)
+    .map(({ id, exercise }) => `  - "${id}": ${exercise.instructions.replaceAll('\n', '\n    ')}`)
+    .join('\n')
 }

@@ -22,6 +22,7 @@ import OpenExercise from '../components/exercises/OpenExercise.vue'
 import LearnCard from '../components/exercises/LearnCard.vue'
 import ChoiceExercise from '../components/exercises/ChoiceExercise.vue'
 import CodeExercise from '../components/exercises/CodeExercise.vue'
+import InteractiveExercise from '../components/exercises/InteractiveExercise.vue'
 import ExerciseSupport from '../components/exercises/ExerciseSupport.vue'
 
 const route = useRoute()
@@ -40,7 +41,7 @@ const stage = useTemplateRef('stage')
 const codeEditor = useTemplateRef('codeEditor')
 const {
   answers, issues, result, answeredCount, busy, xp, canCheck, codeRetrying,
-  initialize, reset, accuracyFor, masteryFor, check, retryExercise, skipExercise, dontKnow, revealSolution,
+  initialize, reset, accuracyFor, masteryFor, check, retryExercise, skipExercise, skipUnavailable, dontKnow, revealSolution,
 } = useLessonAssessment({
   currentExercise: exercise,
   title: () => meta.value?.title,
@@ -86,7 +87,7 @@ function openTrace() {
   if (!current.code) return explainInChat()
   showTrace.value = true
   window.scrollTo({ top: 0 })
-  return requestTrace(answers[current.id])
+  return requestTrace(answers[current.id] as string | number)
 }
 
 function next() {
@@ -305,7 +306,16 @@ const wide = computed(() => phase.value === 'play' && exercise.value?.type === '
           :busy="busy"
           @submit="check"
         />
-        <ExerciseSupport v-if="exercise.type === 'choice' || exercise.type === 'open'" :exercise="exercise" :busy="busy" />
+        <InteractiveExercise
+          v-else-if="exercise.type === 'interactive'"
+          :key="exercise.id"
+          :model-value="answers[exercise.id]"
+          :exercise="exercise"
+          :result="result"
+          @update:model-value="answers[exercise.id] = $event"
+          @unavailable="skipUnavailable"
+        />
+        <ExerciseSupport v-if="['choice', 'open', 'interactive'].includes(exercise.type)" :exercise="exercise" :busy="busy" />
       </div>
     </main>
 

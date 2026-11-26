@@ -23,6 +23,7 @@ export function createBlockContext(block: BlockDefinition, emit: (event: string,
     renderMarkdown: (el, source, options) => renderInto(el, Markdown, { src: source, inline: !!options?.inline }),
     renderCode: (el, { code, language, fileName }) => renderInto(el, CodeBlock, { code, language, fileName }),
     renderIcon: (el, name, options) => renderInto(el, Icon, { name, ...(options?.size && { size: options.size }) }),
+    answer: (value, options) => emit('answer', { value, complete: options?.complete !== false }),
     emit,
   }
 }

@@ -2,7 +2,7 @@ export type ProviderId = 'claude' | 'codex'
 export type LearningStyle = 'code' | 'balanced' | 'theory'
 export type LessonKind = 'theory' | 'output' | 'code' | 'mixed' | 'design' | 'test'
 export type LessonStatus = 'locked' | 'current' | 'done'
-export type ExerciseType = 'learn' | 'choice' | 'open' | 'code'
+export type ExerciseType = 'learn' | 'choice' | 'open' | 'code' | 'interactive'
 export type ExerciseStage = 'learn' | 'practice' | 'check' | 'challenge'
 export type Runtime = 'browser' | 'docker' | 'review'
 export type Rating = 'again' | 'hard' | 'good' | 'easy'
@@ -129,6 +129,8 @@ export interface Exercise {
   syntax?: SyntaxExample[]
   prerequisites?: Concept[]
   visualization?: Record<string, unknown>
+  /** Interactive exercise: the task data of an exercise-capable block, tagged with its `type`. */
+  interaction?: Record<string, unknown> | null
   comparison?: Record<string, unknown>
   requirements?: string[]
   toolbox?: ToolDescription[]
@@ -212,6 +214,8 @@ export interface ExerciseResult {
   retry?: boolean
   assisted?: boolean
   solutionRevealed?: boolean
+  /** The exercise needs an extension that is missing or turned off; it does not count toward the score. */
+  unavailable?: boolean
 }
 
 export interface FlashcardText {
