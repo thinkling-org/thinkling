@@ -8,16 +8,14 @@ const maskId = `logo-mask-${useId()}`
 
 <template>
   <RouterLink to="/" class="logo" :aria-label="t('Thinkling home')">
-    <!-- Hexagonal mark with a bitten corner and cutouts for the eyes. -->
+    <!-- Flat hexagonal mark with cutouts for the eyes. -->
     <svg aria-hidden="true" width="36" height="36" viewBox="0 0 120 120">
       <defs>
         <mask :id="maskId" maskUnits="userSpaceOnUse" x="0" y="0" width="120" height="120">
           <rect width="120" height="120" fill="#000" />
-          <polygon points="60,14 100,37 100,83 60,106 20,83 20,37" fill="#fff" stroke="#fff" stroke-width="14" stroke-linejoin="round" />
-          <circle cx="107" cy="44" r="13" fill="#000" />
-          <circle cx="99" cy="25" r="10" fill="#000" />
-          <rect x="38" y="50" width="13" height="22" rx="6.5" fill="#000" />
-          <rect x="63" y="50" width="13" height="22" rx="6.5" fill="#000" />
+          <polygon points="60,14 100,37 100,83 60,106 20,83 20,37" fill="#fff" stroke="#fff" stroke-width="12" stroke-linejoin="round" />
+          <rect x="40" y="50" width="13" height="22" rx="6.5" fill="#000" />
+          <rect x="67" y="50" width="13" height="22" rx="6.5" fill="#000" />
         </mask>
       </defs>
       <rect width="120" height="120" fill="#7C5CFF" :mask="`url(#${maskId})`" />
@@ -38,7 +36,7 @@ const maskId = `logo-mask-${useId()}`
 .logo:hover {
   color: var(--text);
 }
-/* Distinguish the two parts of the wordmark with a typeface and color change. */
+/* Distinguish the two parts of the wordmark with a typeface and weight change. */
 .wordmark {
   letter-spacing: -0.01em;
   white-space: nowrap;
@@ -49,6 +47,5 @@ const maskId = `logo-mask-${useId()}`
 }
 .ling {
   font-weight: 900;
-  color: #a08bff;
 }
 </style>

@@ -22,6 +22,12 @@ export default defineConfig({
       include: ['src/**/*.{ts,vue}', 'server/**/*.ts', 'electron/**/*.ts'],
       exclude: ['**/*.d.ts'],
       reporter: ['text-summary', 'html', 'json'],
+      thresholds: {
+        statements: 80,
+        branches: 65,
+        functions: 75,
+        lines: 80,
+      },
     },
   },
 })

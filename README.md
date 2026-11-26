@@ -44,6 +44,22 @@ npm run dev        # API on :3141 + Vite on http://localhost:5173
 
 Run `npm run typecheck` to check the Vue, server and Electron TypeScript sources. The production build emits the renderer to `dist/` and the Node and Electron entry points to `dist-node/`.
 
+### Tests
+
+```bash
+npm test                 # unit, component and API integration tests
+npm run test:coverage    # coverage report in coverage/index.html
+npm run typecheck        # application and test TypeScript checks
+```
+
+CI runs the coverage command and enforces global minimums of 80% statements, 65% branches,
+75% functions and 80% lines across `src/`, `server/` and `electron/`.
+The tests cover lesson and review flows, plan and settings screens, learning blocks, code execution,
+workspace persistence, dictation and local API behavior. Browser adapters such as Monaco, Web Audio,
+microphone recording and terminal sockets are simulated in component tests. Real Docker/CLI execution
+needs a configured environment. Desktop packaging and installer updates have dedicated smoke tests
+described below.
+
 ### Windows desktop app
 
 ```powershell

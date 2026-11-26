@@ -42,6 +42,22 @@ npm run dev        # API na :3141 + Vite na http://localhost:5173
 
 `npm run typecheck` sprawdza typy we frontendzie Vue, serwerze i Electronie. Build produkcyjny zapisuje interfejs w `dist/`, a skompilowany kod serwera i Electrona w `dist-node/`.
 
+### Testy
+
+```bash
+npm test                 # testy jednostkowe, komponentów i integracji API
+npm run test:coverage    # raport pokrycia w coverage/index.html
+npm run typecheck        # kontrola typów aplikacji i testów
+```
+
+CI uruchamia pomiar pokrycia z globalnymi progami: 80% instrukcji, 65% gałęzi,
+75% funkcji i 80% linii dla katalogów `src/`, `server/` i `electron/`.
+Testy obejmują lekcje i powtórki, ekrany planu i ustawień, bloki edukacyjne, wykonywanie kodu,
+zapis plików, dyktowanie i lokalne API. W testach komponentów Monaco, Web Audio, nagrywanie
+mikrofonu i połączenia terminala są symulowane. Prawdziwe uruchamianie Dockera i CLI wymaga
+skonfigurowanego środowiska. Paczka desktopowa i aktualizacje instalatora mają osobne testy smoke
+opisane poniżej.
+
 ### Aplikacja desktopowa na Windows
 
 ```powershell
