@@ -1,0 +1,16 @@
+export default {
+  "Fit a line to the data": "Dopasowanie prostej do danych",
+  "Fit chart. Horizontal axis: {0}. Vertical axis: {1}.": "Wykres dopasowania. Oś pozioma: {0}. Oś pionowa: {1}.",
+  "Legend": "Legenda",
+  "Observation": "Obserwacja",
+  "Fitted line": "Prosta",
+  "Prediction error": "Błąd prognozy",
+  "Slope": "Nachylenie",
+  "Height at x =": "Wysokość przy x =",
+  "{0} at x = {1}": "{0} przy x równym {1}",
+  "Show best fit": "Pokaż najlepsze dopasowanie",
+  "Mean squared error": "Średni kwadrat błędu",
+  "Show data and predictions": "Pokaż dane i prognozy",
+  "Prediction": "Prognoza",
+  "Difference": "Różnica",
+}

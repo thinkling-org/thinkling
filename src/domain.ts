@@ -17,6 +17,8 @@ export interface LessonDescription {
   title: string
   kind: LessonKind
   focus: string
+  /** Block ids the planner chose for the lesson. Absent in plans made before blocks were selectable. */
+  blocks?: string[]
 }
 
 export interface ModuleDescription {

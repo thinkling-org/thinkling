@@ -2,7 +2,7 @@
 
 import { enableAutoUnmount, mount } from '@vue/test-utils'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import CodeComparison from '../../src/components/exercises/visualizations/CodeComparison.vue'
+import CodeComparison from '../../src/blocks/code-comparison/CodeComparison.vue'
 
 enableAutoUnmount(afterEach)
 afterEach(() => vi.unstubAllGlobals())

@@ -3,7 +3,7 @@ import type { CodeTrace, Exercise } from '../domain.ts'
 import { t } from '../lib/i18n.ts'
 import { computed, reactive, shallowRef } from 'vue'
 import { ai } from '../lib/api.ts'
-import { readComparisonSteps, readLessonVisualization } from '../lib/lesson-visualizations.ts'
+import { readComparisonSteps, readLessonVisualization } from '../blocks/registry.ts'
 
 export function useLessonExamples(exercise: Readonly<Ref<Exercise | undefined>>) {
   const activeVariant = shallowRef(0)
