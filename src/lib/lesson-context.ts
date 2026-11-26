@@ -1,9 +1,10 @@
-import { describeVisualization, readLessonVisualization } from '../blocks/registry.ts'
+import { describeVisualization, readInteraction, readLessonVisualization } from '../blocks/registry.ts'
 import type { Exercise, ExerciseResult, TestRun, WorkspaceFile } from '../domain.ts'
 
 export function buildLessonChatContext({ exercise, answer, result, title, moduleTitle, experience, files, testRun }: {
   exercise: Exercise
-  answer: string | number | null
+  /** Text, a choice index, or for interactive exercises whatever the block reported. */
+  answer: unknown
   result?: ExerciseResult | null
   title?: string
   moduleTitle?: string
@@ -40,6 +41,12 @@ export function buildLessonChatContext({ exercise, answer, result, title, module
     if (exercise.type === 'choice') {
       parts.push(`Options: ${exercise.options.map((o, i) => `${i + 1}) ${o}`).join(' | ')}`)
       parts.push(`Correct choice: ${exercise.correctIndex + 1}. Learner choice: ${typeof answer === 'number' ? answer + 1 : 'none'}`)
+      parts.push(`Explanation: ${exercise.explanation}`)
+    } else if (exercise.type === 'interactive') {
+      const task = describeVisualization(readInteraction(exercise))
+      if (task) parts.push(`Interactive task (the app grades it):\n${task}`)
+      parts.push(`Learner answer so far: ${answer === null || answer === undefined ? '(not complete)' : JSON.stringify(answer)}`)
+      if (result?.status) parts.push(`Result: ${result.status}${result.data?.feedback ? ` — ${result.data.feedback}` : ''}`)
       parts.push(`Explanation: ${exercise.explanation}`)
     } else {
       parts.push(`Learner answer: ${answer || '(none)'}`)

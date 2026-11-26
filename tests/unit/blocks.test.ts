@@ -72,12 +72,21 @@ describe('lesson blocks', () => {
   })
 
   it('declares a version, a supported API range, a mount function and translations for every block', () => {
+    const [major, minor] = BLOCK_API_VERSION.split('.').map(Number)
     for (const id of registeredBlockIds()) {
       const block = blockDefinition(id)
       expect(block.version, id).toMatch(/^\d+\.\d+\.\d+$/)
-      expect(block.engine, id).toBe(`^${BLOCK_API_VERSION.split('.')[0]}.0.0`)
+      const [, wantMajor, wantMinor] = /^\^(\d+)\.(\d+)\.\d+$/.exec(block.engine).map(Number)
+      expect(wantMajor, id).toBe(major)
+      expect(wantMinor, id).toBeLessThanOrEqual(minor)
       expect(typeof block.mount, id).toBe('function')
       expect(block.locales?.pl, id).toBeTypeOf('object')
+      if (block.exercise) {
+        // Exercise mode arrived in API 1.1 and needs a grader.
+        expect(wantMinor, id).toBeGreaterThanOrEqual(1)
+        expect(typeof block.grade, id).toBe('function')
+        expect(block.exercise.instructions.trim(), id).not.toBe('')
+      }
     }
   })
 
@@ -90,7 +99,10 @@ describe('lesson blocks', () => {
     const normalize = vi.spyOn(block, 'normalize')
     readLessonVisualization({ type: 'learn', visualization: { type: 'diagnosis', blockVersion: '2.1.0' } })
     readLessonVisualization({ type: 'learn', visualization: { type: 'diagnosis' } })
-    expect(normalize.mock.calls.map((call) => call[1])).toEqual([{ version: '2.1.0' }, { version: UNVERSIONED }])
+    expect(normalize.mock.calls.map((call) => call[1])).toEqual([
+      { version: '2.1.0', mode: 'visualization' },
+      { version: UNVERSIONED, mode: 'visualization' },
+    ])
     normalize.mockRestore()
   })
 

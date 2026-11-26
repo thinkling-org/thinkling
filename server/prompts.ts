@@ -2,7 +2,9 @@
 // Schemas are strict (see src/blocks/schema.ts). Lesson visualizations come from the block catalog.
 
 import { arr, bool, int, obj, str } from '../src/blocks/schema.ts'
-import { blockCatalog, selectBlocks, visualizationInstructions, visualizationSchema } from '../src/blocks/catalog.ts'
+import {
+  blockCatalog, exerciseBlocks, interactionInstructions, interactionSchema, selectBlocks, visualizationInstructions, visualizationSchema,
+} from '../src/blocks/catalog.ts'
 import { availableBlockSpecs } from './plugins.ts'
 import type { BlockSpec } from '../src/blocks/schema.ts'
 import { envFor } from './sandbox.ts'
@@ -140,8 +142,9 @@ Return the complete revised plan.`,
 
 // ---------------------------------------------------------------- lesson
 
+// "interactive" exercises and their `interaction` field exist only when a chosen block supports them.
 const exerciseSchema = (blocks: readonly BlockSpec[]) => obj({
-  type: { type: 'string', enum: ['learn', 'choice', 'code', 'open'] },
+  type: { type: 'string', enum: ['learn', 'choice', 'code', 'open', ...(exerciseBlocks(blocks).length ? ['interactive'] : [])] },
   stage: { type: 'string', enum: ['learn', 'practice', 'check', 'challenge'] },
   prompt: str,
   code: str,
@@ -170,6 +173,7 @@ const exerciseSchema = (blocks: readonly BlockSpec[]) => obj({
   testFiles: arr(obj({ path: str, content: str })),
   solutionFiles: arr(obj({ path: str, content: str })),
   testCommand: str,
+  ...(exerciseBlocks(blocks).length && { interaction: interactionSchema(blocks) }),
 })
 
 const lessonSchema = (blocks: readonly BlockSpec[]) => obj({
@@ -246,16 +250,23 @@ export function lessonTask({ profile, plan, moduleIndex, lessonIndex, weakSpots,
 ${visualizationInstructions(blocks)}
   Choose the visualization that best demonstrates the mechanism. It is optional unless the sequence specifies otherwise.`
     : '- Set "visualization" to null on every card.'
+  const interactive = exerciseBlocks(blocks).length > 0
+  const productive = interactive ? '"open", "code" or "interactive"' : '"open" or "code"'
+  const interactiveRules = interactive
+    ? `
+- "interactive": the learner does the task inside a block and the app grades the result exactly. Use it at stage "practice" or "check" when the skill is best practised by doing (placing, ordering, adjusting) rather than by picking an option; prefer it to "choice" when it fits. State the task in "prompt" in one or two sentences. Put the task data in "interaction"; it includes the correct answer the app grades against. Write "explanation" (why the correct result is right) and, for practice, "hints". Set "interaction" to null for every other exercise type.
+${interactionInstructions(blocks)}`
+    : ''
   const earlier = plan.modules
     .slice(0, moduleIndex + 1)
     .flatMap((m, mi) => m.lessons
       .filter((l, li) => l.status === 'done' && (mi < moduleIndex || li < lessonIndex))
       .map((l) => l.focus || l.title))
   const sequence = lesson.kind === 'test'
-    ? 'After the introduction, include 4–6 exercises based on completed lessons in this module, all with stage "check". Choose a mix of "choice", "code" and "open" appropriate for the material and the learner’s goal. Use "code" only for coding skills, and use "open" or "choice" for design decisions and estimates.'
+    ? `After the introduction, include 4–6 exercises based on completed lessons in this module, all with stage "check". Choose a mix of "choice", "code"${interactive ? ', "interactive"' : ''} and "open" appropriate for the material and the learner’s goal. Use "code" only for coding skills, and use "open" or "choice" for design decisions and estimates.`
     : `Build 7–9 short steps in this order, increasing independence gradually:
 1. One or two "learn" cards with a concrete worked example and the syntax or notation needed to reproduce it. Explain one small concept at a time.
-2. At least three "practice" exercises, normally four. Start with predicting a result or identifying one operation, then ask the learner to complete one gap, change one thing, and briefly explain a choice. Include at least one productive task ("open" or "code"), not only multiple-choice questions. These are ungraded attempts with retry and optional help.
+2. At least three "practice" exercises, normally four. Start with predicting a result or identifying one operation, then ask the learner to complete one gap, change one thing, and briefly explain a choice. Include at least one productive task (${productive}), not only multiple-choice questions. These are ungraded attempts with retry and optional help.
 3. One or two "check" exercises applying the same mechanism to a new, similar example with less scaffolding: ${CHECK_BY_KIND[lesson.kind] || CHECK_BY_KIND.mixed}. Do not introduce a new requirement or unfamiliar syntax here.
 4. Optionally one final "choice" at stage "challenge", only on previously demonstrated mechanisms and within the total of 7–9 steps.
 ${lesson.kind === 'design' ? `Use decisions, predictions, small calculations and explanations for practice; do not include code exercises.${designVisualization}` : 'When the check asks for code, include at least two earlier code exercises at stage practice: a tiny completion with most of the code supplied, followed by a small modification with less scaffolding. Do not jump from recognition quizzes to writing a complete program.'}
@@ -300,8 +311,8 @@ ${sequence}
 ## Exercise format
 All fields are required. Use "" / [] / 0 / null for unused fields.
 - "learn": "title" names one concept. "prompt" explains a practical problem, the mechanism and what to watch (up to 4 sentences or about 70 words). "code" is a worked example of up to 8 lines, only when the concept is a code construct. Use "" for estimation, architecture and trade-offs. Do not wrap calculations in functions. Set "codeLanguage", "explanation" (why it works, 1–2 sentences) and "keyPoints" (2–3 short rules).
-${visualizationRules}
-- "practice": use "choice", "open" or "code". State one small action in "prompt". Include "explanation" describing why the completed attempt works. For code tasks, give a usable scaffold and tests checking only that small requirement. These exercises can be retried and do not contribute to grades or XP.
+${visualizationRules}${interactiveRules}
+- "practice": use "choice", "open"${interactive ? ', "code" or "interactive"' : ' or "code"'}. State one small action in "prompt". Include "explanation" describing why the completed attempt works. For code tasks, give a usable scaffold and tests checking only that small requirement. These exercises can be retried and do not contribute to grades or XP.
 - "hints": 2–3 short Markdown hints for each practice and check, progressing from a question or observation to a concrete next step. Avoid the complete solution. Set "hint" to the first hint for compatibility. Use [] and "" for unused hints.
 - "syntax": 1–3 reminders [{title, code, explanation}] for code practice and code checks. Use small analogous examples with different values, showing only relevant syntax or commands. They must not be the finished answer to the current task. Use [] when syntax is not needed. This content is lesson data; the UI must not need language-specific teaching rules.
 - "open": one focused question about the mechanism. State any subquestions in "prompt". Give a concise "referenceAnswer" and one "keyPoints" criterion for each distinct part. Optional "code" if needed.

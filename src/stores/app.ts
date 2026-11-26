@@ -5,6 +5,7 @@ import { newCard, schedule } from '../lib/srs.ts'
 import { normalizeLocale, preferredLocale } from '../lib/languages.ts'
 import { LESSON_FORMAT, validateLessonFlow } from '../lib/lesson-flow.ts'
 import { stampBlockVersion } from '../blocks/catalog.ts'
+import { installedPlugins } from '../blocks/installed.ts'
 import type {
   AppStatus, CachedLesson, Exercise, FlashcardText, LessonContent, LessonLocation,
   PersistedState, Plan, PlanDescription, PlanPreview, Profile, ProviderId, Rating, Runtime, SandboxStatus,
@@ -335,12 +336,13 @@ export const useApp = defineStore('app', {
             },
           )
         })
-        .then((data) => {
+        .then(async (data) => {
           const exercises = (data.exercises || [])
             .filter((e) => e && e.type)
             .map((e, i): Exercise => ({
               ...e,
-              ...(e.visualization && { visualization: stampBlockVersion(e.visualization) }),
+              ...(e.visualization && { visualization: stampBlockVersion(e.visualization, installedPlugins) }),
+              ...(e.interaction && { interaction: stampBlockVersion(e.interaction, installedPlugins) }),
               id: `${id}-v${LESSON_FORMAT}-e${i}`,
               ...(e.type === 'code'
                 ? runtime === 'docker' && e.testCommand && e.files?.length
@@ -350,6 +352,13 @@ export const useApp = defineStore('app', {
             }))
           if (!exercises.length) throw new Error(t('The model returned an empty lesson'))
           validateLessonFlow(l.kind, data.intro, exercises)
+          if (exercises.some((e) => e.type === 'interactive')) {
+            // Loaded on demand so the block views stay out of the main bundle.
+            const { readInteraction } = await import('../blocks/registry.ts')
+            if (exercises.some((e) => e.type === 'interactive' && !readInteraction(e))) {
+              throw new Error(t('The model returned an interactive exercise that cannot be checked.'))
+            }
+          }
           this.lessons[id] = { intro: data.intro, exercises, flashcards: data.flashcards || [], generatedAt: Date.now(), format: LESSON_FORMAT }
           return this.validateLesson(id)
         })

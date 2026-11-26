@@ -1,11 +1,21 @@
 <script setup lang="ts">
 import { t } from './messages.ts'
-import { computed, ref, watch } from 'vue'
+import { computed, inject, ref, watch } from 'vue'
 import Markdown from '../../components/Markdown.vue'
 import Icon from '../../components/Icon.vue'
+import { BLOCK_CONTEXT } from '../vue-block.ts'
 import type { PropType } from 'vue'
+import type { BlockMode, GradeResult } from '../types.ts'
 
-const props = defineProps({ config: { type: Object as PropType<{ instruction: string; success?: string; hint?: string; steps: { text: string; indent: number }[] }>, required: true } })
+const props = defineProps({
+  config: { type: Object as PropType<{ instruction: string; success?: string; hint?: string; steps: { text: string; indent: number }[] }>, required: true },
+  mode: { type: String as PropType<BlockMode>, default: 'visualization' },
+  // Exercise mode: the learner's saved order and, once checked, the app's grade.
+  answer: { type: Array as PropType<number[]>, default: null },
+  result: { type: Object as PropType<GradeResult>, default: null },
+})
+const ctx = inject(BLOCK_CONTEXT, null)
+const isExercise = computed(() => props.mode === 'exercise')
 
 // Shuffle deterministically so the same lesson always starts with the same order.
 function shuffle(count, seedText) {
@@ -23,9 +33,14 @@ function shuffle(count, seedText) {
 }
 
 const bank = computed(() => shuffle(props.config.steps.length, props.config.steps.map((s) => s.text).join('|')))
-const placed = ref([])
-const checked = ref(false)
+const placed = ref(isExercise.value && Array.isArray(props.answer) ? [...props.answer] : [])
+// As a visualization the block checks itself; as an exercise the app grades and passes the result.
+const selfChecked = ref(false)
+const checked = computed(() => (isExercise.value ? !!props.result : selfChecked.value))
 watch(() => props.config, reset)
+watch(placed, (order) => {
+  if (isExercise.value) ctx?.answer([...order], { complete: order.length === props.config.steps.length })
+}, { immediate: true })
 
 const full = computed(() => placed.value.length === props.config.steps.length)
 const good = computed(() => placed.value.filter((id, slot) => id === slot).length)
@@ -43,17 +58,17 @@ function remove(slot) {
 }
 function retry() {
   placed.value = placed.value.filter((id, slot) => id === slot && placed.value.slice(0, slot).every((p, k) => p === k))
-  checked.value = false
+  selfChecked.value = false
 }
 function reset() {
   placed.value = []
-  checked.value = false
+  selfChecked.value = false
 }
 </script>
 
 <template>
   <section class="card viz ordering" :aria-label="t('Put the steps in order')">
-    <Markdown class="instruction" :src="config.instruction" />
+    <Markdown v-if="config.instruction" class="instruction" :src="config.instruction" />
     <div class="layout">
       <ol class="slots" :aria-label="t('Your order')">
         <li v-for="(slot, k) in slots" :key="k">
@@ -86,14 +101,22 @@ function reset() {
             @click="add(id)"
           >{{ config.steps[id].text }}</button>
         </div>
-        <div class="actions">
+        <div v-if="isExercise" class="actions">
+          <button type="button" class="btn btn-ghost btn-sm" :disabled="checked" @click="reset">{{ t('Start over') }}</button>
+        </div>
+        <div v-else class="actions">
           <button type="button" class="btn btn-ghost btn-sm" @click="reset">{{ t('Start over') }}</button>
           <button v-if="checked && !solved" type="button" class="btn btn-ghost-yellow btn-sm" @click="retry">{{ t('Revise') }}</button>
-          <button v-else type="button" class="btn btn-primary btn-sm" :disabled="!full || checked" @click="checked = true">{{ t('Check') }}</button>
+          <button v-else type="button" class="btn btn-primary btn-sm" :disabled="!full || checked" @click="selfChecked = true">{{ t('Check') }}</button>
         </div>
       </div>
     </div>
-    <p class="note" :class="checked && (solved ? 'success' : 'warn')" aria-live="polite">
+    <!-- As an exercise the lesson footer gives the verdict; the block only explains how to use it. -->
+    <p v-if="isExercise" class="note" aria-live="polite">
+      <template v-if="!checked">{{ full ? t('All steps are placed. Check your order.') : t('Click a block to append it. Click a placed block to undo it.') }}</template>
+      <template v-else>{{ good }} {{ t('of') }} {{ config.steps.length }} {{ t('in the right position.') }}</template>
+    </p>
+    <p v-else class="note" :class="checked && (solved ? 'success' : 'warn')" aria-live="polite">
       <template v-if="!checked">{{ full ? t('Ready? Click Check.') : t('Click a block to append it. Click a placed block to undo it.') }}</template>
       <template v-else-if="solved">{{ config.success || t('Good work. Every step is in the right position.') }}</template>
       <template v-else>{{ good }} {{ t('of') }} {{ config.steps.length }} {{ t('in the right position.') }} {{ config.hint }}</template>

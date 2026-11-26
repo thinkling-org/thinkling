@@ -15,4 +15,6 @@ export default {
   "Good work. Every step is in the right position.": "Dobrze, wszystkie kroki są na swoim miejscu.",
   "of": "z",
   "in the right position.": "na swoim miejscu.",
+  "{0} of {1} steps are in the right position.": "{0} z {1} kroków jest na właściwym miejscu.",
+  "All steps are placed. Check your order.": "Wszystkie kroki są ułożone. Sprawdź swoją kolejność.",
 }
