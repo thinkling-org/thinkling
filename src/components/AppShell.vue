@@ -2,12 +2,14 @@
 import { t, uiLocale } from '../lib/i18n.ts'
 import { computed } from 'vue'
 import { useApp } from '../stores/app.ts'
+import { useDesktopUpdates } from '../stores/updates.ts'
 import { getAiProvider } from '../lib/ai-providers.ts'
 import Icon from './Icon.vue'
 import Logo from './Logo.vue'
 import DesktopUpdate from './DesktopUpdate.vue'
 
 const app = useApp()
+const updates = useDesktopUpdates()
 const nav = computed(() => [
   { to: '/path', label: t('Learning path'), icon: 'home' },
   { to: '/flashcards', label: t('Flashcards'), icon: 'cards', badge: app.dueCards.length || null },
@@ -23,7 +25,10 @@ const fmt = (n) => n.toLocaleString(uiLocale())
 <template>
   <div class="shell">
     <nav class="side" :aria-label="t('Main navigation')">
-      <div class="brand"><Logo /></div>
+      <div class="brand">
+        <Logo />
+        <span v-if="updates.state" class="app-version" :title="t('Installed version: {0}', [updates.state.currentVersion])">v{{ updates.state.currentVersion }}</span>
+      </div>
       <RouterLink v-for="n in nav" :key="n.to" :to="n.to" class="item" active-class="active">
         <Icon :name="n.icon" />
         <span class="lbl">{{ n.label }}</span>
@@ -79,6 +84,13 @@ const fmt = (n) => n.toLocaleString(uiLocale())
 }
 .brand {
   padding: 0 12px 24px;
+}
+.app-version {
+  display: block;
+  margin: 4px 0 0 46px;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 12px;
 }
 .item {
   display: flex;

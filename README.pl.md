@@ -2,7 +2,7 @@
 
 # Thinkling
 
-[Thinkling na GitHubie](https://github.com/codenoms-org/thinkling) · [English](README.md) · **Polski**
+[Thinkling na GitHubie](https://github.com/thinkling-org/thinkling) · [English](README.md) · **Polski**
 
 Lokalna aplikacja do szybkiej nauki programowania krótkimi lekcjami z grywalizacją. Działa na Twojej
 **subskrypcji Claude (Claude Code CLI) albo ChatGPT (Codex CLI)**, więc nie płacisz za tokeny API.
@@ -68,7 +68,7 @@ na miejscu, żeby zachować środowiska Pythona i ścieżki kontenerów Dockera.
 wybrać katalog danych; poprzednia zmienna `CODENOMS_DATA` nadal działa jako opcja zgodności.
 Wewnętrzny identyfikator aplikacji Windows i nazwy zasobów Dockera również pozostają bez zmian.
 
-Zainstalowana aplikacja Windows sprawdza publiczne [GitHub Releases](https://github.com/codenoms-org/thinkling/releases)
+Zainstalowana aplikacja Windows sprawdza publiczne [GitHub Releases](https://github.com/thinkling-org/thinkling/releases)
 przy uruchomieniu i co sześć godzin. Przycisk **Dostępna aktualizacja** rozpoczyna pobieranie, pokazuje
 postęp, a następnie zmienia się w **Uruchom ponownie i zaktualizuj**. Pobieranie i restart wymagają
 kliknięcia. Zwykłe zamknięcie aplikacji nie instaluje pobranej aktualizacji. W ustawieniach są wersja,

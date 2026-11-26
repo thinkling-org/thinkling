@@ -81,7 +81,7 @@ describe('desktop update controls', () => {
     const wrapper = render()
     await flushPromises()
     expect(wrapper.text()).toContain('Thinkling 0.1.0')
-    expect(wrapper.get('a').attributes('href')).toBe('https://github.com/codenoms-org/thinkling/releases')
+    expect(wrapper.get('a').attributes('href')).toBe('https://github.com/thinkling-org/thinkling/releases')
     await wrapper.get('button').trigger('click')
     expect(bridge.check).toHaveBeenCalledOnce()
     emit({ status: 'current' })

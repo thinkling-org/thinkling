@@ -90,6 +90,7 @@ app.on('browser-window-created', (_event, window) => {
       assert.equal(installs, 0)
       assert.equal(await evaluate('typeof require'), 'undefined')
       assert.equal(await evaluate('document.querySelectorAll(".desktop-update").length'), 2)
+      assert.equal(await evaluate('document.querySelector(".app-version").textContent'), `v${app.getVersion()}`)
 
       // Another window with the same preload cannot use privileged update commands.
       const stranger = new BrowserWindow({ show: false, webPreferences: {

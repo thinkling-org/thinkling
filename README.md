@@ -2,7 +2,7 @@
 
 # Thinkling
 
-[Thinkling on GitHub](https://github.com/codenoms-org/thinkling) · **English** · [Polski](README.pl.md)
+[Thinkling on GitHub](https://github.com/thinkling-org/thinkling) · **English** · [Polski](README.pl.md)
 
 A local app for learning to code fast through short, gamified lessons. It runs on your existing
 **Claude (Claude Code CLI) or ChatGPT (Codex CLI) subscription**, so you don't need an API key.
@@ -70,7 +70,7 @@ database. Data stays in place to preserve Python environments and Docker mounts.
 overrides the data directory; the previous `CODENOMS_DATA` variable remains supported as a fallback.
 The internal Windows application ID and Docker resource names also remain stable for compatibility.
 
-Installed Windows builds check public [GitHub Releases](https://github.com/codenoms-org/thinkling/releases)
+Installed Windows builds check public [GitHub Releases](https://github.com/thinkling-org/thinkling/releases)
 at startup and every six hours. The header offers a download when a newer stable version is available,
 shows download progress, and then offers **Restart and update**. Downloading and restarting both require
 a click. Closing the app normally does not install a pending update. Settings shows the current version,

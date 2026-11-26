@@ -60,11 +60,11 @@ const action = computed<UpdateAction>(() => {
         <Icon name="refresh" :size="18" />
         {{ label }}
       </button>
-      <a v-if="!compact" href="https://github.com/codenoms-org/thinkling/releases" target="_blank" rel="noopener noreferrer">{{ t('Release notes') }}</a>
+      <a v-if="!compact" href="https://github.com/thinkling-org/thinkling/releases" target="_blank" rel="noopener noreferrer">{{ t('Release notes') }}</a>
     </div>
     <progress v-if="state.status === 'downloading'" class="download-progress" :value="state.percent || 0" max="100" :aria-label="t('Update download progress')" />
     <p v-if="error" role="alert" class="update-error">{{ error }}</p>
-    <a v-if="state.status === 'disabled' && !compact" href="https://github.com/codenoms-org/thinkling/releases" target="_blank" rel="noopener noreferrer">{{ t('Release notes') }}</a>
+    <a v-if="state.status === 'disabled' && !compact" href="https://github.com/thinkling-org/thinkling/releases" target="_blank" rel="noopener noreferrer">{{ t('Release notes') }}</a>
   </section>
 </template>
 

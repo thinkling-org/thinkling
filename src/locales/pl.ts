@@ -1,4 +1,5 @@
 export default {
+  "Installed version: {0}": "Zainstalowana wersja: {0}",
   "Application updates": "Aktualizacje aplikacji",
   "Update available · {0}": "Dostępna aktualizacja · {0}",
   "Downloading… {0}%": "Pobieranie… {0}%",

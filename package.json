@@ -1,12 +1,12 @@
 {
   "name": "thinkling",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "license": "Apache-2.0",
-  "homepage": "https://github.com/codenoms-org/thinkling",
+  "homepage": "https://github.com/thinkling-org/thinkling",
   "repository": {
     "type": "git",
-    "url": "https://github.com/codenoms-org/thinkling.git"
+    "url": "https://github.com/thinkling-org/thinkling.git"
   },
   "type": "module",
   "main": "dist-node/electron/main.js",
@@ -70,7 +70,7 @@
     "npmRebuild": false,
     "publish": {
       "provider": "github",
-      "owner": "codenoms-org",
+      "owner": "thinkling-org",
       "repo": "thinkling",
       "releaseType": "draft"
     },

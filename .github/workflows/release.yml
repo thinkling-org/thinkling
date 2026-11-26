@@ -13,7 +13,7 @@ concurrency:
 
 jobs:
   release:
-    if: github.repository == 'codenoms-org/thinkling'
+    if: github.repository == 'thinkling-org/thinkling'
     runs-on: windows-latest
     permissions:
       contents: write
