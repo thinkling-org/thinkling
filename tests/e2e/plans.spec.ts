@@ -1,0 +1,62 @@
+import { test, expect } from './support/fixtures.ts'
+import { learningState } from './support/data.ts'
+
+test('creates, revises and persists a plan through the real AI API', async ({ page, app }) => {
+  await page.goto('/start')
+  const generate = page.getByRole('button', { name: 'Generate plan' })
+  await expect(generate).toBeDisabled()
+  await page.getByLabel('Your background').fill('short')
+  await expect(generate).toBeDisabled()
+  await page.getByLabel('Your background').fill('I know basic JavaScript and want to practise returning values from functions.')
+  await page.getByRole('button', { name: '15 min', exact: true }).click()
+  await generate.click()
+  await expect(page.getByText('JavaScript foundations', { exact: true })).toBeVisible()
+  await page.getByRole('button', { name: /Module 1/ }).click()
+  await expect(page.getByText('Returning values', { exact: true })).toBeVisible()
+  await page.getByLabel('Revise plan').fill('Add more practice with return values.')
+  await page.getByRole('button', { name: 'Submit revision' }).click()
+  await expect(page.getByText('Revised JavaScript foundations', { exact: true })).toBeVisible()
+  await page.getByRole('button', { name: 'Get started', exact: true }).click()
+  await expect(page).toHaveURL(/\/path$/)
+  await expect.poll(async () => (await app.saved()).plan?.title).toBe('Revised JavaScript foundations')
+  await page.reload()
+  await expect(page.getByRole('button', { name: /Returning values, current/ })).toBeVisible()
+  expect((await app.saved()).profile?.minutesPerDay).toBe(15)
+  expect((await app.calls()).map((call) => call.task)).toEqual(expect.arrayContaining(['plan', 'refinePlan']))
+})
+
+test('plan generation failure shows an error and retries successfully', async ({ page, app }) => {
+  await app.ai({ plan: { error: 'E2E provider temporarily unavailable' } })
+  await page.goto('/start')
+  await page.getByLabel('Your background').fill('I want to practise JavaScript functions and return values.')
+  await page.getByRole('button', { name: 'Generate plan' }).click()
+  await expect(page.getByText('E2E provider temporarily unavailable', { exact: true })).toBeVisible()
+  await app.ai({})
+  await page.getByRole('button', { name: 'Try again', exact: true }).click()
+  await expect(page.getByText('JavaScript foundations', { exact: true })).toBeVisible()
+})
+
+test('failed revision preserves the existing plan', async ({ page, app }) => {
+  await app.seed(learningState())
+  await app.ai({ refinePlan: { error: 'E2E revision failed' } })
+  await page.goto('/plan')
+  await page.getByLabel('Revise plan').fill('More exercises please.')
+  await page.getByRole('button', { name: 'Submit revision' }).click()
+  await expect(page.getByText('E2E revision failed', { exact: true })).toBeVisible()
+  await expect(page.getByText('JavaScript foundations', { exact: true })).toBeVisible()
+  await page.getByRole('button', { name: 'OK', exact: true }).click()
+  expect((await app.saved()).plan?.title).toBe('JavaScript foundations')
+})
+
+test('weak spots can be removed and the completed plan offers next steps', async ({ page, app }) => {
+  const saved = learningState()
+  saved.plan!.modules[0].lessons.forEach((lesson) => { lesson.status = 'done' })
+  saved.weakSpots = ['Return values']
+  await app.seed(saved)
+  await page.goto('/path')
+  await expect(page.getByRole('heading', { name: 'Plan complete!' })).toBeVisible()
+  await page.getByRole('button', { name: 'Remove Return values', exact: true }).click()
+  await expect.poll(async () => (await app.saved()).weakSpots).toEqual([])
+  await page.getByRole('link', { name: 'Extend plan', exact: true }).click()
+  await expect(page).toHaveURL(/\/plan$/)
+})

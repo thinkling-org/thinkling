@@ -13,6 +13,7 @@ export default defineConfig({
   },
   build: { chunkSizeWarningLimit: 6000 },
   test: {
+    include: ['tests/unit/**/*.test.ts', 'tests/components/**/*.test.ts', 'tests/integration/**/*.test.ts'],
     alias: [
       // Monaco only declares its ESM entry in the package's module field.
       { find: /^monaco-editor$/, replacement: 'monaco-editor/esm/vs/editor/editor.main.js' },

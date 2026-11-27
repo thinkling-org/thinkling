@@ -16,6 +16,10 @@
     "typecheck": "vue-tsc --noEmit -p tsconfig.app.json && tsc --noEmit -p tsconfig.node.json",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
+    "test:e2e": "npm run build && playwright test --project=chromium",
+    "test:e2e:all": "npm run build && playwright test",
+    "test:e2e:ui": "npm run build && playwright test --project=chromium --ui",
+    "test:e2e:report": "playwright show-report",
     "test:desktop-updates": "electron tests/smoke/desktop-updates.cjs",
     "test:installer-lifecycle": "node tests/smoke/installer-lifecycle.cjs",
     "build": "vue-tsc --noEmit -p tsconfig.app.json && tsc -p tsconfig.node.json && vite build",
@@ -46,6 +50,7 @@
     "ws": "^8.23.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.65.1",
     "@types/dockerode": "^4.0.2",
     "@types/express": "^4.17.25",
     "@types/node": "^24.19.2",

@@ -4,5 +4,7 @@ dist
 dist-node
 /release/
 /coverage/
+/playwright-report/
+/test-results/
 data
 *.log

@@ -1,144 +1,118 @@
-<p align="center"><img src="public/logo.svg" width="112" alt="" /></p>
+<p align="center"><img src="public/logo.svg" width="112" alt="Thinkling logo" /></p>
 
-# Thinkling
+<h1 align="center">Thinkling</h1>
 
-[Thinkling on GitHub](https://github.com/thinkling-org/thinkling) · **English** · [Polski](README.pl.md)
+<p align="center">
+  <strong>Learn to code in short, gamified lessons, built for you by the AI subscription you already have.</strong>
+</p>
 
-A local app for learning to code fast through short, gamified lessons. It runs on your existing
-**Claude (Claude Code CLI) or ChatGPT (Codex CLI) subscription**, so you don't need an API key.
+<p align="center">
+  <a href="https://thinkling.org"><strong>Website</strong></a> ·
+  <a href="https://thinkling.org/#download"><strong>Download</strong></a> ·
+  <a href="https://github.com/thinkling-org/thinkling/releases">Releases</a> ·
+  <strong>English</strong> · <a href="README.pl.md">Polski</a>
+</p>
 
-The interface supports **English and Polish**. On first launch, Thinkling saves your preferred system language
-on desktop or your browser language on the web. Other languages use the English interface. New AI responses use
-your saved language. You can change it under **Settings → Language**.
+Thinkling is a free, open-source app that turns **Claude Code** or **Codex** into a personal programming
+tutor. Tell it what you already know and what you want to learn, and it builds a course for you: modules,
+lessons, exercises and a skill assessment. You learn in short sessions with XP, streaks and flashcards,
+write real code in the editor behind VS Code, and get feedback on every answer.
 
-Use English source messages in `t()` and add their Polish translations in [`src/locales/pl.ts`](src/locales/pl.ts).
+Everything runs on your own computer and uses your existing **Claude or ChatGPT subscription** through
+the official CLI, so there is no API key to set up and no per-token bill.
 
-- Describe your situation and the model builds a plan: modules, lessons and a skill assessment (the plan streams in live as it is generated).
-- A learning path with lessons, XP, daily streaks, a daily goal and a 0–1000 score.
-- Exercises:
+## Features
+
+- **A plan made for you.** Describe your situation and the model builds modules, lessons and a skill
+  assessment. The plan streams in live as it is generated.
+- **A learning path that keeps you going.** Lessons, XP, daily streaks, a daily goal and a 0–1000 score.
+- **Varied exercises:**
   - **open questions**: the model grades your answer (0–10) and explains what was right and what was wrong,
   - **"what does this code print?"**: a quiz with an explanation and a "walk me through it step by step" button,
-  - **coding tasks in the Monaco editor** (the editor behind VS Code): JS/TS tests run in a Web Worker, and the model's review shows up as comments pinned to lines, with an "apply fix" button.
+  - **coding tasks in the Monaco editor**: JS/TS tests run in a Web Worker, and the model's review shows up as
+    comments pinned to lines, with an "apply fix" button.
+- **A real sandbox.** With Docker, tasks in PHP, C++, Python, Go, Rust, Java, C#, Ruby and SQL run in isolated
+  containers with a file tree and a terminal.
 - **Flashcards** with spaced repetition. Your mistakes are added to the deck automatically.
-- "Ask Claude": a chat about the current exercise.
+- **"Ask Claude"**: a chat about the current exercise.
+- **Local dictation** with Faster Whisper: speak your answers instead of typing them.
+- **English and Polish** interface. Thinkling picks your system or browser language on first launch, and new AI
+  responses follow it. Change it any time under **Settings → Language**.
 
-## Requirements
+## Quick start
 
-- Node.js 24.15.0 or newer to install dependencies and build from source. The [`.nvmrc`](.nvmrc) file pins Node.js 24 LTS for development. The Windows installer includes the runtime.
-- **Claude Code** (`claude`) **or** **Codex** (`codex`), logged in. The app looks for the binary in `PATH`,
-  `~/.local/bin`, VS Code/Cursor extensions and the Codex install directory. You can also set the path in Settings.
-- Optional: **Docker** (sandbox with a terminal) and **Python 3.10–3.13** (dictation).
+The fastest way to start is the desktop app.
 
-## Getting started
+1. **Download Thinkling** from **[thinkling.org](https://thinkling.org/#download)**. The site always links to
+   the latest release. The Windows installer is available now; macOS and Linux builds are on the way, and until
+   then you can [run Thinkling from source](#run-from-source).
+2. **Install an AI engine and log in**: [Claude Code](https://docs.claude.com/en/docs/claude-code) (`claude`)
+   with a Claude subscription, **or** [Codex CLI](https://github.com/openai/codex) (`codex`) with a ChatGPT
+   subscription.
+3. **Open Thinkling.** The [setup wizard](#first-run-wizard) finds your CLI, checks that you are logged in, and
+   can set up Docker and dictation. Then describe what you want to learn.
+
+The installed app updates itself from [GitHub Releases](https://github.com/thinkling-org/thinkling/releases).
+It tells you when a new version is ready and installs it only when you click **Restart and update**.
+
+### Requirements
+
+| | |
+|---|---|
+| **Required** | Claude Code (`claude`) **or** Codex (`codex`), logged in. Thinkling looks for the binary in `PATH`, `~/.local/bin`, VS Code/Cursor extensions and the Codex install directory. You can also set the path in Settings. |
+| **Optional** | **Docker** for the sandbox and terminal. **Python 3.10–3.13** for dictation. |
+| **From source only** | **Node.js 24.15.0** or newer. [`.nvmrc`](.nvmrc) pins Node.js 24 LTS. The Windows installer bundles its own runtime. |
+
+## Run from source
+
+Clone the repository and install dependencies:
 
 ```bash
-npm install
-npm start          # build + server → http://localhost:3141
+git clone https://github.com/thinkling-org/thinkling.git
+cd thinkling
+npm ci
 ```
 
-or in development mode:
+Then pick how you want to run it.
+
+### Desktop app (Electron)
 
 ```bash
-npm run dev        # API on :3141 + Vite on http://localhost:5173
+npm run desktop            # builds the app and opens the Electron window
+npm run desktop:package    # optional: builds a Windows .exe installer in release/
 ```
 
-Run `npm run typecheck` to check the Vue, server and Electron TypeScript sources. The production build emits the renderer to `dist/` and the Node and Electron entry points to `dist-node/`.
+If PowerShell blocks npm scripts, use `npm.cmd` instead of `npm`.
 
-### Tests
+Electron runs the local server for as long as the window is open. On Windows, your data is stored in
+`%APPDATA%\Thinkling\data`.
+
+### In the browser
 
 ```bash
-npm test                 # unit, component and API integration tests
-npm run test:coverage    # coverage report in coverage/index.html
-npm run typecheck        # application and test TypeScript checks
+npm start                  # builds the app and starts the server
 ```
 
-CI runs the coverage command and enforces global minimums of 80% statements, 65% branches,
-75% functions and 80% lines across `src/`, `server/` and `electron/`.
-The tests cover lesson and review flows, plan and settings screens, learning blocks, code execution,
-workspace persistence, dictation and local API behavior. Browser adapters such as Monaco, Web Audio,
-microphone recording and terminal sockets are simulated in component tests. Real Docker/CLI execution
-needs a configured environment. Desktop packaging and installer updates have dedicated smoke tests
-described below.
+Then open **http://localhost:3141**. Your data is stored in `data/` inside the repository.
 
-### Windows desktop app
+### Development mode
 
-```powershell
-npm.cmd ci
-npm.cmd run desktop          # builds the frontend and opens the Electron window
-npm.cmd run desktop:package  # creates an .exe installer in release/
+```bash
+npm run dev                # API on :3141 + Vite with hot reload on http://localhost:5173
 ```
 
-Electron starts a local server for the lifetime of the app. The desktop data directory is
-`%APPDATA%\Thinkling\data`. To open an existing plan, progress, and local environments from
-the browser version, stop its server and set `THINKLING_DATA` to the previous data directory.
-From the repository root in PowerShell, run the following.
+### Moving data between the browser and desktop versions
+
+The browser and desktop versions keep separate data. To open your browser plan, progress and local
+environments in the desktop app, stop the browser server and point `THINKLING_DATA` at its data directory.
+From the repository root in PowerShell:
 
 ```powershell
 $env:THINKLING_DATA = (Resolve-Path .\data).Path
 npm.cmd run desktop
 ```
 
-### Desktop updates and releases
-
-Thinkling is the new name of Codenoms. Existing desktop installations keep using their
-`%APPDATA%\Codenoms\data` directory automatically when the new Thinkling data directory has no saved
-database. Data stays in place to preserve Python environments and Docker mounts. `THINKLING_DATA`
-overrides the data directory; the previous `CODENOMS_DATA` variable remains supported as a fallback.
-The internal Windows application ID and Docker resource names also remain stable for compatibility.
-
-Installed Windows builds check public [GitHub Releases](https://github.com/thinkling-org/thinkling/releases)
-at startup and every six hours. A startup update opens a popup with **Download update** and **Later**.
-Dismiss it with Later or Escape; it appears once per app session. Periodic and manual checks use the
-header without interrupting the current activity. The header offers a download when a newer stable version is available,
-shows download progress, and then offers **Restart and update**. Downloading and restarting both require
-a click. Closing the app normally does not install a pending update. Settings shows the current version,
-a manual update check, and release notes. Update controls are hidden in the browser; development desktop
-builds show the version but do not contact the update feed.
-
-Before restarting, the app must successfully save progress. The existing Electron shutdown sequence then
-flushes state and closes the local backend before the process exits. User data remains in
-`%APPDATA%\Thinkling\data` (or the configured `THINKLING_DATA` directory).
-
-To prepare a release, commit the changes on `main`, then run:
-
-```bash
-npm version patch
-git push origin main --follow-tags
-```
-
-The `Windows release` workflow checks that the `v*` tag matches `package.json`, runs type checks and tests,
-builds the x64 NSIS installer, and uploads a **draft** release. Download and test the installer before
-publishing the draft on GitHub. Keep all generated `.exe`, `.blockmap`, and `latest.yml` assets together;
-the updater needs the metadata as well as the installer. Only published stable releases reach users.
-The release repository must be public so installed apps can read it without credentials. The publishing
-token stays in GitHub Actions and is not bundled into the app.
-
-For Windows Authenticode signing, configure repository secrets `WINDOWS_CSC_LINK` (a certificate URL or
-base64 PFX supported by electron-builder) and `WINDOWS_CSC_KEY_PASSWORD`. Without these, the workflow
-produces unsigned installers. Configure signing before broad public distribution; the updater can then
-validate the publisher of downloaded updates. Do not disable signature verification.
-
-The first build containing the updater must be installed manually. Before publishing, test an actual
-installed version A upgrading to a higher version B from a published test release: check discovery,
-download progress, retry after a network failure, explicit restart, and preserved plan/progress/settings.
-Use a separate test repository with a local `build.publish` override for this test, so test releases do
-not reach production users. Also verify that a normal quit never installs a downloaded update.
-`npm run desktop:package` builds locally without publishing; `npm run desktop:release` uploads a draft
-using `GH_TOKEN` and is intended for the release workflow. Full installer-to-installer verification cannot
-be replaced by development mode or unit tests.
-
-After packaging, `npm run test:desktop-updates` exercises the packaged main process, sandboxed preload,
-IPC access checks, Polish update controls, download progress, a simulated save failure and retry, and
-graceful shutdown. It uses isolated data and a fake update transport; it never runs an installer. The
-release workflow also runs this smoke test. A UI screenshot is saved to `release/update-smoke.png`.
-
-On Windows, `npm run test:installer-lifecycle` additionally builds two small apps with a separate test
-identity and the production NSIS launch hook. It verifies a real fresh install, an update through
-`electron-updater`, automatic relaunch, and preservation of saved state, then uninstalls the test app.
-The release workflow runs this check too. Test data, logs and installers stay under `release/`.
-Normal per-user installs launch the executable directly; elevated installs use the desktop user's token.
-
-### First-run wizard
+## First-run wizard
 
 On first launch the app walks you through setup (`/setup`, later available under **Settings → Setup wizard**):
 
@@ -151,7 +125,7 @@ On first launch the app walks you through setup (`/setup`, later available under
 
 Installs run in the background on the server, so reloading the page doesn't interrupt them.
 
-### Model and effort
+## Model and effort
 
 In **Settings**, each provider has its own model and effort choice (remembered when you switch between Claude and Codex):
 
@@ -216,6 +190,112 @@ and the editor. In flashcards, `Space` reveals the answer and `1–4` rates it.
 Thinkling is meant to run on your own machine only. The server listens on `127.0.0.1` and rejects requests from
 other origins. Don't expose it to a network (for example with `HOST=0.0.0.0`): anyone who can reach it gets a
 terminal in the sandbox and can change which binary the app runs.
+
+## Development
+
+Run `npm run typecheck` to check the Vue, server and Electron TypeScript sources. The production build emits the
+renderer to `dist/` and the Node and Electron entry points to `dist-node/`.
+
+Interface strings use English source messages in `t()`. Add their Polish translations to
+[`src/locales/pl.ts`](src/locales/pl.ts).
+
+### Tests
+
+```bash
+npm test                 # unit, component and API integration tests
+npm run test:coverage    # coverage report in coverage/index.html
+npm run typecheck        # application and test TypeScript checks
+```
+
+Browser E2E tests run the production build with Playwright:
+
+```bash
+npx playwright install chromium  # once, after npm install
+npm run test:e2e                 # build and run Chromium scenarios
+npm run test:e2e:ui              # interactive debugging
+npm run test:e2e:report          # open the latest HTML report
+npx playwright install firefox webkit
+npm run test:e2e:all             # Chromium, Firefox, WebKit and mobile Chromium
+```
+
+Each scenario starts its own real Express server on an ephemeral port and uses a temporary
+data directory. Real HTTP state persistence, routing, Monaco and browser code workers are
+exercised. A deterministic child-process CLI replaces Claude/Codex; Docker transport and
+host command discovery are isolated in the test harness. The suite does not require a login
+or modify your saved learning data. CI runs all four browser projects and uploads HTML reports,
+failure traces, videos, screenshots and server logs.
+
+See [the E2E coverage map](docs/e2e-tests.md) for scenarios and remaining environment-dependent
+checks. Browser scenario coverage is separate from code coverage: these tests do not establish
+100% line or branch coverage. `test:coverage` measures the existing unit/component/API suite.
+
+CI runs the coverage command and enforces global minimums of 80% statements, 65% branches,
+75% functions and 80% lines across `src/`, `server/` and `electron/`.
+The tests cover lesson and review flows, plan and settings screens, learning blocks, code execution,
+workspace persistence, dictation and local API behavior. Browser adapters such as Monaco, Web Audio,
+microphone recording and terminal sockets are simulated in component tests. Real Docker/CLI execution
+needs a configured environment. Desktop packaging and installer updates have dedicated smoke tests
+described below.
+
+### Desktop updates and releases
+
+Thinkling is the new name of Codenoms. Existing desktop installations keep using their
+`%APPDATA%\Codenoms\data` directory automatically when the new Thinkling data directory has no saved
+database. Data stays in place to preserve Python environments and Docker mounts. `THINKLING_DATA`
+overrides the data directory; the previous `CODENOMS_DATA` variable remains supported as a fallback.
+The internal Windows application ID and Docker resource names also remain stable for compatibility.
+
+Installed Windows builds check public [GitHub Releases](https://github.com/thinkling-org/thinkling/releases)
+at startup and every six hours. A startup update opens a popup with **Download update** and **Later**.
+Dismiss it with Later or Escape; it appears once per app session. Periodic and manual checks use the
+header without interrupting the current activity. The header offers a download when a newer stable version is available,
+shows download progress, and then offers **Restart and update**. Downloading and restarting both require
+a click. Closing the app normally does not install a pending update. Settings shows the current version,
+a manual update check, and release notes. Update controls are hidden in the browser; development desktop
+builds show the version but do not contact the update feed.
+
+Before restarting, the app must successfully save progress. The existing Electron shutdown sequence then
+flushes state and closes the local backend before the process exits. User data remains in
+`%APPDATA%\Thinkling\data` (or the configured `THINKLING_DATA` directory).
+
+To prepare a release, commit the changes on `main`, then run:
+
+```bash
+npm version patch
+git push origin main --follow-tags
+```
+
+The `Windows release` workflow checks that the `v*` tag matches `package.json`, runs type checks and tests,
+builds the x64 NSIS installer, and uploads a **draft** release. Download and test the installer before
+publishing the draft on GitHub. Keep all generated `.exe`, `.blockmap`, and `latest.yml` assets together;
+the updater needs the metadata as well as the installer. Only published stable releases reach users.
+The release repository must be public so installed apps can read it without credentials. The publishing
+token stays in GitHub Actions and is not bundled into the app.
+
+For Windows Authenticode signing, configure repository secrets `WINDOWS_CSC_LINK` (a certificate URL or
+base64 PFX supported by electron-builder) and `WINDOWS_CSC_KEY_PASSWORD`. Without these, the workflow
+produces unsigned installers. Configure signing before broad public distribution; the updater can then
+validate the publisher of downloaded updates. Do not disable signature verification.
+
+The first build containing the updater must be installed manually. Before publishing, test an actual
+installed version A upgrading to a higher version B from a published test release: check discovery,
+download progress, retry after a network failure, explicit restart, and preserved plan/progress/settings.
+Use a separate test repository with a local `build.publish` override for this test, so test releases do
+not reach production users. Also verify that a normal quit never installs a downloaded update.
+`npm run desktop:package` builds locally without publishing; `npm run desktop:release` uploads a draft
+using `GH_TOKEN` and is intended for the release workflow. Full installer-to-installer verification cannot
+be replaced by development mode or unit tests.
+
+After packaging, `npm run test:desktop-updates` exercises the packaged main process, sandboxed preload,
+IPC access checks, Polish update controls, download progress, a simulated save failure and retry, and
+graceful shutdown. It uses isolated data and a fake update transport; it never runs an installer. The
+release workflow also runs this smoke test. A UI screenshot is saved to `release/update-smoke.png`.
+
+On Windows, `npm run test:installer-lifecycle` additionally builds two small apps with a separate test
+identity and the production NSIS launch hook. It verifies a real fresh install, an update through
+`electron-updater`, automatic relaunch, and preservation of saved state, then uninstalls the test app.
+The release workflow runs this check too. Test data, logs and installers stay under `release/`.
+Normal per-user installs launch the executable directly; elevated installs use the desktop user's token.
 
 ## Author
 
