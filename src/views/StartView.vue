@@ -9,6 +9,7 @@ import Logo from '../components/Logo.vue'
 import Gem from '../components/Gem.vue'
 import Icon from '../components/Icon.vue'
 import ProviderPill from '../components/ProviderPill.vue'
+import { UiButton, UiChip, UiChoiceGroup, UiProgress } from '../components/ui/index.ts'
 
 const app = useApp()
 const router = useRouter()
@@ -43,7 +44,7 @@ function start() {
       <div class="col">
         <div class="intro">
           <div class="steps">
-            <div class="bar"><div style="width: 50%" /></div>
+            <UiProgress :value="1" :max="2" />
             <span class="label">{{ t('Step 1 of 2') }}</span>
           </div>
           <h1>{{ t('What do you want to learn?') }}</h1>
@@ -78,29 +79,33 @@ function start() {
         <div class="group">
           <span class="label">{{ t('Or start from a template') }}</span>
           <div class="chips">
-            <button
+            <UiChip
               v-for="preset in LEARNING_TEMPLATES"
               :key="preset.label"
-              class="chip tpl"
+              class="tpl"
               @click="description = t(preset.text)"
-            >{{ t(preset.label) }}</button>
+            >{{ t(preset.label) }}</UiChip>
           </div>
         </div>
 
         <div class="grid2">
           <div class="group">
             <span class="label" id="lbl-min">{{ t('Time per day') }}</span>
-            <div class="seg" role="group" aria-labelledby="lbl-min">
-              <button v-for="m in DAILY_MINUTE_OPTIONS" :key="m" class="chip" :aria-pressed="minutes === m" @click="minutes = m">
-                {{ m === 60 ? '60+' : m }} min
-              </button>
-            </div>
+            <UiChoiceGroup
+              v-model="minutes"
+              class="seg"
+              :options="DAILY_MINUTE_OPTIONS.map((m) => ({ value: m, label: `${m === 60 ? '60+' : m} min` }))"
+              labelledby="lbl-min"
+            />
           </div>
           <div class="group">
             <span class="label" id="lbl-style">{{ t('Learning style') }}</span>
-            <div class="seg" role="group" aria-labelledby="lbl-style">
-              <button v-for="s in LEARNING_STYLES" :key="s.id" class="chip" :aria-pressed="style === s.id" @click="style = s.id">{{ t(s.label) }}</button>
-            </div>
+            <UiChoiceGroup
+              v-model="style"
+              class="seg"
+              :options="LEARNING_STYLES.map((s) => ({ value: s.id, label: t(s.label) }))"
+              labelledby="lbl-style"
+            />
           </div>
         </div>
 
@@ -112,10 +117,10 @@ function start() {
             </template>
             <template v-else>{{ t('Your description becomes a plan with examples, exercises and spaced review.') }}</template>
           </span>
-          <button class="btn btn-primary btn-lg" :disabled="!ready || running" @click="start">
+          <UiButton variant="primary" size="lg" :disabled="!ready || running" @click="start">
             <Icon name="sparkle" :size="20" :stroke="2.4" />
             {{ t('Generate plan') }}
-          </button>
+          </UiButton>
         </div>
       </div>
     </main>
@@ -253,12 +258,7 @@ h1 {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
 }
-.seg {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-.seg .chip {
+.seg :deep(.chip) {
   flex: 1;
   padding: 10px 0;
   min-width: 70px;

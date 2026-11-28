@@ -9,6 +9,7 @@ import Gem from '../components/Gem.vue'
 import Icon from '../components/Icon.vue'
 import ScoreGauge from '../components/ScoreGauge.vue'
 import { play } from '../lib/sfx.ts'
+import { UiButton, UiIconButton, UiProgress, UiTag } from '../components/ui/index.ts'
 
 const app = useApp()
 const router = useRouter()
@@ -81,8 +82,8 @@ onMounted(async () => {
                 <span class="pop-k">{{ t(LESSON_KINDS[l.kind]?.label || 'Lesson') }}</span>
                 <strong>{{ l.title }}</strong>
                 <span class="pop-f">{{ l.focus }}</span>
-                <button v-if="l.status === 'current'" class="btn btn-block" style="color: var(--purple)" @click="start(l)">{{ t('Start +20 XP') }}</button>
-                <button v-else-if="l.status === 'done'" class="btn btn-block" @click="start(l)">{{ t('Review +5 XP') }}</button>
+                <UiButton v-if="l.status === 'current'" block style="color: var(--purple)" @click="start(l)">{{ t('Start +20 XP') }}</UiButton>
+                <UiButton v-else-if="l.status === 'done'" block @click="start(l)">{{ t('Review +5 XP') }}</UiButton>
                 <span v-else class="pop-lock"><Icon name="lock" :size="16" />{{ t('Complete earlier lessons') }}</span>
               </div>
             </div>
@@ -94,8 +95,8 @@ onMounted(async () => {
           <h2>{{ t('Plan complete!') }}</h2>
           <p>{{ t('You can ask to extend the plan or create a new one.') }}</p>
           <div class="row">
-            <RouterLink to="/plan" class="btn">{{ t('Extend plan') }}</RouterLink>
-            <RouterLink to="/start" class="btn btn-primary">{{ t('New plan') }}</RouterLink>
+            <UiButton to="/plan">{{ t('Extend plan') }}</UiButton>
+            <UiButton variant="primary" to="/start">{{ t('New plan') }}</UiButton>
           </div>
         </div>
       </section>
@@ -129,27 +130,30 @@ onMounted(async () => {
         </div>
         <div class="card goal">
           <div class="goal-h"><span>{{ t('Daily goal') }}</span><span style="color: var(--yellow)">{{ app.todayMinutes }} / {{ dailyGoal }} min</span></div>
-          <div class="bar" style="height: 14px"><div :style="{ width: `${dailyPct}%` }" /></div>
+          <UiProgress class="daily-bar" :value="dailyPct" :max="100" :label="t('Daily goal')" />
         </div>
         <div class="card weak">
           <span class="h2">{{ t('Weak points identified by') }} {{ app.settings.provider === 'codex' ? 'Codex' : 'Claude' }}</span>
           <div class="tags">
-            <span v-for="(w, i) in app.weakSpots" :key="w" class="tag" :class="i < 3 ? 'tag-red' : 'tag-yellow'">
+            <UiTag v-for="(w, i) in app.weakSpots" :key="w" :tone="i < 3 ? 'red' : 'yellow'">
               {{ w }}
-              <button class="x" :aria-label="t('Remove {0}', [w])" @click="app.removeWeakSpot(w)"><Icon name="x" :size="12" :stroke="3" /></button>
-            </span>
+              <UiIconButton class="x" icon="x" size="xs" :stroke="3" :label="t('Remove {0}', [w])" @click="app.removeWeakSpot(w)" />
+            </UiTag>
             <span v-if="!app.weakSpots.length" class="muted">{{ t('None so far.') }}</span>
           </div>
         </div>
-        <RouterLink to="/review" class="btn btn-block" :class="{ 'btn-primary': app.dueCards.length }">
+        <UiButton to="/review" :variant="app.dueCards.length ? 'primary' : 'default'" block>
           {{ app.dueCards.length ? t('Review {0} flashcards', [app.dueCards.length]) : t('No flashcards due') }}
-        </RouterLink>
+        </UiButton>
       </aside>
     </div>
   </AppShell>
 </template>
 
 <style scoped>
+.daily-bar {
+  height: 14px;
+}
 .content {
   flex: 1;
   display: flex;
@@ -464,14 +468,14 @@ onMounted(async () => {
   flex-wrap: wrap;
   gap: 8px;
 }
-.x {
-  background: none;
-  border: none;
-  padding: 0;
+/* Sits inside a coloured tag, so it takes the tag's colour. */
+.x,
+.x:hover:not(:disabled) {
   color: inherit;
+  background: none;
+}
+.x {
   opacity: 0.6;
-  cursor: pointer;
-  display: grid;
 }
 .x:hover {
   opacity: 1;

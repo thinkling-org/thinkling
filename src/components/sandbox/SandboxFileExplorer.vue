@@ -2,9 +2,9 @@
 import { t } from '../../lib/i18n.ts'
 import { computed, nextTick, shallowRef, useTemplateRef } from 'vue'
 import { fileBadge } from '../../lib/sandbox-file-types.ts'
-import Icon from '../Icon.vue'
 import type { PropType } from 'vue'
 import type { WorkspaceEntry } from '../../domain.ts'
+import { UiIconButton } from '../ui/index.ts'
 
 const props = defineProps({
   entries: { type: Array as PropType<WorkspaceEntry[]>, required: true },
@@ -65,8 +65,8 @@ const visibleFiles = computed(() => {
   <aside class="tree" :aria-label="t('Files')">
     <div class="tree-h">
       <span>{{ t('Files') }}</span>
-      <button ref="createButton" type="button" class="tb" :title="t('New file')" :aria-label="t('New file')" :disabled="creating" :aria-expanded="naming" @click="startCreate">+</button>
-      <button type="button" class="tb" :title="t('Refresh')" :aria-label="t('Refresh')" @click="emit('refresh')"><Icon name="refresh" :size="13" :stroke="2.6" /></button>
+      <UiIconButton ref="createButton" class="tb" size="sm" :label="t('New file')" :disabled="creating" :aria-expanded="naming" @click="startCreate">+</UiIconButton>
+      <UiIconButton class="tb" icon="refresh" size="sm" :icon-size="13" :label="t('Refresh')" @click="emit('refresh')" />
     </div>
     <form v-if="naming" class="new-file" :aria-label="t('New file')" :aria-busy="creating" @submit.prevent="submitCreate" @keydown.esc.stop.prevent="cancelCreate">
       <label>
@@ -120,21 +120,8 @@ const visibleFiles = computed(() => {
   flex: 1;
 }
 .tb {
-  width: 22px;
-  height: 22px;
-  display: grid;
-  place-items: center;
-  border: none;
-  border-radius: 6px;
-  background: none;
-  color: var(--muted);
-  cursor: pointer;
   font-size: 16px;
   font-weight: 700;
-}
-.tb:hover {
-  background: var(--border);
-  color: var(--text);
 }
 .new-file {
   padding: 4px 8px 12px;

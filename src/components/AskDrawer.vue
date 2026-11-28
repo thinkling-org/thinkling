@@ -7,6 +7,7 @@ import { play } from '../lib/sfx.ts'
 import { useApp } from '../stores/app.ts'
 import Markdown from './Markdown.vue'
 import Icon from './Icon.vue'
+import { UiButton, UiChip, UiIconButton, UiSpinner } from './ui/index.ts'
 
 const props = defineProps({
   open: Boolean,
@@ -104,19 +105,19 @@ const SUGGESTIONS = [t('Give me a simpler example'), t('Where is this useful in 
     <aside v-if="open" class="drawer" :aria-label="t('Chat with the tutor')">
       <header class="dh">
         <span class="dt"><Icon name="chat" :size="20" />{{ t('Ask a follow-up') }} {{ app.settings.provider === 'codex' ? 'Codex' : 'Claude' }}</span>
-        <button class="close" :aria-label="t('Close')" @click="emit('close')"><Icon name="x" :size="20" :stroke="2.6" /></button>
+        <UiIconButton class="close" icon="x" :label="t('Close')" @click="emit('close')" />
       </header>
       <div ref="list" class="msgs">
         <div v-if="!messages.length && !busy" class="empty">
           <p>{{ t('Ask anything about this exercise.') }}</p>
-          <button v-for="s in SUGGESTIONS" :key="s" class="chip" @click="ask(s)">{{ s }}</button>
+          <UiChip v-for="s in SUGGESTIONS" :key="s" @click="ask(s)">{{ s }}</UiChip>
         </div>
         <div v-for="(m, i) in messages" :key="i" class="msg" :class="m.role">
           <Markdown v-if="m.role === 'assistant'" :src="m.content" />
           <template v-else>{{ m.content }}</template>
         </div>
         <div v-if="busy" class="msg assistant thinking">
-          <span class="spinner" />
+          <UiSpinner />
           {{ t('Thinking…') }} <span class="muted mono">{{ progress }} {{ t('chars') }}</span>
         </div>
       </div>
@@ -133,9 +134,9 @@ const SUGGESTIONS = [t('Give me a simpler example'), t('Where is this useful in 
         />
         <div class="ask-actions">
           <div class="mic-slot" data-dictation-slot />
-          <button class="btn btn-primary btn-sm send" type="submit" :disabled="busy || !input.trim()">
+          <UiButton variant="primary" size="sm" class="send" type="submit" :disabled="busy || !input.trim()">
             <Icon name="send" :size="17" :stroke="2.6" />{{ t('Send') }}
-          </button>
+          </UiButton>
         </div>
       </form>
     </aside>
@@ -183,19 +184,6 @@ const SUGGESTIONS = [t('Give me a simpler example'), t('Where is this useful in 
   gap: 10px;
   font-weight: 900;
   font-size: 17px;
-}
-.close {
-  background: none;
-  border: none;
-  color: var(--muted);
-  cursor: pointer;
-  padding: 6px;
-  border-radius: 10px;
-  display: grid;
-}
-.close:hover {
-  background: var(--surface);
-  color: var(--text);
 }
 .msgs {
   flex: 1;

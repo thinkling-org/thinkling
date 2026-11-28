@@ -4,6 +4,7 @@ import { useDesktopUpdates } from '../stores/updates.ts'
 import { t } from '../lib/i18n.ts'
 import type { UpdateAction } from '../lib/desktop-updates.ts'
 import Icon from './Icon.vue'
+import { UiButton } from './ui/index.ts'
 
 const { compact = false } = defineProps<{ compact?: boolean }>()
 const updates = useDesktopUpdates()
@@ -49,17 +50,17 @@ const action = computed<UpdateAction>(() => {
       <p v-else-if="state.status === 'downloaded'" class="muted">{{ t('Version {0} is ready. Restart when you are ready; your progress will be saved.', [state.availableVersion]) }}</p>
     </template>
     <div v-if="state.status !== 'disabled'" class="controls">
-      <button
-        type="button"
-        class="btn btn-sm update-button"
-        :class="{ 'btn-primary': state.status === 'available' || state.status === 'downloaded' }"
+      <UiButton
+        :variant="state.status === 'available' || state.status === 'downloaded' ? 'primary' : 'default'"
+        size="sm"
+        class="update-button"
         :disabled="busy"
         :title="error || (state.status === 'downloaded' ? t('Your progress will be saved before restarting.') : undefined)"
         @click="updates.act(action)"
       >
         <Icon name="refresh" :size="18" />
         {{ label }}
-      </button>
+      </UiButton>
       <a v-if="!compact" href="https://github.com/thinkling-org/thinkling/releases" target="_blank" rel="noopener noreferrer">{{ t('Release notes') }}</a>
     </div>
     <progress v-if="state.status === 'downloading'" class="download-progress" :value="state.percent || 0" max="100" :aria-label="t('Update download progress')" />

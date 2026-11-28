@@ -3,6 +3,7 @@ import { t } from './messages.ts'
 import { computed, onBeforeUnmount, onMounted, shallowRef, useTemplateRef, watch } from 'vue'
 import CodeBlock from '../../components/CodeBlock.vue'
 import CodeTutor from '../../components/CodeTutor.vue'
+import { UiButton } from '../../components/ui/index.ts'
 import type { PropType } from 'vue'
 
 const props = defineProps({
@@ -35,17 +36,16 @@ onBeforeUnmount(() => observer?.disconnect())
 <template>
   <div class="comparison">
     <div class="variants" role="group" :aria-label="t('Compare example variants')">
-      <button
+      <UiButton
         v-for="({ label }, index) in config.variants"
         :key="index"
-        type="button"
-        class="btn btn-sm"
-        :class="index === activeVariant ? 'btn-primary' : 'btn-ghost'"
+        :variant="index === activeVariant ? 'primary' : 'ghost'"
+        size="sm"
         :aria-pressed="index === activeVariant"
         @click="activeVariant = index"
       >
         {{ label }}
-      </button>
+      </UiButton>
     </div>
     <div class="walkthrough">
       <div ref="code" class="listing">

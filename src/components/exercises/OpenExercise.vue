@@ -5,6 +5,7 @@ import Markdown from '../Markdown.vue'
 import CodeBlock from '../CodeBlock.vue'
 import Icon from '../Icon.vue'
 import { useLessonSupport } from '../../composables/useLessonSupport.ts'
+import { UiButton, UiSpinner, UiTag } from '../ui/index.ts'
 
 defineProps({
   exercise: { type: Object, required: true },
@@ -48,7 +49,7 @@ const POINT = {
     </div>
 
     <div v-if="busy" class="card grading">
-      <span class="spinner" />
+      <UiSpinner />
       <span>{{ providerName }} {{ t('is reading your answer…') }}</span>
     </div>
 
@@ -66,15 +67,15 @@ const POINT = {
     </div>
 
     <div v-if="result?.data" class="card feedback">
-      <span v-if="exercise.stage !== 'practice'" class="tag grade" :class="result.status === 'correct' ? 'tag-green' : result.status === 'almost' ? 'tag-yellow' : 'tag-red'">
+      <UiTag v-if="exercise.stage !== 'practice'" class="grade" :tone="result.status === 'correct' ? 'green' : result.status === 'almost' ? 'yellow' : 'red'">
         {{ result.data.score }} / 10
-      </span>
+      </UiTag>
       <Markdown v-for="(p, i) in result.data.points" :key="i" :src="p.text" class="ptxt">
         <template #leading>
           <span class="pi" :style="{ color: POINT[p.kind]?.color }"><Icon :name="POINT[p.kind]?.icon || 'bulb'" :size="18" :stroke="3" /></span>
         </template>
       </Markdown>
-      <button class="link-btn" :aria-expanded="showModel" @click="showModel = !showModel; showModel && support?.mark(exercise.id, 'solution')">{{ showModel ? t('Hide') : t('Show') }} {{ t('reference answer') }}</button>
+      <UiButton variant="link" :aria-expanded="showModel" @click="showModel = !showModel; showModel && support?.mark(exercise.id, 'solution')">{{ showModel ? t('Hide') : t('Show') }} {{ t('reference answer') }}</UiButton>
       <Markdown v-if="showModel" class="model" :src="result.data.modelAnswer || exercise.referenceAnswer" />
     </div>
   </div>

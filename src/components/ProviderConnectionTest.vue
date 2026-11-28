@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { t } from '../lib/i18n.ts'
 import Icon from './Icon.vue'
+import { UiButton, UiSpinner } from './ui/index.ts'
 
 defineProps({
   testing: Boolean,
@@ -10,23 +11,16 @@ defineEmits(['test'])
 </script>
 
 <template>
-  <button class="btn btn-primary btn-sm" :disabled="testing" @click="$emit('test')">
-    <span v-if="testing" class="spinner" />
+  <UiButton variant="primary" size="sm" :disabled="testing" @click="$emit('test')">
+    <UiSpinner v-if="testing" />
     {{ t('Test connection') }}
-  </button>
+  </UiButton>
   <span v-if="result" class="result" :class="result.ok ? 'ok' : 'bad'" role="status">
     <Icon :name="result.ok ? 'check' : 'x'" :size="18" :stroke="3" />{{ result.text }}
   </span>
 </template>
 
 <style scoped>
-.spinner {
-  width: 16px;
-  height: 16px;
-  border-width: 2px;
-  border-color: #ffffff55;
-  border-top-color: #fff;
-}
 .result {
   display: inline-flex;
   align-items: center;

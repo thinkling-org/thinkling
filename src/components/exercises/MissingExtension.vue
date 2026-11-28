@@ -4,6 +4,7 @@ import { t } from '../../lib/i18n.ts'
 import { computed } from 'vue'
 import Icon from '../Icon.vue'
 import { installedPlugins } from '../../blocks/installed.ts'
+import { UiButton } from '../ui/index.ts'
 
 const props = defineProps<{ blockType: string }>()
 const plugin = computed(() => installedPlugins.find((item) => item.id === props.blockType))
@@ -18,7 +19,7 @@ const name = computed(() => plugin.value?.name || props.blockType)
         ? t('This card uses the “{0}” extension, which is turned off.', [name])
         : t('This card uses the “{0}” extension, which is not installed.', [name]) }}
     </p>
-    <RouterLink to="/extensions" class="btn btn-sm">{{ t('Manage extensions') }}</RouterLink>
+    <UiButton size="sm" to="/extensions">{{ t('Manage extensions') }}</UiButton>
   </div>
 </template>
 

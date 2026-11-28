@@ -85,7 +85,7 @@ app.on('browser-window-created', (_event, window) => {
       await waitFor(() => evaluate('Boolean(window.flushThinklingSave && document.querySelector("#app").textContent.length)'), 'frontend mount')
       assert.equal((await evaluate('window.thinklingUpdates.getState()')).status, 'available')
       await waitFor(() => evaluate('Boolean(document.querySelector(".update-prompt")?.open)'), 'startup update popup')
-      assert.equal(await evaluate('document.querySelector(".prompt-title").textContent'), 'Dostępna aktualizacja')
+      assert.equal(await evaluate('document.querySelector(".update-prompt .ui-dialog-title").textContent'), 'Dostępna aktualizacja')
       assert.equal(await evaluate('document.activeElement.classList.contains("prompt-later")'), true)
       await evaluate('new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))')
       fs.writeFileSync(path.join(root, 'release/update-prompt.png'), (await window.capturePage()).toPNG())

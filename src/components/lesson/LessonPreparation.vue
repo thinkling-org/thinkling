@@ -2,6 +2,7 @@
 import { t, uiLocale } from '../../lib/i18n.ts'
 import { computed } from 'vue'
 import Gem from '../Gem.vue'
+import { UiButton, UiCard, UiSpinner } from '../ui/index.ts'
 
 const props = defineProps({
   loading: Boolean,
@@ -33,27 +34,27 @@ const progress = computed(() => {
 
 <template>
   <main class="preparation">
-    <div v-if="loading" class="status-card card">
+    <UiCard v-if="loading" class="status-card">
       <Gem :index="moduleIndex" :size="72" glow />
       <h1>{{ providerName }} {{ t('is preparing your lesson') }}</h1>
       <p v-if="title" class="lesson-title">{{ title }}</p>
       <div class="generation" role="status">
-        <span class="spinner" aria-hidden="true" />
+        <UiSpinner size="sm" />
         <div>
           <span>{{ progress }}</span>
           <code v-if="generation?.stage === 'building' && generation.stageMsg">{{ generation.stageMsg }}</code>
         </div>
       </div>
       <p class="tip">{{ tip }}</p>
-    </div>
-    <div v-else class="status-card card">
+    </UiCard>
+    <UiCard v-else class="status-card">
       <h1>{{ t('Couldn\'t prepare the lesson') }}</h1>
       <p class="error" role="alert">{{ error }}</p>
       <div class="actions">
-        <RouterLink to="/path" class="btn">{{ t('Go back') }}</RouterLink>
-        <button type="button" class="btn btn-primary" @click="emit('retry')">{{ t('Try again') }}</button>
+        <UiButton to="/path">{{ t('Go back') }}</UiButton>
+        <UiButton variant="primary" @click="emit('retry')">{{ t('Try again') }}</UiButton>
       </div>
-    </div>
+    </UiCard>
   </main>
 </template>
 
@@ -62,14 +63,14 @@ const progress = computed(() => {
   flex: 1;
   display: grid;
   place-items: center;
-  padding: 24px 16px;
+  padding: var(--space-6) var(--space-4);
 }
 .status-card {
   width: min(100%, 36rem);
   display: grid;
   justify-items: center;
   gap: 14px;
-  padding: clamp(20px, 5vw, 44px);
+  padding: clamp(var(--space-5), 5vw, 44px);
   text-align: center;
 }
 .status-card h1 {
@@ -84,19 +85,13 @@ const progress = computed(() => {
 .generation {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--space-3);
   max-width: 100%;
   padding: 10px 14px;
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: var(--radius-lg);
   background: var(--bg-deep);
   text-align: start;
-}
-.generation .spinner {
-  flex: none;
-  width: 18px;
-  height: 18px;
-  border-width: 2px;
 }
 .generation code {
   display: block;
@@ -106,7 +101,7 @@ const progress = computed(() => {
 }
 .error {
   margin: 0;
-  color: var(--red-light);
+  color: var(--color-danger-ink);
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
@@ -114,6 +109,6 @@ const progress = computed(() => {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: 8px;
+  gap: var(--space-2);
 }
 </style>

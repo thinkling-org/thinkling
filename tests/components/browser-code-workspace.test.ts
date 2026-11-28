@@ -63,9 +63,9 @@ describe('browser coding workspace', () => {
 
   it('shows tests in a separate file and renders review feedback', async () => {
     const wrapper = render({ review: { summary: 'Use a **constant**.' } })
-    await wrapper.findAll('.ftab')[1].trigger('click')
+    await wrapper.findAll('.tabs-file [role="tab"]')[1].trigger('click')
     expect(wrapper.get('.tests-view').text()).toBe(props.exercise.tests)
-    expect(wrapper.findAll('.ftab')[1].text()).toContain('main.test.js')
+    expect(wrapper.findAll('.tabs-file [role="tab"]')[1].text()).toContain('main.test.js')
     await wrapper.findAll('.ptabs button')[2].trigger('click')
     expect(wrapper.get('.review strong').text()).toBe('constant')
   })
@@ -75,7 +75,7 @@ describe('browser coding workspace', () => {
     expect(wrapper.find('.run').exists()).toBe(false)
     expect(wrapper.get('.pbody').text()).toContain('without running them')
     expect(wrapper.text()).toContain('unverified tests')
-    await wrapper.findAll('.ftab')[1].trigger('click')
+    await wrapper.findAll('.tabs-file [role="tab"]')[1].trigger('click')
     expect(wrapper.get('.tests-view strong').text()).toBe('Expected cases')
   })
 

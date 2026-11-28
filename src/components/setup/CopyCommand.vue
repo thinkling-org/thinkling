@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onScopeDispose, shallowRef } from 'vue'
 import { t } from '../../lib/i18n.ts'
+import { UiButton } from '../ui/index.ts'
 
 const props = defineProps({ command: { type: String, required: true } })
 const copied = shallowRef('')
@@ -29,7 +30,7 @@ onScopeDispose(() => {
 <template>
   <div class="command">
     <code>{{ command }}</code>
-    <button class="btn btn-sm" @click="copy">{{ copied === command ? t('Copied') : t('Copy') }}</button>
+    <UiButton size="sm" @click="copy">{{ copied === command ? t('Copied') : t('Copy') }}</UiButton>
   </div>
 </template>
 

@@ -8,6 +8,7 @@ import { useLessonSupport } from '../../composables/useLessonSupport.ts'
 import { allTestsPassed } from '../../lib/runner.ts'
 import type { PropType } from 'vue'
 import type { Exercise, TestRun } from '../../domain.ts'
+import { UiChip } from '../ui/index.ts'
 
 const props = defineProps({
   exercise: { type: Object as PropType<Exercise>, required: true },
@@ -86,15 +87,13 @@ const failNote = computed(() => {
     <div v-if="tools.length" class="group">
       <span class="label">{{ t('Useful tools · click to learn more') }}</span>
       <div class="chips">
-        <button
+        <UiChip
           v-for="t in tools"
           :key="t.name"
-          type="button"
-          class="chip"
           :class="{ on: openTool === t.name }"
-          :aria-pressed="openTool === t.name"
+          :pressed="openTool === t.name"
           @click="toggleTool(t.name)"
-        >{{ t.name }}</button>
+        >{{ t.name }}</UiChip>
       </div>
       <div v-if="activeTool" class="tool-desc">
         <code>{{ activeTool.name }}</code>

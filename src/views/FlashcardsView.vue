@@ -7,6 +7,7 @@ import AppShell from '../components/AppShell.vue'
 import Gem from '../components/Gem.vue'
 import Icon from '../components/Icon.vue'
 import Markdown from '../components/Markdown.vue'
+import { UiButton, UiChoiceGroup, UiInput } from '../components/ui/index.ts'
 
 const app = useApp()
 const filter = ref('all')
@@ -49,20 +50,24 @@ function firstLine(md) {
           <div><div class="k" style="color: var(--green)">{{ learned }}</div><div class="label">{{ t('Learned') }}</div></div>
         </div>
         <div class="acts">
-          <RouterLink to="/review" class="btn btn-primary btn-lg" :class="{ disabled: !app.dueCards.length }">
+          <UiButton variant="primary" size="lg" to="/review" :class="{ disabled: !app.dueCards.length }">
             {{ app.dueCards.length ? t('Review {0}', [app.dueCards.length]) : t('Nothing to review') }}
-          </RouterLink>
-          <RouterLink v-if="app.flashcards.length" :to="{ path: '/review', query: { all: 1 } }" class="btn">{{ t('Practice all') }}</RouterLink>
+          </UiButton>
+          <UiButton v-if="app.flashcards.length" :to="{ path: '/review', query: { all: 1 } }">{{ t('Practice all') }}</UiButton>
         </div>
       </section>
 
       <div class="toolbar">
-        <div class="seg" role="group" :aria-label="t('Filter')">
-          <button class="chip" :aria-pressed="filter === 'all'" @click="filter = 'all'">{{ t('All') }}</button>
-          <button class="chip" :aria-pressed="filter === 'due'" @click="filter = 'due'">{{ t('Due for review') }}</button>
-          <button class="chip" :aria-pressed="filter === 'hard'" @click="filter = 'hard'">{{ t('Hard') }}</button>
-        </div>
-        <input v-model="q" class="input search" :placeholder="t('Search…')" :aria-label="t('Search flashcards')" />
+        <UiChoiceGroup
+          v-model="filter"
+          :options="[
+            { value: 'all', label: t('All') },
+            { value: 'due', label: t('Due for review') },
+            { value: 'hard', label: t('Hard') },
+          ]"
+          :label="t('Filter')"
+        />
+        <UiInput v-model="q" class="search" :placeholder="t('Search…')" :aria-label="t('Search flashcards')" />
       </div>
 
       <div v-if="!cards.length" class="empty card-dashed">
@@ -82,7 +87,7 @@ function firstLine(md) {
             <Markdown :src="c.back" class="back" />
             <div class="ifoot">
               <span class="muted small">{{ c.source }} {{ t('· reviews:') }} {{ c.reps }} {{ t('· mistakes:') }} {{ c.lapses }}</span>
-              <button class="btn btn-sm btn-ghost-red" @click="app.deleteCard(c.id)"><Icon name="trash" :size="16" />{{ t('Delete') }}</button>
+              <UiButton variant="ghost-red" size="sm" @click="app.deleteCard(c.id)"><Icon name="trash" :size="16" />{{ t('Delete') }}</UiButton>
             </div>
           </div>
         </div>
@@ -143,11 +148,6 @@ function firstLine(md) {
   flex-wrap: wrap;
   gap: 12px;
   justify-content: space-between;
-}
-.seg {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
 }
 .search {
   max-width: 280px;

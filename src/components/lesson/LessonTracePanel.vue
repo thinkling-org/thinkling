@@ -4,6 +4,7 @@ import CodeTrace from '../CodeTrace.vue'
 import Icon from '../Icon.vue'
 import type { PropType } from 'vue'
 import type { Exercise } from '../../domain.ts'
+import { UiButton, UiSpinner } from '../ui/index.ts'
 
 defineProps({
   exercise: { type: Object as PropType<Exercise>, required: true },
@@ -16,18 +17,18 @@ const emit = defineEmits(['close', 'retry'])
 
 <template>
   <section :aria-label="t('Code trace')">
-    <button type="button" class="link-btn back" @click="emit('close')">
+    <UiButton variant="link" class="back" @click="emit('close')">
       <Icon name="arrow-left" :size="16" />
       {{ exercise.type === 'learn' ? t('Back to the knowledge card') : t('Back to the question') }}
-    </button>
+    </UiButton>
     <CodeTrace v-if="exercise.trace" :exercise="exercise" :trace="exercise.trace" :chosen-index="chosenIndex" />
     <div v-else-if="progress?.error" class="card trace-status">
       <strong class="error" role="alert">{{ t('Couldn\'t prepare the code trace') }}</strong>
       <span class="error-details">{{ progress.error }}</span>
-      <button type="button" class="btn btn-sm btn-primary" @click="emit('retry')">{{ t('Try again') }}</button>
+      <UiButton variant="primary" size="sm" @click="emit('retry')">{{ t('Try again') }}</UiButton>
     </div>
     <div v-else class="card trace-status" role="status">
-      <span class="spinner" aria-hidden="true" />
+      <UiSpinner />
       <span>{{ providerName }} {{ t('is tracing the code…') }} {{ progress?.chars || 0 }} {{ t('chars') }}</span>
     </div>
   </section>

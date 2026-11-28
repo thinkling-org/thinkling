@@ -6,6 +6,7 @@ import { t } from '../../lib/i18n.ts'
 import Markdown from '../Markdown.vue'
 import CodeBlock from '../CodeBlock.vue'
 import Icon from '../Icon.vue'
+import { UiButton } from '../ui/index.ts'
 
 const { exercise, busy = false } = defineProps<{ exercise: Exercise; busy?: boolean }>()
 const support = useLessonSupport()
@@ -17,12 +18,12 @@ const shownHints = computed(() => hints.value.slice(0, usage.value?.hints || 0))
 <template>
   <aside v-if="support && (hints.length || exercise.syntax?.length)" class="support" :aria-label="t('Learning support')">
     <div class="support-actions">
-      <button v-if="hints.length" type="button" class="btn btn-sm btn-ghost" :disabled="busy || shownHints.length >= hints.length" @click="support.mark(exercise.id, 'hint')">
+      <UiButton v-if="hints.length" variant="ghost" size="sm" :disabled="busy || shownHints.length >= hints.length" @click="support.mark(exercise.id, 'hint')">
         <Icon name="bulb" :size="16" />{{ shownHints.length ? t('Next hint') : t('Hint me a step') }}
-      </button>
-      <button v-if="exercise.syntax?.length" type="button" class="btn btn-sm btn-ghost" :disabled="busy" :aria-expanded="!!usage?.syntax" @click="support.mark(exercise.id, 'syntax')">
+      </UiButton>
+      <UiButton v-if="exercise.syntax?.length" variant="ghost" size="sm" :disabled="busy" :aria-expanded="!!usage?.syntax" @click="support.mark(exercise.id, 'syntax')">
         <Icon name="code" :size="16" />{{ t('Remind me of the syntax') }}
-      </button>
+      </UiButton>
     </div>
     <div v-if="shownHints.length" class="hints" role="status">
       <Markdown v-for="(hint, index) in shownHints" :key="index" :src="hint" />

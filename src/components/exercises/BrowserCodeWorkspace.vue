@@ -8,6 +8,7 @@ import { allTestsPassed, RUNNABLE, runTests } from '../../lib/runner.ts'
 import { play } from '../../lib/sfx.ts'
 import { useApp } from '../../stores/app.ts'
 import type { CodeIssue } from '../../domain.ts'
+import { UiSpinner, UiTabs } from '../ui/index.ts'
 
 const props = defineProps({
   exercise: { type: Object, required: true },
@@ -26,6 +27,15 @@ const app = useApp()
 
 const tab = shallowRef('file')
 const panel = shallowRef('tests')
+const fileTabs = computed(() => [
+  { value: 'file', label: props.fileName },
+  { value: 'tests', label: runnable.value ? testFile.value : t('test cases') },
+])
+const panelTabs = computed(() => [
+  { value: 'tests', label: total.value ? `${t('Tests')} ${passed.value}/${total.value}` : t('Tests') },
+  { value: 'console', label: run.value?.logs?.length ? `${t('Console')} (${run.value.logs.length})` : t('Console') },
+  { value: 'review', label: `Review ${props.providerName}` },
+])
 const running = shallowRef(false)
 const run = shallowRef(null)
 const cursor = shallowRef({ line: 1, col: 1 })
@@ -66,14 +76,11 @@ defineExpose({ runAll, showReview })
 
 <template>
   <section class="ide" :aria-label="t('Code editor')">
-    <div class="tabs" role="tablist">
-      <button role="tab" :aria-selected="tab === 'file'" class="ftab" :class="{ on: tab === 'file' }" @click="tab = 'file'">
-        <span class="ext">{{ ext.toUpperCase() }}</span>{{ fileName }}
-      </button>
-      <button role="tab" :aria-selected="tab === 'tests'" class="ftab" :class="{ on: tab === 'tests' }" @click="tab = 'tests'">
-        <span class="ext">{{ runnable ? 'JS' : 'MD' }}</span>{{ runnable ? testFile : t('test cases') }}
-      </button>
-    </div>
+    <UiTabs v-model="tab" variant="file" :tabs="fileTabs" :label="t('Files')">
+      <template #tab="{ tab: item }">
+        <span class="ext">{{ item.value === 'file' ? ext.toUpperCase() : runnable ? 'JS' : 'MD' }}</span>{{ item.label }}
+      </template>
+    </UiTabs>
 
     <div class="editor-area">
       <CodeEditor
@@ -97,16 +104,8 @@ defineExpose({ runAll, showReview })
     </div>
 
     <div class="panel">
-      <div class="ptabs" role="tablist">
-        <button role="tab" :aria-selected="panel === 'tests'" :class="{ on: panel === 'tests' }" @click="panel = 'tests'">
-          {{ t('Tests') }} <template v-if="total">{{ passed }}/{{ total }}</template>
-        </button>
-        <button role="tab" :aria-selected="panel === 'console'" :class="{ on: panel === 'console' }" @click="panel = 'console'">
-          {{ t('Console') }} <template v-if="run?.logs?.length">({{ run.logs.length }})</template>
-        </button>
-        <button role="tab" :aria-selected="panel === 'review'" :class="{ on: panel === 'review' }" @click="panel = 'review'">
-          Review {{ providerName }}
-        </button>
+      <UiTabs v-model="panel" class="ptabs" :tabs="panelTabs" :label="t('Results')">
+        <template #end>
         <span
           v-if="exercise.testsStatus === 'verified'"
           class="tstat ok"
@@ -118,10 +117,11 @@ defineExpose({ runAll, showReview })
           :title="t('The reference solution still fails after repair. Grading relies on code review.')"
         >{{ t('⚠ unverified tests — grading relies on review') }}</span>
         <button v-if="runnable" class="run" :disabled="running" @click="runAll">
-          <span v-if="running" class="spinner" style="width: 14px; height: 14px; border-width: 2px" />
+          <UiSpinner v-if="running" size="sm" />
           {{ t('▶ Run tests') }}
         </button>
-      </div>
+        </template>
+      </UiTabs>
       <div class="pbody">
         <template v-if="panel === 'tests'">
           <span v-if="!runnable" class="muted">{{ t('Tests in') }} {{ languageLabel }} {{ t('are checked by') }} {{ providerName }} {{ t('during review without running them.') }}</span>
@@ -166,31 +166,6 @@ defineExpose({ runAll, showReview })
   border-radius: 18px;
   overflow: hidden;
 }
-.tabs {
-  display: flex;
-  background: var(--bg);
-  border-bottom: 2px solid var(--divider);
-  overflow-x: auto;
-}
-.ftab {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 12px 18px;
-  background: none;
-  border: none;
-  border-top: 2px solid transparent;
-  font-family: var(--mono);
-  font-size: 13px;
-  color: var(--muted);
-  cursor: pointer;
-  white-space: nowrap;
-}
-.ftab.on {
-  background: var(--bg-deep);
-  border-top-color: var(--purple);
-  color: var(--text);
-}
 .ext {
   color: #ffcb6b;
   font-weight: 700;
@@ -217,27 +192,7 @@ defineExpose({ runAll, showReview })
   background: #13161a;
 }
 .ptabs {
-  display: flex;
-  gap: 4px;
   padding: 0 12px;
-  border-bottom: 2px solid var(--divider);
-  align-items: center;
-  flex-wrap: wrap;
-}
-.ptabs button:not(.run) {
-  padding: 9px 12px;
-  font-size: 13px;
-  font-weight: 800;
-  color: var(--muted);
-  background: none;
-  border: none;
-  border-bottom: 2px solid transparent;
-  margin-bottom: -2px;
-  cursor: pointer;
-}
-.ptabs button.on {
-  color: var(--text);
-  border-bottom-color: var(--purple);
 }
 .tstat {
   margin-left: auto;

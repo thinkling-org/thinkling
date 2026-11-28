@@ -6,6 +6,7 @@ import Icon from '../components/Icon.vue'
 import {
   installPluginFile, installedPlugins, loadInstalledBlocks, pluginProblems, pluginState, removePlugin, setPluginEnabled,
 } from '../blocks/installed.ts'
+import { UiButton } from '../components/ui/index.ts'
 
 const picker = useTemplateRef<HTMLInputElement>('picker')
 /** A chosen file waiting for the learner to confirm they trust it. */
@@ -102,7 +103,7 @@ function remove(folder: string) {
         >
           <Icon name="upload" :size="26" />
           <p>{{ t('Drop a .thinkling file here or') }}</p>
-          <button type="button" class="btn btn-primary" :disabled="busy" @click="picker?.click()">{{ t('Choose a file') }}</button>
+          <UiButton variant="primary" :disabled="busy" @click="picker?.click()">{{ t('Choose a file') }}</UiButton>
           <input ref="picker" type="file" accept=".thinkling,.zip" hidden @change="onPick" />
         </div>
 
@@ -110,8 +111,8 @@ function remove(folder: string) {
           <h2 id="trust-title">{{ t('Install {0}?', [pending.name]) }}</h2>
           <p>{{ t('An extension runs with the same access as Thinkling, including your files and the code sandbox. Install it only if you trust where it comes from.') }}</p>
           <div class="row">
-            <button type="button" class="btn btn-primary" :disabled="busy" @click="install">{{ t('I trust it, install') }}</button>
-            <button type="button" class="btn" @click="pending = null">{{ t('Cancel') }}</button>
+            <UiButton variant="primary" :disabled="busy" @click="install">{{ t('I trust it, install') }}</UiButton>
+            <UiButton @click="pending = null">{{ t('Cancel') }}</UiButton>
           </div>
         </div>
 
@@ -146,9 +147,9 @@ function remove(folder: string) {
           </div>
           <p class="summary">{{ plugin.summary }}</p>
           <div class="row">
-            <button type="button" class="btn btn-sm btn-ghost-red" :disabled="busy || !plugin.folder" @click="remove(plugin.folder)">
+            <UiButton variant="ghost-red" size="sm" :disabled="busy || !plugin.folder" @click="remove(plugin.folder)">
               <Icon name="trash" :size="16" />{{ confirmRemove === plugin.folder ? t('Click again to remove') : t('Remove') }}
-            </button>
+            </UiButton>
           </div>
         </article>
       </section>
@@ -158,15 +159,15 @@ function remove(folder: string) {
         <article v-for="problem in pluginProblems" :key="problem.plugin" class="card plugin problem">
           <div class="head">
             <h3 class="mono">{{ problem.plugin }}</h3>
-            <button
+            <UiButton
               v-if="problem.folder"
-              type="button"
-              class="btn btn-sm btn-ghost-red"
+              variant="ghost-red"
+              size="sm"
               :disabled="busy"
               @click="remove(problem.folder)"
             >
               <Icon name="trash" :size="16" />{{ confirmRemove === problem.folder ? t('Click again to remove') : t('Remove') }}
-            </button>
+            </UiButton>
           </div>
           <p class="detail mono">{{ problem.error }}</p>
         </article>

@@ -9,6 +9,7 @@ import { blockDefinition, readLessonVisualization } from '../../blocks/registry.
 import { pluginState } from '../../blocks/installed.ts'
 import MissingExtension from './MissingExtension.vue'
 import type { BlockProps } from '../../blocks/types.ts'
+import { UiButton } from '../ui/index.ts'
 
 const props = defineProps({
   exercise: { type: Object, required: true },
@@ -54,9 +55,9 @@ function saveConcept(concept) {
     <BlockHost v-if="block" :block="block" :block-props="blockProps" @event="onBlockEvent" />
     <MissingExtension v-else-if="missingExtension" :block-type="missingExtension" />
     <div v-if="!ownsCode && exercise.code?.trim()" class="example">
-      <button type="button" class="btn btn-ghost btn-sm" @click="$emit('trace')" @keydown.enter.stop>
+      <UiButton variant="ghost" size="sm" @click="$emit('trace')" @keydown.enter.stop>
         <Icon name="play" :size="16" />{{ t('Trace the example') }}
-      </button>
+      </UiButton>
       <CodeBlock :code="exercise.code" :language="exercise.codeLanguage || 'javascript'" :file-name="t('example')" />
     </div>
     <component
@@ -69,9 +70,9 @@ function saveConcept(concept) {
         <details v-for="concept in exercise.prerequisites" :key="concept.term" class="card prerequisite">
           <summary>{{ t('Show a simpler example ·') }} <Markdown :src="concept.term" inline tag="span" /></summary>
           <Markdown :src="concept.explanation" />
-          <button type="button" class="btn btn-ghost btn-sm" :disabled="savedTerms.has(concept.term)" @click="saveConcept(concept)">
+          <UiButton variant="ghost" size="sm" :disabled="savedTerms.has(concept.term)" @click="saveConcept(concept)">
             {{ savedTerms.has(concept.term) ? t('Saved for review') : t('Save for review') }}
-          </button>
+          </UiButton>
         </details>
       </div>
       <div v-if="exercise.explanation || exercise.keyPoints?.length" class="cards">

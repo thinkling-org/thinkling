@@ -10,7 +10,6 @@ import { useLessonSession } from '../composables/useLessonSession.ts'
 import { provideLessonSupport } from '../composables/useLessonSupport.ts'
 import { buildLessonChatContext } from '../lib/lesson-context.ts'
 import { play } from '../lib/sfx.ts'
-import Icon from '../components/Icon.vue'
 import LessonFooter from '../components/LessonFooter.vue'
 import LessonIntro from '../components/LessonIntro.vue'
 import LessonPreparation from '../components/lesson/LessonPreparation.vue'
@@ -24,6 +23,7 @@ import ChoiceExercise from '../components/exercises/ChoiceExercise.vue'
 import CodeExercise from '../components/exercises/CodeExercise.vue'
 import InteractiveExercise from '../components/exercises/InteractiveExercise.vue'
 import ExerciseSupport from '../components/exercises/ExerciseSupport.vue'
+import { UiButton, UiIconButton, UiProgress } from '../components/ui/index.ts'
 
 const route = useRoute()
 const router = useRouter()
@@ -218,17 +218,13 @@ const wide = computed(() => phase.value === 'play' && exercise.value?.type === '
 <template>
   <div class="lesson" :class="{ wide, tracing: showTrace, comparing: !!comparisonVariant, 'ask-open': drawerOpen }">
     <header class="lesson-header">
-      <button type="button" class="close-lesson" :aria-label="t('Close lesson')" @click="close">
-        <Icon name="x" :size="24" :stroke="2.8" />
-      </button>
+      <UiIconButton icon="x" size="lg" variant="outlined" :stroke="2.8" :label="t('Close lesson')" @click="close" />
       <div class="lesson-progress">
         <div v-if="phase === 'play'" class="progress-label">
           <span class="lesson-name">{{ meta?.title }}</span>
           <span class="count">{{ exerciseIndex + 1 }} / {{ exercises.length }}</span>
         </div>
-        <div class="bar progress-bar" role="progressbar" :aria-label="t('Lesson progress')" :aria-valuenow="progress">
-          <div :style="{ width: `${progress}%` }" />
-        </div>
+        <UiProgress class="progress-bar" :value="progress" :max="100" :label="t('Lesson progress')" />
       </div>
     </header>
 
@@ -327,16 +323,16 @@ const wide = computed(() => phase.value === 'play' && exercise.value?.type === '
           <span class="xp">{{ t('up to +') }}{{ estimate.xp }} XP</span>
         </span>
       </template>
-      <button type="button" class="btn btn-primary btn-lg" @click="startLesson">
+      <UiButton variant="primary" size="lg" @click="startLesson">
         {{ meta?.kind === 'test' ? t('Start assessment') : t('Start learning') }}
-      </button>
+      </UiButton>
     </LessonFooter>
 
     <LessonFooter v-else-if="phase === 'summary'" tone="idle">
       <template #left>
-        <RouterLink v-if="app.dueCards.length" to="/review" class="btn btn-ghost">{{ t('Flashcards (') }}{{ app.dueCards.length }})</RouterLink>
+        <UiButton v-if="app.dueCards.length" variant="ghost" to="/review">{{ t('Flashcards (') }}{{ app.dueCards.length }})</UiButton>
       </template>
-      <RouterLink to="/path" class="btn btn-primary btn-lg">{{ t('Continue') }}</RouterLink>
+      <UiButton variant="primary" size="lg" to="/path">{{ t('Continue') }}</UiButton>
     </LessonFooter>
 
     <ExerciseFooter
@@ -388,21 +384,6 @@ const wide = computed(() => phase.value === 'play' && exercise.value?.type === '
 }
 .wide .lesson-header {
   max-width: none;
-}
-.close-lesson {
-  flex: none;
-  display: grid;
-  place-items: center;
-  width: 40px;
-  height: 40px;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  background: var(--surface);
-  color: var(--text-3);
-  cursor: pointer;
-}
-.close-lesson:hover {
-  color: var(--text);
 }
 .lesson-progress {
   flex: 1;

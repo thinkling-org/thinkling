@@ -5,6 +5,7 @@ import { useApp } from '../stores/app.ts'
 import { DEFAULT_SANDBOX_LANGUAGE, getSandboxStarter, hasSandboxStarter } from '../lib/sandbox-starters.ts'
 import AppShell from '../components/AppShell.vue'
 import SandboxIDE from '../components/SandboxIDE.vue'
+import { UiButton, UiChoiceGroup } from '../components/ui/index.ts'
 
 const app = useApp()
 
@@ -23,13 +24,16 @@ onMounted(() => {
     <div class="pg">
       <div class="pg-head">
         <h1>{{ t('Sandbox') }}</h1>
-        <div class="seg">
-          <button v-for="[k, label] in langs" :key="k" class="chip" :aria-pressed="lang === k" @click="lang = k">{{ label }}</button>
-        </div>
+        <UiChoiceGroup
+          v-model="lang"
+          class="seg"
+          :options="langs.map(([value, label]) => ({ value, label }))"
+          :label="t('Language')"
+        />
       </div>
       <div v-if="app.docker && !app.docker.available" class="card off">
         <strong>{{ t('Docker isn\'t running.') }}</strong> {{ t('Start Docker Desktop and click') }}
-        <button class="link-btn" @click="app.refreshStatus()">{{ t('check again') }}</button>.
+        <UiButton variant="link" @click="app.refreshStatus()">{{ t('check again') }}</UiButton>.
       </div>
       <SandboxIDE
         v-else-if="app.docker"
@@ -66,12 +70,10 @@ h1 {
   font-size: 26px;
 }
 .seg {
-  display: flex;
-  flex-wrap: wrap;
   align-items: center;
   gap: 6px;
 }
-.seg .chip {
+.seg :deep(.chip) {
   padding: 6px 12px;
   font-size: 13px;
 }
