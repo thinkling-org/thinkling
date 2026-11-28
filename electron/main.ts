@@ -9,8 +9,12 @@ import { translate } from '../src/lib/translation.ts'
 import electronUpdater from 'electron-updater'
 import { createDesktopUpdates } from './updates.ts'
 import { desktopUserData } from './user-data.ts'
+import { desktopPath } from './shell-path.ts'
 
 const HOST = '127.0.0.1'
+// electron-updater can install NSIS and AppImage builds. macOS needs a signed app, .deb needs root.
+const updatesSupported = app.isPackaged
+  && (process.platform === 'win32' || (process.platform === 'linux' && !!process.env.APPIMAGE))
 const AUTH_HEADER = 'x-thinkling-desktop'
 
 app.setName('Thinkling')
@@ -72,8 +76,11 @@ function openExternal(url: string) {
 async function start() {
   const appPath = app.getAppPath()
   const resourceRoot = app.isPackaged ? `${appPath}.unpacked` : appPath
+  // The backend looks up claude, codex, docker and python on PATH.
+  const fullPath = await desktopPath({ home: app.getPath('home') })
+  if (fullPath) process.env.PATH = fullPath
   // The backend reads the data directory when its modules are imported.
-  process.env.THINKLING_DATA ||= process.env.CODENOMS_DATA || path.join(app.getPath('userData'), 'data')
+  process.env.THINKLING_DATA ||=process.env.CODENOMS_DATA || path.join(app.getPath('userData'), 'data')
   const { startServer } = await import('../server/app.ts')
   const secret = randomBytes(32).toString('hex')
   const systemLanguages = app.getPreferredSystemLanguages()
@@ -109,7 +116,7 @@ async function start() {
   const page = window.webContents
   const updates = createDesktopUpdates({
     updater: electronUpdater.autoUpdater,
-    enabled: app.isPackaged && process.platform === 'win32',
+    enabled: updatesSupported,
     currentVersion: app.getVersion(),
     prepareInstall: async () => {
       if (quitting) throw new Error('Application is already closing')
@@ -135,7 +142,7 @@ async function start() {
       return handler()
     })
   }
-  if (app.isPackaged && process.platform === 'win32') {
+  if (updatesSupported) {
     page.once('did-finish-load', () => { if (!quitting) void updates.check(true) })
     updateTimer = setInterval(() => { if (!quitting) void updates.check() }, 6 * 60 * 60 * 1_000)
     updateTimer.unref()

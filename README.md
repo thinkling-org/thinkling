@@ -79,7 +79,8 @@ Then pick how you want to run it.
 
 ```bash
 npm run desktop            # builds the app and opens the Electron window
-npm run desktop:package    # optional: builds a Windows .exe installer in release/
+npm run desktop:package    # optional: builds an installer for the current OS in release/
+                           # (Windows .exe, macOS .dmg/.zip, Linux AppImage/.deb)
 ```
 
 If PowerShell blocks npm scripts, use `npm.cmd` instead of `npm`.
@@ -282,7 +283,7 @@ installed version A upgrading to a higher version B from a published test releas
 download progress, retry after a network failure, explicit restart, and preserved plan/progress/settings.
 Use a separate test repository with a local `build.publish` override for this test, so test releases do
 not reach production users. Also verify that a normal quit never installs a downloaded update.
-`npm run desktop:package` builds locally without publishing; `npm run desktop:release` uploads a draft
+`npm run desktop:package` builds locally without publishing; `npm run desktop:release:win` (and `:mac`, `:linux`) uploads to a draft
 using `GH_TOKEN` and is intended for the release workflow. Full installer-to-installer verification cannot
 be replaced by development mode or unit tests.
 

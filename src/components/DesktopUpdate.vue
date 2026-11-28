@@ -44,7 +44,7 @@ const action = computed<UpdateAction>(() => {
     <template v-if="!compact">
       <h2 class="heading">{{ t('Application updates') }}</h2>
       <p class="muted">Thinkling {{ state.currentVersion }}</p>
-      <p v-if="state.status === 'disabled'" class="muted">{{ t('Automatic updates are available in the installed Windows application.') }}</p>
+      <p v-if="state.status === 'disabled'" class="muted">{{ t('Automatic updates are available in the Windows installer and the Linux AppImage. Download other versions from the releases page.') }}</p>
       <p v-else-if="state.status === 'current'" role="status" class="muted">{{ t('You are using the latest version.') }}</p>
       <p v-else-if="state.status === 'downloaded'" class="muted">{{ t('Version {0} is ready. Restart when you are ready; your progress will be saved.', [state.availableVersion]) }}</p>
     </template>

@@ -122,7 +122,7 @@ describe('desktop update controls', () => {
     emit({ status: 'disabled' })
     await flushPromises()
     expect(wrapper.find('button').exists()).toBe(false)
-    expect(wrapper.text()).toContain('installed Windows application')
+    expect(wrapper.text()).toContain('Windows installer and the Linux AppImage')
     disconnect()
     expect(unsubscribe).toHaveBeenCalledOnce()
   })

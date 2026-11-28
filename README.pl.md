@@ -78,7 +78,8 @@ Następnie wybierz sposób uruchomienia.
 
 ```bash
 npm run desktop            # buduje aplikację i otwiera okno Electrona
-npm run desktop:package    # opcjonalnie: tworzy instalator .exe na Windows w katalogu release/
+npm run desktop:package    # opcjonalnie: tworzy instalator dla bieżącego systemu w katalogu release/
+                           # (Windows .exe, macOS .dmg/.zip, Linux AppImage/.deb)
 ```
 
 Jeśli PowerShell blokuje skrypty npm, użyj `npm.cmd` zamiast `npm`.
@@ -270,7 +271,7 @@ rzeczywiście zainstalowanej wersji A do wyższej B: wykrywanie, pobieranie, pon
 restart i zachowanie planu, postępu oraz ustawień. Użyj osobnego publicznego repozytorium testowego
 i lokalnie zmienionego `build.publish`, żeby wydania testowe nie trafiały do użytkowników. Sprawdź też,
 że zwykłe zamknięcie aplikacji nie instaluje pobranej wersji. `npm run desktop:package` buduje lokalnie
-bez publikowania, a `npm run desktop:release` wysyła szkic przy użyciu `GH_TOKEN` i jest przeznaczone
+bez publikowania, a `npm run desktop:release:win` (oraz `:mac`, `:linux`) wysyła szkic przy użyciu `GH_TOKEN` i jest przeznaczone
 dla workflow wydań. Tryb developerski i testy jednostkowe nie zastępują testu dwóch instalatorów.
 
 Po zbudowaniu paczki `npm run test:desktop-updates` sprawdza spakowany proces główny, preload w sandboxie,

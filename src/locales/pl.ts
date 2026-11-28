@@ -12,7 +12,7 @@ export default {
   "Saving and restarting…": "Zapisywanie i ponowne uruchamianie…",
   "Checking for updates…": "Sprawdzanie aktualizacji…",
   "Check for updates": "Sprawdź aktualizacje",
-  "Automatic updates are available in the installed Windows application.": "Automatyczne aktualizacje są dostępne w zainstalowanej aplikacji Windows.",
+  "Automatic updates are available in the Windows installer and the Linux AppImage. Download other versions from the releases page.": "Automatyczne aktualizacje działają w instalatorze dla Windows i w AppImage dla Linuksa. Pozostałe wersje pobierzesz ze strony wydań.",
   "You are using the latest version.": "Korzystasz z najnowszej wersji.",
   "Version {0} is ready. Restart when you are ready; your progress will be saved.": "Wersja {0} jest gotowa. Uruchom aplikację ponownie w dogodnym momencie. Twój postęp zostanie zapisany.",
   "Your progress will be saved before restarting.": "Twój postęp zostanie zapisany przed ponownym uruchomieniem.",
