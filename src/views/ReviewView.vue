@@ -6,9 +6,9 @@ import { useApp } from '../stores/app.ts'
 import { RATINGS } from '../lib/srs.ts'
 import { useFlashcardReview } from '../composables/useFlashcardReview.ts'
 import { play } from '../lib/sfx.ts'
-import Icon from '../components/Icon.vue'
 import Gem from '../components/Gem.vue'
 import Markdown from '../components/Markdown.vue'
+import { UiButton, UiIconButton, UiProgress, UiTag } from '../components/ui/index.ts'
 
 const app = useApp()
 const router = useRouter()
@@ -41,8 +41,8 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
 <template>
   <div class="review">
     <header class="rh">
-      <button class="x" :aria-label="t('Close')" @click="router.back()"><Icon name="x" :size="26" :stroke="2.8" /></button>
-      <div class="bar"><div :style="{ width: `${total ? (doneCount / total) * 100 : 100}%` }" /></div>
+      <UiIconButton class="x" icon="x" size="lg" :icon-size="26" :stroke="2.8" :label="t('Close')" @click="router.back()" />
+      <UiProgress :value="total ? doneCount : 1" :max="total || 1" />
       <span class="count">{{ doneCount }} / {{ total }}</span>
     </header>
 
@@ -51,8 +51,8 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
       <h1>{{ t('No flashcards due') }}</h1>
       <p class="sub">{{ t('Flashcards are added after lessons and from your mistakes. Check back later.') }}</p>
       <div class="row">
-        <RouterLink to="/path" class="btn">{{ t('Go to the learning path') }}</RouterLink>
-        <RouterLink v-if="app.flashcards.length" :to="{ path: '/review', query: { all: 1 } }" class="btn btn-primary">{{ t('Practice the entire deck') }}</RouterLink>
+        <UiButton to="/path">{{ t('Go to the learning path') }}</UiButton>
+        <UiButton v-if="app.flashcards.length" variant="primary" :to="{ path: '/review', query: { all: 1 } }">{{ t('Practice the entire deck') }}</UiButton>
       </div>
     </main>
 
@@ -60,18 +60,18 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
       <Gem :index="2" :size="110" glow class="pop" />
       <h1 class="done">{{ t('Review complete!') }}</h1>
       <div class="sum">
-        <span class="tag tag-red">{{ t('Again:') }} {{ stats.again }}</span>
-        <span class="tag tag-yellow">{{ t('Hard:') }} {{ stats.hard }}</span>
-        <span class="tag tag-green">{{ t('Good:') }} {{ stats.good }}</span>
-        <span class="tag tag-purple">{{ t('Easy:') }} {{ stats.easy }}</span>
+        <UiTag tone="red">{{ t('Again:') }} {{ stats.again }}</UiTag>
+        <UiTag tone="yellow">{{ t('Hard:') }} {{ stats.hard }}</UiTag>
+        <UiTag tone="green">{{ t('Good:') }} {{ stats.good }}</UiTag>
+        <UiTag tone="purple">{{ t('Easy:') }} {{ stats.easy }}</UiTag>
       </div>
-      <RouterLink to="/path" class="btn btn-primary btn-lg" style="margin-top: 16px">{{ t('Continue') }}</RouterLink>
+      <UiButton variant="primary" size="lg" to="/path" style="margin-top: 16px">{{ t('Continue') }}</UiButton>
     </main>
 
     <main v-else-if="card" class="stage">
       <div class="inner">
         <div class="meta">
-          <span v-if="card.source" class="tag tag-purple">{{ card.source }}</span>
+          <UiTag v-if="card.source" tone="purple">{{ card.source }}</UiTag>
           <span v-if="card.lapses" class="muted small">{{ t('mistakes:') }} {{ card.lapses }}</span>
         </div>
         <div class="stack">
@@ -93,7 +93,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
         </div>
 
         <div v-if="!revealed" class="reveal">
-          <button class="btn btn-primary btn-lg btn-block" @click="revealed = true">{{ t('Show answer') }}</button>
+          <UiButton variant="primary" size="lg" block @click="revealed = true">{{ t('Show answer') }}</UiButton>
           <span class="muted small">{{ t('Space') }}</span>
         </div>
         <div v-else ref="ratingPanel" class="rate">
@@ -124,17 +124,6 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
   max-width: 1100px;
   width: 100%;
   margin: 0 auto;
-}
-.x {
-  background: none;
-  border: none;
-  color: var(--muted);
-  cursor: pointer;
-  padding: 4px;
-  display: grid;
-}
-.x:hover {
-  color: var(--text);
 }
 .count {
   font-weight: 900;

@@ -8,7 +8,7 @@ test('creates, revises and persists a plan through the real AI API', async ({ pa
   await page.getByLabel('Your background').fill('short')
   await expect(generate).toBeDisabled()
   await page.getByLabel('Your background').fill('I know basic JavaScript and want to practise returning values from functions.')
-  await page.getByRole('button', { name: '15 min', exact: true }).click()
+  await page.getByRole('radio', { name: '15 min', exact: true }).click()
   await generate.click()
   await expect(page.getByText('JavaScript foundations', { exact: true })).toBeVisible()
   await page.getByRole('button', { name: /Module 1/ }).click()

@@ -4,6 +4,7 @@ import { t } from './messages.ts'
 import { computed, onBeforeUnmount, onMounted, ref, watch, watchPostEffect } from 'vue'
 import { evaluateRegression } from './regression.ts'
 import Markdown from '../../components/Markdown.vue'
+import { UiButton } from '../../components/ui/index.ts'
 
 const props = defineProps({ config: { type: Object, required: true } })
 const canvas = ref(null)
@@ -202,7 +203,7 @@ const slope = computed(() => parameters.value.rise / props.config.model.xSpan)
       </label>
     </div>
     <div class="actions">
-      <button type="button" class="btn btn-primary btn-sm" @click="showBestFit">{{ t('Show best fit') }}</button>
+      <UiButton variant="primary" size="sm" @click="showBestFit">{{ t('Show best fit') }}</UiButton>
       <div class="error">{{ t('Mean squared error') }} <output>{{ formatNumber(result.mse) }}</output></div>
     </div>
     <details class="values">

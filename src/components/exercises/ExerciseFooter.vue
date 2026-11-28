@@ -6,6 +6,7 @@ import Icon from '../Icon.vue'
 import LessonFooter from '../LessonFooter.vue'
 import Markdown from '../Markdown.vue'
 import ExerciseMoreActions from './ExerciseMoreActions.vue'
+import { UiButton, type ButtonVariant } from '../ui/index.ts'
 
 const props = defineProps({
   exercise: { type: Object, required: true },
@@ -20,7 +21,7 @@ const props = defineProps({
 const emit = defineEmits(['back', 'ask', 'check', 'dont-know', 'know-it', 'next', 'retry', 'skip', 'trace', 'solution'])
 
 const TITLES = { correct: t('Great work!'), almost: t('Almost!'), wrong: t('Not quite') }
-const BUTTON_COLORS = { correct: 'green', almost: 'yellow', wrong: 'red' }
+const BUTTON_COLORS: Partial<Record<string, ButtonVariant>> = { correct: 'green', almost: 'yellow', wrong: 'red' }
 const isChoice = computed(() => props.exercise.type === 'choice')
 const isCode = computed(() => props.exercise.type === 'code')
 const isError = computed(() => props.result?.status === 'error')
@@ -104,45 +105,43 @@ function runSecondaryAction(id: string) {
       <ExerciseMoreActions :key="exercise.id" :actions="secondaryActions" @select="runSecondaryAction" />
     </template>
     <template #navigation>
-      <button type="button" class="btn btn-ghost" :disabled="busy" :aria-label="t('Previous step')" @click="emit('back')">
+      <UiButton variant="ghost" :disabled="busy" :aria-label="t('Previous step')" @click="emit('back')">
         <Icon name="arrow-left" :size="18" />{{ t('Go back') }}
-      </button>
+      </UiButton>
     </template>
     <template #message>
       <Markdown :src="feedback.message" />
     </template>
     <template #left>
       <template v-if="exercise.type === 'learn'">
-        <button v-if="canSkipLearn" class="btn btn-ghost" @click="emit('know-it')">{{ t('I know this — skip') }}</button>
-        <button class="btn btn-ghost" @click="emit('ask')"><Icon name="chat" :size="18" />{{ t('Ask a follow-up') }}</button>
+        <UiButton v-if="canSkipLearn" variant="ghost" @click="emit('know-it')">{{ t('I know this — skip') }}</UiButton>
+        <UiButton variant="ghost" @click="emit('ask')"><Icon name="chat" :size="18" />{{ t('Ask a follow-up') }}</UiButton>
       </template>
-      <button v-else-if="isPractice && !result" class="btn btn-ghost" :disabled="busy" @click="emit('solution')">{{ t('Show solution') }}</button>
+      <UiButton v-else-if="isPractice && !result" variant="ghost" :disabled="busy" @click="emit('solution')">{{ t('Show solution') }}</UiButton>
       <template v-else>
-        <button v-if="isPractice" class="btn btn-ghost" @click="emit('ask')">{{ t('Ask a follow-up') }}</button>
-        <button v-else-if="exercise.type === 'open'" class="btn btn-ghost" :disabled="busy" @click="emit('dont-know')">{{ t('I don\'t know') }}</button>
-        <button v-else class="btn btn-ghost" :disabled="busy" @click="emit('skip')">{{ isChallenge ? t('Skip challenge') : t('Skip') }}</button>
-        <button v-if="!isChoice" class="btn btn-ghost" :disabled="busy" @click="emit('ask')">
+        <UiButton v-if="isPractice" variant="ghost" @click="emit('ask')">{{ t('Ask a follow-up') }}</UiButton>
+        <UiButton v-else-if="exercise.type === 'open'" variant="ghost" :disabled="busy" @click="emit('dont-know')">{{ t('I don\'t know') }}</UiButton>
+        <UiButton v-else variant="ghost" :disabled="busy" @click="emit('skip')">{{ isChallenge ? t('Skip challenge') : t('Skip') }}</UiButton>
+        <UiButton v-if="!isChoice" variant="ghost" :disabled="busy" @click="emit('ask')">
           <Icon name="chat" :size="18" />{{ t('Hint') }}
-        </button>
+        </UiButton>
       </template>
     </template>
 
-    <button v-if="exercise.type === 'learn'" class="btn btn-green btn-lg" @click="emit('next')">{{ nextStep ? t('Next step') : t('Got it') }}</button>
-    <button v-else-if="isError" class="btn btn-primary" @click="emit('retry')">{{ t('Try again') }}</button>
+    <UiButton v-if="exercise.type === 'learn'" variant="green" size="lg" @click="emit('next')">{{ nextStep ? t('Next step') : t('Got it') }}</UiButton>
+    <UiButton v-else-if="isError" variant="primary" @click="emit('retry')">{{ t('Try again') }}</UiButton>
     <template v-else-if="isPractice && result && !isError">
-      <button class="btn btn-green btn-lg" @click="emit('next')">{{ t('Continue') }}<Icon name="arrow-right" :size="18" /></button>
+      <UiButton variant="green" size="lg" @click="emit('next')">{{ t('Continue') }}<Icon name="arrow-right" :size="18" /></UiButton>
     </template>
     <template v-else-if="feedback.tone === 'idle'">
-      <button v-if="busy" class="btn btn-primary btn-lg" disabled>
-        <span class="spinner" style="border-color: #ffffff55; border-top-color: #fff" />{{ t('Checking…') }}
-      </button>
-      <button v-else class="btn btn-lg" :class="canCheck && (isCode ? 'btn-primary' : 'btn-green')" :disabled="!canCheck" @click="emit('check')">
+      <UiButton v-if="busy" variant="primary" size="lg" loading>{{ t('Checking…') }}</UiButton>
+      <UiButton v-else :variant="!canCheck ? 'default' : isCode ? 'primary' : 'green'" size="lg" :disabled="!canCheck" @click="emit('check')">
         {{ isPractice ? t('Check practice answer') : isCode ? t('Check with {0}', [providerName]) : t('Check') }}
-      </button>
+      </UiButton>
     </template>
     <template v-else-if="color">
-      <button class="btn btn-lg" :class="`btn-${color}`" @click="emit('next')">{{ feedback.tone === 'wrong' ? t('Got it') : t('Continue') }}<Icon name="arrow-right" :size="18" /></button>
+      <UiButton :variant="color" size="lg" @click="emit('next')">{{ feedback.tone === 'wrong' ? t('Got it') : t('Continue') }}<Icon name="arrow-right" :size="18" /></UiButton>
     </template>
-    <button v-else class="btn btn-primary btn-lg" @click="emit('next')">{{ t('Continue') }}</button>
+    <UiButton v-else variant="primary" size="lg" @click="emit('next')">{{ t('Continue') }}</UiButton>
   </LessonFooter>
 </template>

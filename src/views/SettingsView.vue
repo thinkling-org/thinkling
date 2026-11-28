@@ -12,12 +12,18 @@ import LanguagePicker from '../components/LanguagePicker.vue'
 import DesktopUpdate from '../components/DesktopUpdate.vue'
 import { play } from '../lib/sfx.ts'
 import { SOUND_PREVIEWS, playSoundPreview } from '../lib/sound-previews.ts'
+import { UiButton, UiChoiceGroup, UiInput, UiTag } from '../components/ui/index.ts'
 
 const app = useApp()
 const router = useRouter()
 
 const { chooseProvider, testConnection, testing, testResult } = useProviderSettings()
 const provider = computed(() => getAiProvider(app.settings.provider))
+
+function setSound(on: boolean) {
+  app.settings.sound = on
+  if (on) play('correct')
+}
 
 function runSetup() {
   router.push('/setup')
@@ -61,10 +67,9 @@ function resetAll() {
           >
             <div class="ph">
               <strong>{{ p.name }}</strong>
-              <span
-                class="tag"
-                :class="app.status?.providers?.[p.id]?.available ? 'tag-green' : 'tag-red'"
-              >{{ app.status ? (app.status.providers?.[p.id]?.available ? t('found') : t('missing')) : '…' }}</span>
+              <UiTag
+                :tone="app.status?.providers?.[p.id]?.available ? 'green' : 'red'"
+              >{{ app.status ? (app.status.providers?.[p.id]?.available ? t('found') : t('missing')) : '…' }}</UiTag>
             </div>
             <span class="pd">{{ t(p.description) }}</span>
             <code v-if="app.status?.providers?.[p.id]?.version" class="pv">{{ app.status.providers[p.id].version }}</code>
@@ -86,9 +91,9 @@ function resetAll() {
         <div class="card dk">
           <div class="ph">
             <strong>Docker</strong>
-            <span class="tag" :class="app.docker?.available ? 'tag-green' : 'tag-red'">
+            <UiTag :tone="app.docker?.available ? 'green' : 'red'">
               {{ app.docker ? (app.docker.available ? t('running · {0}', [app.docker.version]) : t('not running')) : '…' }}
-            </span>
+            </UiTag>
           </div>
           <span class="pd">
             {{ t('Exercises in PHP, C++, Python, Go, Rust, Java, C# and SQL run in real containers with files, a Bash terminal and tests. Containers have no network access and have a memory limit. A language image builds on first use.') }}
@@ -96,23 +101,30 @@ function resetAll() {
           <span v-if="app.docker && !app.docker.available" class="pd warn">
             {{ app.docker.error || t('Docker isn\'t responding.') }} {{ t('Without Docker, these exercises are graded only by') }} {{ provider.shortName }}.
           </span>
-          <button class="btn btn-sm" style="align-self: flex-start" @click="app.refreshStatus()">{{ t('Check again') }}</button>
+          <UiButton size="sm" style="align-self: flex-start" @click="app.refreshStatus()">{{ t('Check again') }}</UiButton>
         </div>
-        <span class="label">JavaScript / TypeScript</span>
-        <div class="seg">
-          <button class="chip" :aria-pressed="app.settings.jsRuntime !== 'docker'" @click="app.settings.jsRuntime = 'browser'">{{ t('In the browser — fast') }}</button>
-          <button class="chip" :aria-pressed="app.settings.jsRuntime === 'docker'" :disabled="!app.docker?.available" @click="app.settings.jsRuntime = 'docker'">
-            {{ t('In a container — Node and terminal') }}
-          </button>
-        </div>
+        <span id="js-runtime-label" class="label">JavaScript / TypeScript</span>
+        <UiChoiceGroup
+          :model-value="app.settings.jsRuntime === 'docker' ? 'docker' : 'browser'"
+          :options="[
+            { value: 'browser', label: t('In the browser — fast') },
+            { value: 'docker', label: t('In a container — Node and terminal'), disabled: !app.docker?.available },
+          ]"
+          labelledby="js-runtime-label"
+          @update:model-value="(runtime) => { app.settings.jsRuntime = runtime }"
+        />
         <span class="muted small">{{ t('Applies to newly generated lessons.') }}</span>
       </section>
 
       <section class="sec">
         <h2>{{ t('Sound') }}</h2>
         <div class="row">
-          <button class="chip" :aria-pressed="app.settings.sound !== false" @click="app.settings.sound = true; play('correct')">{{ t('On') }}</button>
-          <button class="chip" :aria-pressed="app.settings.sound === false" @click="app.settings.sound = false">{{ t('Off') }}</button>
+          <UiChoiceGroup
+            :model-value="app.settings.sound !== false"
+            :options="[{ value: true, label: t('On') }, { value: false, label: t('Off') }]"
+            :label="t('Sound')"
+            @update:model-value="setSound"
+          />
           <label class="vol" :class="{ off: app.settings.sound === false }">
             <span class="label">{{ t('Volume') }}</span>
             <input
@@ -129,7 +141,7 @@ function resetAll() {
         </div>
         <div v-if="app.settings.sound !== false" class="row">
           <span class="label">{{ t('Preview:') }}</span>
-          <button v-for="sound in SOUND_PREVIEWS" :key="sound.id" class="btn btn-sm" @click="playSoundPreview(sound.id)">{{ t(sound.label) }}</button>
+          <UiButton v-for="sound in SOUND_PREVIEWS" :key="sound.id" size="sm" @click="playSoundPreview(sound.id)">{{ t(sound.label) }}</UiButton>
         </div>
       </section>
 
@@ -137,18 +149,18 @@ function resetAll() {
         <h2>{{ t('CLI paths (optional)') }}</h2>
         <p class="muted">{{ t('Leave these empty for automatic detection via PATH, ~/.local/bin, VS Code/Cursor extensions, or the Codex installation.') }}</p>
         <label class="label" for="cbin">Claude</label>
-        <input id="cbin" v-model="app.settings.claudeBin" class="input mono" :placeholder="t('e.g. C:\\Users\\…\\claude.exe')" @change="saveBins" />
+        <UiInput id="cbin" v-model="app.settings.claudeBin" class="mono" :placeholder="t('e.g. C:\\Users\\…\\claude.exe')" @change="saveBins" />
         <label class="label" for="xbin">Codex</label>
-        <input id="xbin" v-model="app.settings.codexBin" class="input mono" :placeholder="t('e.g. C:\\Users\\…\\codex.exe')" @change="saveBins" />
+        <UiInput id="xbin" v-model="app.settings.codexBin" class="mono" :placeholder="t('e.g. C:\\Users\\…\\codex.exe')" @change="saveBins" />
       </section>
 
       <section class="sec danger">
         <h2>{{ t('Data') }}</h2>
         <p class="muted">{{ t('Everything is stored locally in') }} <code>data/db.json</code> {{ t('in the project directory.') }}</p>
         <div class="row">
-          <button class="btn btn-sm" @click="runSetup()">{{ t('Setup wizard') }}</button>
-          <button class="btn btn-sm" @click="newPlan">{{ t('Create a new plan') }}</button>
-          <button class="btn btn-sm btn-ghost-red" @click="resetAll">{{ t('Clear all data') }}</button>
+          <UiButton size="sm" @click="runSetup()">{{ t('Setup wizard') }}</UiButton>
+          <UiButton size="sm" @click="newPlan">{{ t('Create a new plan') }}</UiButton>
+          <UiButton variant="ghost-red" size="sm" @click="resetAll">{{ t('Clear all data') }}</UiButton>
         </div>
       </section>
       <DesktopUpdate />
@@ -219,11 +231,6 @@ h2 {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-.seg {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
 }
 .inline {
   display: flex;

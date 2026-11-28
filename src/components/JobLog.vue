@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { t } from '../lib/i18n.ts'
 import { nextTick, ref, watch } from 'vue'
+import { UiProgress, UiSpinner } from './ui/index.ts'
 
 /** Show the current installation step, download progress and recent logs. */
 const props = defineProps({ job: { type: Object, default: null } })
@@ -14,11 +15,11 @@ watch(
 <template>
   <div v-if="job" class="job" :class="job.status">
     <div class="job-head">
-      <span v-if="job.status === 'running'" class="spinner sm" />
+      <UiSpinner v-if="job.status === 'running'" size="sm" />
       <strong>{{ job.status === 'done' ? t('Completed') : job.status === 'error' ? t('Error') : job.step || t('Working…') }}</strong>
       <span v-if="job.progress?.label" class="muted">{{ job.progress.label }}</span>
     </div>
-    <div v-if="job.status === 'running' && job.progress?.pct != null" class="bar"><div :style="{ width: `${job.progress.pct}%` }" /></div>
+    <UiProgress v-if="job.status === 'running' && job.progress?.pct != null" :value="job.progress.pct" :max="100" />
     <p v-if="job.error" class="job-err">{{ job.error }}</p>
     <p v-if="job.message" class="job-message" role="status">{{ job.message }}</p>
     <details v-if="job.status === 'action-required'" class="job-details">
@@ -71,11 +72,6 @@ watch(
 .bar {
   height: 10px;
   flex: none;
-}
-.spinner.sm {
-  width: 16px;
-  height: 16px;
-  border-width: 2px;
 }
 .job-err {
   margin: 0;

@@ -14,6 +14,7 @@ import TestDiagnosis from './exercises/TestDiagnosis.vue'
 import SandboxFileExplorer from './sandbox/SandboxFileExplorer.vue'
 import type { PropType } from 'vue'
 import type { CodeIssue, TestRun, WorkspaceFile } from '../domain.ts'
+import { UiButton, UiSpinner, UiTabs } from './ui/index.ts'
 
 const props = defineProps({
   wsId: { type: String, required: true },
@@ -48,6 +49,14 @@ const diagnosisCode = computed(() => {
 })
 const passed = computed(() => run.value?.results?.filter((r) => r.ok).length || 0)
 const total = computed(() => run.value?.results?.length || 0)
+const panelTabs = computed(() => {
+  const results = props.testPaths.length ? t('Tests') : t('Output')
+  return [
+    { value: 'terminal', label: 'Terminal' },
+    { value: 'tests', label: total.value ? `${results} ${passed.value}/${total.value}` : results },
+    ...(props.review !== undefined && props.testPaths.length ? [{ value: 'review', label: `Review ${props.providerName}` }] : []),
+  ]
+})
 const activeIssues = computed(() =>
   props.issues
     .map((i, idx) => ({ ...i, idx }))
@@ -130,33 +139,32 @@ defineExpose({ runTests, userFiles, showReview: () => (panel.value = 'review') }
   <section class="ide">
     <div v-if="phase !== 'ready'" class="overlay">
       <template v-if="phase === 'opening'">
-        <span class="spinner" />
+        <UiSpinner />
         <strong>{{ t('Preparing the environment') }} {{ environment || language }}</strong>
         <code class="prog">{{ progress }}</code>
       </template>
       <template v-else>
         <strong style="color: var(--red-light)">{{ t('Couldn\'t start the container') }}</strong>
         <code class="prog">{{ error }}</code>
-        <button class="btn btn-sm btn-primary" @click="open(false)">{{ t('Try again') }}</button>
+        <UiButton variant="primary" size="sm" @click="open(false)">{{ t('Try again') }}</UiButton>
       </template>
     </div>
 
-    <div class="tabs" role="tablist">
-      <button
-        v-for="tabPath in tabs"
-        :key="tabPath"
-        role="tab"
-        class="ftab"
-        :class="{ on: tabPath === active }"
-        :aria-selected="tabPath === active"
-        @click="active = tabPath"
-        @auxclick.prevent="closeTab(tabPath)"
-      >
-        <span class="ext">{{ fileBadge(tabPath) }}</span>{{ tabPath.split('/').pop() }}
-        <span v-if="files[tabPath]?.dirty" class="dirty" :title="t('Unsaved')" />
-        <span class="x" role="button" :aria-label="t('Close')" @click.stop="closeTab(tabPath)">×</span>
-      </button>
-    </div>
+    <UiTabs
+      v-model="active"
+      class="tabs"
+      variant="file"
+      closable
+      :tabs="tabs.map((path) => ({ value: path, label: path.split('/').pop() || path }))"
+      :label="t('Open files')"
+      :close-label="(tab) => t('Close {0}', [tab.label])"
+      @close="closeTab"
+    >
+      <template #tab="{ tab }">
+        <span class="ext">{{ fileBadge(tab.value) }}</span>{{ tab.label }}
+        <span v-if="files[tab.value]?.dirty" class="dirty" :title="t('Unsaved')" />
+      </template>
+    </UiTabs>
 
     <div class="body">
       <SandboxFileExplorer
@@ -192,17 +200,16 @@ defineExpose({ runTests, userFiles, showReview: () => (panel.value = 'review') }
 
     <div class="panel" :style="{ height: `${panelH}px` }">
       <div class="drag" :title="t('Drag to resize')" @mousedown.prevent="startDrag" />
-      <div class="ptabs" role="tablist">
-        <button role="tab" :class="{ on: panel === 'terminal' }" @click="panel = 'terminal'">Terminal</button>
-        <button role="tab" :class="{ on: panel === 'tests' }" @click="panel = 'tests'">{{ testPaths.length ? t('Tests') : t('Output') }} <template v-if="total">{{ passed }}/{{ total }}</template></button>
-        <button v-if="review !== undefined && testPaths.length" role="tab" :class="{ on: panel === 'review' }" @click="panel = 'review'">Review {{ providerName }}</button>
+      <UiTabs v-model="panel" class="ptabs" :tabs="panelTabs" :label="t('Results')">
+        <template #end>
         <span class="grow" />
         <button class="pbtn" :title="t('Restore starter files')" @click="reset"><Icon name="refresh" :size="14" :stroke="2.4" />{{ t('Starter files') }}</button>
         <button class="pbtn" :disabled="!testCommand" :title="t('Enter the test command in the terminal')" @click="runInTerminal">{{ t('$ in terminal') }}</button>
         <button class="pbtn run" :disabled="running || !testCommand || phase !== 'ready'" @click="runTestsClick">
-          <span v-if="running" class="spinner" style="width: 14px; height: 14px; border-width: 2px" />▶ {{ runLabel || t('Run tests') }}
+          <UiSpinner v-if="running" size="sm" />▶ {{ runLabel || t('Run tests') }}
         </button>
-      </div>
+        </template>
+      </UiTabs>
       <div class="pbody">
         <Terminal v-if="phase === 'ready'" v-show="panel === 'terminal'" ref="terminal" :ws-id="wsId" :active="panel === 'terminal'" class="termbox" />
         <div v-if="panel === 'tests'" class="list">
@@ -266,30 +273,7 @@ defineExpose({ runTests, userFiles, showReview: () => (panel.value = 'review') }
   overflow-wrap: anywhere;
 }
 .tabs {
-  display: flex;
-  background: var(--bg);
-  border-bottom: 2px solid var(--divider);
-  overflow-x: auto;
   min-height: 44px;
-}
-.ftab {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 12px 10px 16px;
-  background: none;
-  border: none;
-  border-top: 2px solid transparent;
-  font-family: var(--mono);
-  font-size: 13px;
-  color: var(--muted);
-  cursor: pointer;
-  white-space: nowrap;
-}
-.ftab.on {
-  background: var(--bg-deep);
-  border-top-color: var(--purple);
-  color: var(--text);
 }
 .ext {
   color: #ffcb6b;
@@ -301,19 +285,6 @@ defineExpose({ runTests, userFiles, showReview: () => (panel.value = 'review') }
   height: 8px;
   border-radius: 50%;
   background: var(--text-3);
-}
-.x {
-  opacity: 0;
-  padding: 0 4px;
-  border-radius: 4px;
-}
-.ftab:hover .x,
-.ftab.on .x {
-  opacity: 0.7;
-}
-.x:hover {
-  background: var(--border);
-  opacity: 1;
 }
 .body {
   flex: 1;
@@ -355,30 +326,8 @@ defineExpose({ runTests, userFiles, showReview: () => (panel.value = 'review') }
   background: linear-gradient(transparent 3px, var(--purple) 3px, var(--purple) 5px, transparent 5px);
 }
 .ptabs {
-  display: flex;
-  gap: 4px;
   padding: 0 10px;
-  border-bottom: 2px solid var(--divider);
-  align-items: center;
   background: #13161a;
-  flex-wrap: wrap;
-}
-.ptabs > button:not(.pbtn) {
-  padding: 9px 10px;
-  font-size: 12px;
-  font-weight: 900;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--muted);
-  background: none;
-  border: none;
-  border-bottom: 2px solid transparent;
-  margin-bottom: -2px;
-  cursor: pointer;
-}
-.ptabs > button.on {
-  color: var(--text);
-  border-bottom-color: var(--purple);
 }
 .grow {
   flex: 1;

@@ -5,6 +5,7 @@ import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import '@xterm/xterm/css/xterm.css'
 import { terminalUrl } from '../lib/sandbox.ts'
+import { UiButton } from './ui/index.ts'
 
 const props = defineProps({ wsId: { type: String, required: true }, active: { type: Boolean, default: true } })
 const el = ref(null)
@@ -105,7 +106,7 @@ defineExpose({ run })
 <template>
   <div class="term-wrap">
     <div ref="el" class="term" />
-    <button v-if="status === 'closed'" class="btn btn-sm reconnect" @click="term.clear(); connect()">{{ t('Reconnect') }}</button>
+    <UiButton v-if="status === 'closed'" size="sm" class="reconnect" @click="term.clear(); connect()">{{ t('Reconnect') }}</UiButton>
   </div>
 </template>
 

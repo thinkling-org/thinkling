@@ -7,6 +7,7 @@ import Icon from '../../components/Icon.vue'
 import { configure, evaluate, goalSeries, simulate } from './simulation.ts'
 import type { SimulationScenario } from './simulation.ts'
 import type { PropType } from 'vue'
+import { UiButton } from '../../components/ui/index.ts'
 
 const props = defineProps({ config: { type: Object as PropType<SimulationScenario>, required: true } })
 
@@ -182,12 +183,12 @@ function showHint() {
     <Markdown class="instruction" :src="config.instruction" />
 
     <div class="player">
-      <button type="button" class="btn btn-sm" :class="playing ? 'btn-ghost' : 'btn-primary'" @click="toggle">
+      <UiButton :variant="playing ? 'ghost' : 'primary'" size="sm" @click="toggle">
         <Icon :name="playing ? 'pause' : 'play'" :size="16" />{{ playing ? t('Pause') : finished ? t('Replay') : t('Run') }}
-      </button>
-      <button type="button" class="btn btn-ghost btn-sm icon-only" :aria-label="t('From the start')" @click="stop(); time = 0">
+      </UiButton>
+      <UiButton variant="ghost" size="sm" class="icon-only" :aria-label="t('From the start')" @click="stop(); time = 0">
         <Icon name="refresh" :size="16" />
-      </button>
+      </UiButton>
       <input
         v-model.number="time"
         type="range"
@@ -285,9 +286,9 @@ function showHint() {
     </p>
     <div v-else class="hint-row">
       <p v-if="hint" class="result hint" aria-live="polite">{{ hint }}</p>
-      <button v-else type="button" class="btn btn-ghost btn-sm" @click="showHint">
+      <UiButton v-else variant="ghost" size="sm" @click="showHint">
         <Icon name="bulb" :size="16" />{{ t('Hint') }}
-      </button>
+      </UiButton>
     </div>
   </section>
 </template>

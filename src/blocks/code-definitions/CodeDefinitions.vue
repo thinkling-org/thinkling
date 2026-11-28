@@ -4,6 +4,7 @@ import { computed, ref, watch } from 'vue'
 import Markdown from '../../components/Markdown.vue'
 import CodeBlock from '../../components/CodeBlock.vue'
 import type { PropType } from 'vue'
+import { UiChip } from '../../components/ui/index.ts'
 
 const props = defineProps({
   config: { type: Object as PropType<{ code: string; instruction?: string; terms: { token: string; title?: string; definition?: string; kind?: string; example?: string }[] }>, required: true },
@@ -27,15 +28,13 @@ watch(() => props.config, () => { selected.value = 0 })
       @token="selected = $event"
     />
     <div class="chips" role="group" :aria-label="t('Snippets with definitions')">
-      <button
+      <UiChip
         v-for="(t, i) in config.terms"
         :key="t.token"
-        type="button"
-        class="chip"
         :class="{ on: i === selected }"
-        :aria-pressed="i === selected"
+        :pressed="i === selected"
         @click="selected = i"
-      >{{ t.token }}</button>
+      >{{ t.token }}</UiChip>
     </div>
     <div :key="selected" class="definition" aria-live="polite">
       <div class="head">

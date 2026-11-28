@@ -6,6 +6,7 @@ import Icon from '../../components/Icon.vue'
 import { BLOCK_CONTEXT } from '../vue-block.ts'
 import type { PropType } from 'vue'
 import type { BlockMode, GradeResult } from '../types.ts'
+import { UiButton } from '../../components/ui/index.ts'
 
 const props = defineProps({
   config: { type: Object as PropType<{ instruction: string; success?: string; hint?: string; steps: { text: string; indent: number }[] }>, required: true },
@@ -102,12 +103,12 @@ function reset() {
           >{{ config.steps[id].text }}</button>
         </div>
         <div v-if="isExercise" class="actions">
-          <button type="button" class="btn btn-ghost btn-sm" :disabled="checked" @click="reset">{{ t('Start over') }}</button>
+          <UiButton variant="ghost" size="sm" :disabled="checked" @click="reset">{{ t('Start over') }}</UiButton>
         </div>
         <div v-else class="actions">
-          <button type="button" class="btn btn-ghost btn-sm" @click="reset">{{ t('Start over') }}</button>
-          <button v-if="checked && !solved" type="button" class="btn btn-ghost-yellow btn-sm" @click="retry">{{ t('Revise') }}</button>
-          <button v-else type="button" class="btn btn-primary btn-sm" :disabled="!full || checked" @click="selfChecked = true">{{ t('Check') }}</button>
+          <UiButton variant="ghost" size="sm" @click="reset">{{ t('Start over') }}</UiButton>
+          <UiButton v-if="checked && !solved" variant="ghost-yellow" size="sm" @click="retry">{{ t('Revise') }}</UiButton>
+          <UiButton v-else variant="primary" size="sm" :disabled="!full || checked" @click="selfChecked = true">{{ t('Check') }}</UiButton>
         </div>
       </div>
     </div>

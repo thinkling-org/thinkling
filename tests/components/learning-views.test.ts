@@ -87,7 +87,7 @@ describe('new learning plan', () => {
     expect(wrapper.get<HTMLTextAreaElement>('textarea').element.value).toBe(app.profile.description)
     expect(wrapper.get('.warn').text()).toContain('JavaScript foundations')
     expect(wrapper.text()).toContain('CLI not found')
-    expect(button(wrapper, '60+ min').attributes('aria-pressed')).toBe('true')
+    expect(button(wrapper, '60+ min').attributes('aria-checked')).toBe('true')
   })
 })
 

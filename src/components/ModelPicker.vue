@@ -3,6 +3,7 @@ import { t } from '../lib/i18n.ts'
 import { computed, ref, watch } from 'vue'
 import { useApp } from '../stores/app.ts'
 import { getJSON } from '../lib/api.ts'
+import { UiButton, UiChoiceGroup, UiInput } from './ui/index.ts'
 
 const app = useApp()
 const catalog = ref(null)
@@ -38,6 +39,18 @@ watch([provider, () => app.settings.locale], load, { immediate: true })
 const models = computed(() => catalog.value?.models || [])
 const selected = computed(() => models.value.find((m) => m.id === app.settings.model) || null)
 const efforts = computed(() => (selected.value ? selected.value.efforts : catalog.value?.efforts) || [])
+const modelOptions = computed(() => [
+  { value: '', label: catalog.value?.defaultLabel || t('CLI default') },
+  ...models.value.map((m) => ({ value: m.id, label: m.label, title: m.description })),
+])
+const effortOptions = computed(() => {
+  const fallback = selected.value?.defaultEffort
+  const fallbackLabel = fallback ? efforts.value.find((e) => e.id === fallback)?.label?.toLowerCase() || fallback : ''
+  return [
+    { value: '', label: fallbackLabel ? `${t('Default')} (${fallbackLabel})` : t('Default') },
+    ...efforts.value.map((e) => ({ value: e.id, label: e.label })),
+  ]
+})
 const placeholder = computed(() => (provider.value === 'claude' ? t('e.g. claude-opus-5-5') : t('e.g. gpt-6.2-sol')))
 
 async function setModel(id) {
@@ -62,36 +75,32 @@ async function applyCustom() {
   <div class="picker">
     <span class="label">Model</span>
     <div v-if="loading && !catalog" class="muted small">{{ t('Loading models…') }}</div>
-    <div v-else class="seg">
-      <button class="chip" :aria-pressed="!app.settings.model" @click="setModel('')">{{ catalog?.defaultLabel || t('CLI default') }}</button>
-      <button
-        v-for="m in models"
-        :key="m.id"
-        class="chip"
-        :aria-pressed="app.settings.model === m.id"
-        :title="m.description"
-        @click="setModel(m.id); customModel = ''"
-      >{{ m.label }}</button>
-    </div>
+    <UiChoiceGroup
+      v-else
+      :model-value="app.settings.model || ''"
+      :options="modelOptions"
+      label="Model"
+      @update:model-value="(id) => { setModel(id); customModel = '' }"
+    />
     <span v-if="selected?.description" class="muted small">{{ selected.description }}</span>
     <span v-if="error" class="muted small">{{ error }}</span>
 
     <details class="custom" :open="!!customModel">
       <summary class="small">{{ t('Other model ID') }}</summary>
       <div class="row">
-        <input v-model="customModel" class="input mono" :placeholder="placeholder" :aria-label="t('Custom model ID')" @keydown.enter="applyCustom" />
-        <button class="btn btn-sm" :disabled="!customModel.trim()" @click="applyCustom">{{ t('Set') }}</button>
+        <UiInput v-model="customModel" class="mono" :placeholder="placeholder" :aria-label="t('Custom model ID')" @keydown.enter="applyCustom" />
+        <UiButton size="sm" :disabled="!customModel.trim()" @click="applyCustom">{{ t('Set') }}</UiButton>
       </div>
     </details>
 
     <template v-if="efforts.length">
       <span class="label">{{ t('Reasoning effort') }}</span>
-      <div class="seg">
-        <button class="chip" :aria-pressed="!app.settings.effort" @click="setEffort('')">
-          {{ t('Default') }}{{ selected?.defaultEffort ? ` (${efforts.find((e) => e.id === selected.defaultEffort)?.label?.toLowerCase() || selected.defaultEffort})` : '' }}
-        </button>
-        <button v-for="e in efforts" :key="e.id" class="chip" :aria-pressed="app.settings.effort === e.id" @click="setEffort(e.id)">{{ e.label }}</button>
-      </div>
+      <UiChoiceGroup
+        :model-value="app.settings.effort || ''"
+        :options="effortOptions"
+        :label="t('Reasoning effort')"
+        @update:model-value="setEffort"
+      />
       <span class="muted small">{{ t('Higher effort can improve lessons and feedback, but responses take longer and use more of your subscription allowance.') }}</span>
     </template>
   </div>
@@ -102,11 +111,6 @@ async function applyCustom() {
   display: flex;
   flex-direction: column;
   gap: 10px;
-}
-.seg {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
 }
 .row {
   display: flex;

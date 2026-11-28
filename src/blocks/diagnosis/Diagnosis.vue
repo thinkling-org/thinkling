@@ -2,6 +2,7 @@
 import { t } from './messages.ts'
 import { computed, ref, watch } from 'vue'
 import Markdown from '../../components/Markdown.vue'
+import { UiButton } from '../../components/ui/index.ts'
 
 const props = defineProps({ config: { type: Object, required: true } })
 const measured = ref(new Set())
@@ -31,7 +32,7 @@ function measure(index) {
         <strong>{{ check.name }}</strong>
         <code v-if="check.detail">{{ check.detail }}</code>
         <span v-if="measured.has(k)" class="result" aria-live="polite">{{ check.result }}</span>
-        <button v-else type="button" class="btn btn-ghost btn-sm measure" @click="measure(k)">{{ check.action }}</button>
+        <UiButton v-else variant="ghost" size="sm" class="measure" @click="measure(k)">{{ check.action }}</UiButton>
       </li>
     </ol>
     <div class="diagnose">

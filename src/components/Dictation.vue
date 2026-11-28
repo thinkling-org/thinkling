@@ -3,6 +3,7 @@ import { t } from '../lib/i18n.ts'
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import Icon from './Icon.vue'
+import { UiButton, UiSpinner } from './ui/index.ts'
 
 type EditableField = HTMLInputElement | HTMLTextAreaElement
 interface RecordingSession {
@@ -277,9 +278,10 @@ onBeforeUnmount(() => {
 <template>
   <Teleport :to="dock || 'body'">
     <div v-if="dock || position" ref="toolbar" class="dictation" :class="{ docked: dock }" :style="position">
-      <button
-        type="button"
-        class="btn btn-ghost btn-sm microphone"
+      <UiButton
+        variant="ghost"
+        size="sm"
+        class="microphone"
         :class="{ recording: phase === 'recording' }"
         :aria-label="label"
         :title="label"
@@ -288,9 +290,9 @@ onBeforeUnmount(() => {
         @keydown.enter.stop
         @click="toggle"
       >
-        <span v-if="phase === 'transcribing' || phase === 'requesting'" class="spinner" aria-hidden="true" />
+        <UiSpinner v-if="phase === 'transcribing' || phase === 'requesting'" />
         <Icon v-else :name="phase === 'recording' ? 'stop' : 'microphone'" :size="17" />
-      </button>
+      </UiButton>
       <div v-if="phase === 'recording'" class="recording-meter" role="status">
         <span class="recording-label"><span aria-hidden="true" />{{ t('Recording') }}</span>
         <span class="waveform" aria-hidden="true">
@@ -379,11 +381,6 @@ onBeforeUnmount(() => {
 .microphone.recording {
   color: var(--red-light);
   border-color: var(--red-light);
-}
-.microphone .spinner {
-  width: 16px;
-  height: 16px;
-  border-width: 2px;
 }
 .notice {
   position: absolute;

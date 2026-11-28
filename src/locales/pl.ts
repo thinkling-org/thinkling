@@ -754,4 +754,7 @@ export default {
   "This exercise could not be displayed. It does not count toward your score.": "Nie udało się wyświetlić tego zadania. Nie wlicza się do wyniku.",
   "This exercise needs an extension that is not available. It does not count toward your score.": "To zadanie wymaga rozszerzenia, które nie jest dostępne. Nie wlicza się do wyniku.",
   "The model returned an interactive exercise that cannot be checked.": "Model zwrócił zadanie interaktywne, którego nie da się sprawdzić.",
+  "Results": "Wyniki",
+  "Open files": "Otwarte pliki",
+  "Close {0}": "Zamknij {0}",
 }

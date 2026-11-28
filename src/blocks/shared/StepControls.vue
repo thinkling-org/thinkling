@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { t } from './messages.ts'
 import Icon from '../../components/Icon.vue'
+import { UiButton } from '../../components/ui/index.ts'
 
 defineProps({ total: { type: Number, required: true } })
 const step = defineModel({ type: Number, default: 0 })
@@ -8,13 +9,13 @@ const step = defineModel({ type: Number, default: 0 })
 
 <template>
   <div class="step-controls" @keydown.enter.stop>
-    <button type="button" class="btn btn-ghost btn-sm" :disabled="step === 0" :aria-label="t('Previous step')" @click="step--">
+    <UiButton variant="ghost" size="sm" :disabled="step === 0" :aria-label="t('Previous step')" @click="step--">
       <Icon name="arrow-left" :size="16" :stroke="2.6" />
-    </button>
-    <button type="button" class="btn btn-primary btn-sm" :disabled="step >= total - 1" @click="step++">
+    </UiButton>
+    <UiButton variant="primary" size="sm" :disabled="step >= total - 1" @click="step++">
       {{ t('Next step') }}<Icon name="arrow-right" :size="16" :stroke="2.6" />
-    </button>
-    <button v-if="step > 0" type="button" class="btn btn-ghost btn-sm" @click="step = 0">{{ t('From the start') }}</button>
+    </UiButton>
+    <UiButton v-if="step > 0" variant="ghost" size="sm" @click="step = 0">{{ t('From the start') }}</UiButton>
     <span class="counter" aria-live="polite">{{ t('Step') }} {{ step + 1 }} / {{ total }}</span>
   </div>
 </template>

@@ -14,16 +14,23 @@ import Icon from '../components/Icon.vue'
 import ModelPicker from '../components/ModelPicker.vue'
 import JobLog from '../components/JobLog.vue'
 import LanguagePicker from '../components/LanguagePicker.vue'
+import { UiButton, UiChoiceGroup, UiSpinner, UiTag } from '../components/ui/index.ts'
 
 const app = useApp()
 const router = useRouter()
 const route = useRoute()
 
-const { status, loading, startError, languages, anyRunning, recheck, startJob, job, running, toggleLang } = useSetupJobs()
+const { status, loading, startError, languages, anyRunning, recheck, startJob, job, running } = useSetupJobs()
 const { chooseProvider, testConnection, testing, testResult } = useProviderSettings()
 const step = shallowRef(Math.max(0, SETUP_STEPS.findIndex((item) => item.id === route.query.step)))
 const current = computed(() => SETUP_STEPS[step.value].id)
 const docker = computed(() => status.value?.docker)
+const sandboxOptions = computed(() => Object.entries(status.value?.sandbox || {}).map(([value, env]) => ({
+  value,
+  label: env.ready ? `${env.label} ✓` : env.label,
+  disabled: env.ready,
+  class: env.ready ? 'ready' : undefined,
+})))
 const providers = computed(() => status.value?.providers || {})
 const providerName = computed(() => getAiProvider(app.settings.provider).name)
 const activeProvider = computed(() => providers.value[app.settings.provider])
@@ -86,7 +93,7 @@ const summary = computed(() => {
         </nav>
 
         <div v-if="!status && current !== 'welcome'" class="card box center">
-          <span class="spinner" /> {{ t('Checking what\'s installed…') }}
+          <UiSpinner /> {{ t('Checking what\'s installed…') }}
         </div>
 
         <!-- Welcome -->
@@ -96,9 +103,9 @@ const summary = computed(() => {
           <p class="lead">
             {{ t('Connect Claude Code or Codex using your subscription. We\'ll guide you step by step.') }}
           </p>
-          <button class="btn btn-primary welcome-start" @click="next">
+          <UiButton variant="primary" class="welcome-start" @click="next">
             {{ t('Set up AI') }} <Icon name="arrow-right" :size="18" />
-          </button>
+          </UiButton>
           <p class="welcome-note">{{ t('Extras are optional. You can set them up later in Settings.') }}</p>
         </section>
 
@@ -117,9 +124,9 @@ const summary = computed(() => {
             >
               <div class="ph">
                 <strong>{{ provider.name }}</strong>
-                <span v-if="!providers[provider.id]?.available" class="tag tag-red">{{ t('CLI missing') }}</span>
-                <span v-else-if="providers[provider.id].auth?.loggedIn === false" class="tag tag-yellow">{{ t('signed out') }}</span>
-                <span v-else class="tag tag-green">{{ t('ready') }}</span>
+                <UiTag v-if="!providers[provider.id]?.available" tone="red">{{ t('CLI missing') }}</UiTag>
+                <UiTag v-else-if="providers[provider.id].auth?.loggedIn === false" tone="yellow">{{ t('signed out') }}</UiTag>
+                <UiTag v-else tone="green">{{ t('ready') }}</UiTag>
               </div>
               <span class="pd">{{ t(provider.subscription) }}</span>
               <code v-if="providers[provider.id]?.version" class="pv">{{ providers[provider.id].version }}</code>
@@ -139,7 +146,7 @@ const summary = computed(() => {
           <ModelPicker v-if="activeProvider?.available" :key="app.settings.provider" />
 
           <div class="row">
-            <button class="btn btn-sm" :disabled="loading" @click="recheck"><Icon name="refresh" :size="16" /> {{ t('Check again') }}</button>
+            <UiButton size="sm" :disabled="loading" @click="recheck"><Icon name="refresh" :size="16" /> {{ t('Check again') }}</UiButton>
             <ProviderConnectionTest v-if="activeProvider?.available" :testing="testing" :result="testResult" @test="testConnection" />
           </div>
         </section>
@@ -152,9 +159,9 @@ const summary = computed(() => {
           </p>
 
           <div class="statusline">
-            <span class="tag" :class="docker.running ? 'tag-green' : dockerNeedsAction ? 'tag-yellow' : 'tag-red'">
+            <UiTag :tone="docker.running ? 'green' : dockerNeedsAction ? 'yellow' : 'red'">
               {{ docker.running ? t('Docker is running · {0}{1}', [docker.version, docker.endpoint ? ` · ${t(docker.endpoint)}` : '']) : dockerNeedsAction ? t('Needs your attention') : docker.problem === 'permission' ? t('permission denied') : docker.installed ? t('installed but not running') : t('not installed') }}
-            </span>
+            </UiTag>
           </div>
 
           <template v-if="!docker.running && !dockerNeedsAction">
@@ -168,14 +175,14 @@ const summary = computed(() => {
               <template v-if="docker.help.autoInstall">
                 <p class="install-copy">{{ t('Thinkling will download and install Docker for you. Confirm the administrator prompt if it appears.') }}</p>
                 <p v-if="status.platform === 'win32'" class="muted small install-copy">{{ t('Windows may need a restart. After installation, Docker Desktop may ask you to finish its setup.') }}</p>
-                <button class="btn btn-primary btn-sm self" :disabled="anyRunning" @click="startJob('docker-install')">
-                  <span v-if="running('docker-install')" class="spinner sm" />
+                <UiButton variant="primary" size="sm" class="self" :disabled="anyRunning" @click="startJob('docker-install')">
+                  <UiSpinner v-if="running('docker-install')" size="sm" />
                   {{ running('docker-install') ? t('Installing…') : status.platform === 'win32' || status.platform === 'darwin' ? t('Install Docker Desktop') : t('Install Docker') }}
-                </button>
+                </UiButton>
               </template>
               <template v-else>
                 <p class="install-copy">{{ t('Automatic installation is unavailable on this computer. Download Docker and follow the installation guide, then return here and click “Check again”.') }}</p>
-                <a class="btn btn-primary btn-sm self" :href="docker.help.link" target="_blank" rel="noopener">{{ t('Get Docker ↗') }}</a>
+                <UiButton variant="primary" size="sm" class="self" :href="docker.help.link" target="_blank" rel="noopener">{{ t('Get Docker ↗') }}</UiButton>
               </template>
               <details v-if="docker.help.autoInstall || status.platform !== 'win32'" class="manual-install">
                 <summary>{{ t('Manual installation') }}</summary>
@@ -186,7 +193,7 @@ const summary = computed(() => {
             </div>
             <div v-else class="hint">
               <strong>{{ t('Start Docker.') }}</strong>
-              <button v-if="docker.help.autoStart" class="btn btn-primary btn-sm self" :disabled="anyRunning" @click="startJob('docker-start')">{{ t('Start Docker') }}</button>
+              <UiButton v-if="docker.help.autoStart" variant="primary" size="sm" class="self" :disabled="anyRunning" @click="startJob('docker-start')">{{ t('Start Docker') }}</UiButton>
               <CopyCommand v-for="command in docker.help.start" :key="command" :command="command" />
               <p v-if="docker.help.startHint" class="muted">{{ t(docker.help.startHint) }}</p>
             </div>
@@ -195,29 +202,27 @@ const summary = computed(() => {
           <JobLog v-for="item in visibleDockerJobs" :key="item.kind" :job="item" />
 
           <template v-if="docker.running && status.sandbox">
-            <span class="label">{{ t('Prepare environments in advance (optional)') }}</span>
+            <span id="sandbox-languages-label" class="label">{{ t('Prepare environments in advance (optional)') }}</span>
             <span class="muted small">{{ t('Otherwise each language image builds during its first lesson, which takes 1–3 minutes.') }}</span>
-            <div class="seg">
-              <button
-                v-for="(env, l) in status.sandbox"
-                :key="l"
-                class="chip"
-                :class="{ ready: env.ready }"
-                :aria-pressed="!env.ready && languages.includes(l)"
-                :disabled="env.ready || running('sandbox')"
-                @click="toggleLang(l)"
-              >{{ env.label }}{{ env.ready ? ' ✓' : '' }}</button>
-            </div>
-            <button
-              class="btn btn-sm self"
+            <UiChoiceGroup
+              class="seg"
+              multiple
+              v-model="languages"
+              :options="sandboxOptions"
+              :disabled="running('sandbox')"
+              labelledby="sandbox-languages-label"
+            />
+            <UiButton
+              size="sm"
+              class="self"
               :disabled="!languages.length || running('sandbox')"
               @click="startJob('sandbox', { languages })"
-            >{{ t('Download selected (') }}{{ languages.length }})</button>
+            >{{ t('Download selected (') }}{{ languages.length }})</UiButton>
             <JobLog :job="job('sandbox')" />
           </template>
 
           <div class="row">
-            <button class="btn btn-sm" :disabled="loading" @click="recheck"><Icon name="refresh" :size="16" /> {{ t('Check again') }}</button>
+            <UiButton size="sm" :disabled="loading" @click="recheck"><Icon name="refresh" :size="16" /> {{ t('Check again') }}</UiButton>
           </div>
         </section>
 
@@ -237,19 +242,19 @@ const summary = computed(() => {
             </li>
           </ul>
           <div class="statusline">
-            <span class="tag" :class="status.dictation.installed ? 'tag-green' : 'tag-yellow'">{{ status.dictation.installed ? t('Dictation ready') : t('Not installed') }}</span>
+            <UiTag :tone="status.dictation.installed ? 'green' : 'yellow'">{{ status.dictation.installed ? t('Dictation ready') : t('Not installed') }}</UiTag>
           </div>
           <div class="row">
-            <button
+            <UiButton
               v-if="!status.dictation.installed"
-              class="btn btn-primary"
+              variant="primary"
               :disabled="!status.dictation.python || running('dictation')"
               @click="startJob('dictation')"
             >
-              <span v-if="running('dictation')" class="spinner sm" />
+              <UiSpinner v-if="running('dictation')" size="sm" />
               {{ running('dictation') ? t('Installing…') : job('dictation')?.status === 'error' ? t('Try again') : t('Install dictation') }}
-            </button>
-            <button v-if="!status.dictation.installed && !running('dictation')" class="btn" @click="next">{{ t('Not now') }}</button>
+            </UiButton>
+            <UiButton v-if="!status.dictation.installed && !running('dictation')" @click="next">{{ t('Not now') }}</UiButton>
           </div>
           <JobLog :job="job('dictation')" />
         </section>
@@ -270,12 +275,12 @@ const summary = computed(() => {
         <p v-if="startError" class="tr bad">{{ startError }}</p>
 
         <footer v-if="status && current !== 'welcome'" class="nav">
-          <button v-if="step > 0" class="btn" @click="back"><Icon name="arrow-left" :size="18" /> {{ t('Back') }}</button>
+          <UiButton v-if="step > 0" @click="back"><Icon name="arrow-left" :size="18" /> {{ t('Back') }}</UiButton>
           <span class="grow" />
-          <button v-if="current !== 'done'" class="btn btn-primary" @click="next">
+          <UiButton v-if="current !== 'done'" variant="primary" @click="next">
             {{ current === 'docker' && !docker.running ? t('Not now') : t('Continue') }} <Icon name="arrow-right" :size="18" />
-          </button>
-          <button v-else class="btn btn-green btn-lg" :disabled="!providerReady" @click="finish">{{ t('Continue to learning') }}</button>
+          </UiButton>
+          <UiButton v-else variant="green" size="lg" :disabled="!providerReady" @click="finish">{{ t('Continue to learning') }}</UiButton>
         </footer>
       </div>
     </main>
@@ -497,19 +502,14 @@ h1 {
 .self {
   align-self: flex-start;
 }
-.seg {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
 .row {
   display: flex;
   gap: 10px;
   align-items: center;
   flex-wrap: wrap;
 }
-.chip.ready,
-.chip.ready:disabled {
+.seg :deep(.chip.ready),
+.seg :deep(.chip.ready:disabled) {
   background: var(--green-soft);
   border-color: var(--green-border);
   color: var(--green-light);
@@ -525,11 +525,6 @@ h1 {
 }
 .link {
   color: var(--purple-link);
-}
-.spinner.sm {
-  width: 16px;
-  height: 16px;
-  border-width: 2px;
 }
 .tr {
   display: flex;

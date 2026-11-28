@@ -10,6 +10,7 @@ import Logo from '../components/Logo.vue'
 import Gem from '../components/Gem.vue'
 import Icon from '../components/Icon.vue'
 import ProviderPill from '../components/ProviderPill.vue'
+import { UiButton, UiProgress, UiSpinner, UiTag } from '../components/ui/index.ts'
 
 const app = useApp()
 const router = useRouter()
@@ -67,7 +68,7 @@ const secs = computed(() => Math.round((app.gen.elapsed || 0) / 1000))
       <section class="left">
         <template v-if="running || (isFirstPlan && !failed)">
           <div class="progress">
-            <div class="bar"><div :style="{ width: running ? `${50 + Math.min(45, modules.length * 8)}%` : '100%' }" /></div>
+            <UiProgress :value="running ? 50 + Math.min(45, modules.length * 8) : 100" :max="100" />
             <span class="label">{{ t('Step 2 of 2') }}</span>
           </div>
           <h1>{{ app.gen.mode === 'refinePlan' ? t('Revising your plan') : t('Building your study plan') }}</h1>
@@ -79,7 +80,7 @@ const secs = computed(() => Math.round((app.gen.elapsed || 0) / 1000))
               :class="[s.state, s.state === 'todo' ? 'card-dashed' : 'card']"
             >
               <span v-if="s.state === 'done'" class="ok"><Icon name="check" :size="16" :stroke="3.5" /></span>
-              <span v-else-if="s.state === 'active'" class="spinner" />
+              <UiSpinner v-else-if="s.state === 'active'" />
               <span v-else class="todo-dot" />
               <div>
                 <div class="st">{{ s.title }}</div>
@@ -98,7 +99,7 @@ const secs = computed(() => Math.round((app.gen.elapsed || 0) / 1000))
             <p>{{ app.plan.goal }}</p>
             <span class="label">{{ t('Weak points') }}</span>
             <div class="tags">
-              <span v-for="w in app.weakSpots" :key="w" class="tag tag-red">{{ w }}</span>
+              <UiTag v-for="w in app.weakSpots" :key="w" tone="red">{{ w }}</UiTag>
               <span v-if="!app.weakSpots.length" class="muted">{{ t('None — good work!') }}</span>
             </div>
           </div>
@@ -108,8 +109,8 @@ const secs = computed(() => Math.round((app.gen.elapsed || 0) / 1000))
           <strong>{{ t('Couldn\'t') }} {{ app.gen.mode === 'refinePlan' ? t('revise') : t('generate') }} {{ t('the plan') }}</strong>
           <p>{{ app.gen.error }}</p>
           <div class="row">
-            <button class="btn btn-sm btn-primary" @click="retry">{{ app.gen.mode === 'refinePlan' ? 'OK' : t('Try again') }}</button>
-            <RouterLink to="/settings" class="btn btn-sm">{{ t('Settings') }}</RouterLink>
+            <UiButton variant="primary" size="sm" @click="retry">{{ app.gen.mode === 'refinePlan' ? 'OK' : t('Try again') }}</UiButton>
+            <UiButton size="sm" to="/settings">{{ t('Settings') }}</UiButton>
           </div>
         </div>
 
@@ -159,9 +160,9 @@ const secs = computed(() => Math.round((app.gen.elapsed || 0) / 1000))
                   <div class="lt">{{ l.title }}</div>
                   <div class="lf">{{ l.focus }}</div>
                 </div>
-                <RouterLink v-if="l.status === 'done' || l.status === 'current'" :to="`/lesson/${l.id}`" class="btn btn-sm">
+                <UiButton v-if="l.status === 'done' || l.status === 'current'" size="sm" :to="`/lesson/${l.id}`">
                   {{ l.status === 'done' ? t('Review') : 'Start' }}
-                </RouterLink>
+                </UiButton>
               </div>
             </div>
           </div>
@@ -172,10 +173,10 @@ const secs = computed(() => Math.round((app.gen.elapsed || 0) / 1000))
         </div>
 
         <div class="actions">
-          <RouterLink to="/start" class="btn">{{ app.plan ? t('New plan') : t('Go back') }}</RouterLink>
-          <button v-if="app.plan" class="btn btn-primary btn-lg" :disabled="running" @click="go">
+          <UiButton to="/start">{{ app.plan ? t('New plan') : t('Go back') }}</UiButton>
+          <UiButton v-if="app.plan" variant="primary" size="lg" :disabled="running" @click="go">
             {{ app.doneCount ? t('Go to the learning path') : t('Get started') }}
-          </button>
+          </UiButton>
         </div>
       </section>
     </main>

@@ -45,7 +45,7 @@ test('unknown routes return to the learning path and locked lessons stay closed'
 
 test('language and sound preferences survive reload', async ({ page, app }) => {
   await page.goto('/settings')
-  await page.getByRole('button', { name: 'On', exact: true }).click()
+  await page.getByRole('radio', { name: 'On', exact: true }).click()
   await expect.poll(async () => (await app.saved()).settings.sound).toBe(true)
   await page.getByRole('combobox').selectOption('pl')
   await expect(page.getByRole('heading', { name: 'Ustawienia', exact: true })).toBeVisible()
@@ -70,19 +70,19 @@ test('failed language save restores the previous choice and offers retry', async
 
 test('provider switching remembers independent model and effort preferences', async ({ page, app }) => {
   await page.goto('/settings')
-  await page.getByRole('button', { name: 'Sonnet', exact: true }).click()
-  await page.getByRole('button', { name: 'High', exact: true }).click()
+  await page.getByRole('radio', { name: 'Sonnet', exact: true }).click()
+  await page.getByRole('radio', { name: 'High', exact: true }).click()
   await page.getByRole('button', { name: /Codex/ }).first().click()
-  await page.getByRole('button', { name: 'E2E Model', exact: true }).click()
-  await page.getByRole('button', { name: 'Low', exact: true }).click()
+  await page.getByRole('radio', { name: 'E2E Model', exact: true }).click()
+  await page.getByRole('radio', { name: 'Low', exact: true }).click()
   await page.getByRole('button', { name: 'Test connection' }).click()
   await expect(page.getByRole('status')).toContainText('E2E connection ready')
   await page.getByRole('button', { name: /Claude Code/ }).click()
-  await expect(page.getByRole('button', { name: 'Sonnet', exact: true })).toHaveAttribute('aria-pressed', 'true')
-  await expect(page.getByRole('button', { name: 'High', exact: true })).toHaveAttribute('aria-pressed', 'true')
+  await expect(page.getByRole('radio', { name: 'Sonnet', exact: true })).toHaveAttribute('aria-checked', 'true')
+  await expect(page.getByRole('radio', { name: 'High', exact: true })).toHaveAttribute('aria-checked', 'true')
   await expect.poll(async () => (await app.saved()).settings.provider).toBe('claude')
   await page.reload()
-  await expect(page.getByRole('button', { name: 'Sonnet', exact: true })).toHaveAttribute('aria-pressed', 'true')
+  await expect(page.getByRole('radio', { name: 'Sonnet', exact: true })).toHaveAttribute('aria-checked', 'true')
   expect((await app.saved()).settings.prefs.codex).toEqual({ model: 'e2e-model', effort: 'low' })
 })
 

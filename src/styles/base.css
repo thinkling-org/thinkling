@@ -45,9 +45,71 @@
   --blue-border: #23406a;
   --flame: #ff8a3d;
 
+  /* Semantic aliases: prefer these in new code, so a palette change stays in one place. */
+  --color-accent: var(--purple);
+  --color-accent-strong: var(--purple-dark);
+  --color-accent-soft: var(--purple-soft);
+  --color-accent-ink: var(--purple-light);
+  --color-link: var(--purple-link);
+  --color-success: var(--green);
+  --color-success-soft: var(--green-soft);
+  --color-success-ink: var(--green-light);
+  --color-success-border: var(--green-border);
+  --color-warning: var(--yellow);
+  --color-warning-soft: var(--yellow-soft);
+  --color-warning-ink: var(--yellow-light);
+  --color-warning-border: var(--yellow-border);
+  --color-danger: var(--red);
+  --color-danger-soft: var(--red-soft);
+  --color-danger-ink: var(--red-light);
+  --color-danger-border: var(--red-border);
+  --color-info: var(--blue);
+  --color-info-ink: var(--blue-light);
+  --color-info-border: var(--blue-border);
+
   --font: 'Nunito Variable', 'Nunito', system-ui, sans-serif;
   --mono: 'JetBrains Mono Variable', 'JetBrains Mono', ui-monospace, Consolas, monospace;
-  --radius: 16px;
+
+  /* Type scale */
+  --text-xs: 12px;
+  --text-sm: 13px;
+  --text-base: 15px;
+  --text-md: 17px;
+  --text-lg: 20px;
+  --text-xl: 24px;
+  --weight-medium: 600;
+  --weight-bold: 800;
+  --weight-black: 900;
+  --tracking-caps: 0.06em;
+  --tracking-button: 0.08em;
+
+  /* Spacing scale (4px grid) */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+
+  /* Radius scale */
+  --radius-xs: 6px;
+  --radius-sm: 8px;
+  --radius-md: 10px;
+  --radius-lg: 12px;
+  --radius-xl: 14px;
+  --radius-2xl: 16px;
+  --radius-3xl: 18px;
+  --radius-4xl: 24px;
+  --radius-pill: 999px;
+  --radius: var(--radius-2xl);
+
+  /* Borders: the 3D look is a thicker bottom edge */
+  --border-width: 2px;
+  --edge: 5px;
+  --edge-sm: 4px;
+  --press-depth: 3px;
 }
 
 *,
@@ -110,15 +172,15 @@ h3 {
   align-items: center;
   justify-content: center;
   gap: 10px;
-  border: 2px solid var(--border);
-  border-bottom-width: 5px;
+  border: var(--border-width) solid var(--border);
+  border-bottom-width: var(--edge);
   border-radius: var(--radius);
   background: var(--surface);
   color: var(--text);
-  padding: 13px 24px;
-  font-weight: 900;
-  font-size: 15px;
-  letter-spacing: 0.08em;
+  padding: 13px var(--space-6);
+  font-weight: var(--weight-black);
+  font-size: var(--text-base);
+  letter-spacing: var(--tracking-button);
   text-transform: uppercase;
   text-decoration: none;
   cursor: pointer;
@@ -131,9 +193,9 @@ h3 {
   color: inherit;
 }
 .btn:active:not(:disabled) {
-  transform: translateY(3px);
+  transform: translateY(var(--press-depth));
   border-bottom-width: 2px;
-  margin-bottom: 3px;
+  margin-bottom: var(--press-depth);
 }
 .btn:disabled {
   cursor: not-allowed;
@@ -190,10 +252,10 @@ h3 {
   padding: 15px 36px;
 }
 .btn-sm {
-  padding: 8px 14px;
-  font-size: 13px;
-  border-bottom-width: 4px;
-  border-radius: 12px;
+  padding: var(--space-2) 14px;
+  font-size: var(--text-sm);
+  border-bottom-width: var(--edge-sm);
+  border-radius: var(--radius-lg);
 }
 .btn-block {
   width: 100%;
@@ -202,14 +264,62 @@ h3 {
 .link-btn {
   background: none;
   border: none;
-  padding: 4px 0;
+  padding: var(--space-1) 0;
   color: var(--purple-link);
-  font-weight: 800;
-  font-size: 15px;
+  font-weight: var(--weight-bold);
+  font-size: var(--text-base);
   cursor: pointer;
 }
 .link-btn:hover {
   color: var(--purple-light);
+}
+
+/* ------------------------------------------------------------ icon buttons */
+
+.icon-btn {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.icon-btn:hover:not(:disabled) {
+  background: var(--border);
+  color: var(--text);
+}
+.icon-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+.icon-btn-outlined {
+  border-color: var(--border);
+  background: var(--surface);
+  color: var(--text-3);
+}
+.icon-btn-outlined:hover:not(:disabled) {
+  background: var(--surface);
+}
+.icon-btn-xs {
+  width: 18px;
+  height: 18px;
+  border-radius: var(--radius-xs);
+}
+.icon-btn-sm {
+  width: 24px;
+  height: 24px;
+  border-radius: var(--radius-xs);
+}
+.icon-btn-lg {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-lg);
 }
 
 /* ------------------------------------------------------------ chipy */
@@ -217,19 +327,20 @@ h3 {
 .chip {
   background: var(--surface);
   color: var(--text-3);
-  border: 2px solid var(--border);
-  border-bottom-width: 4px;
-  border-radius: 12px;
-  padding: 10px 16px;
-  font-weight: 800;
-  font-size: 15px;
+  border: var(--border-width) solid var(--border);
+  border-bottom-width: var(--edge-sm);
+  border-radius: var(--radius-lg);
+  padding: 10px var(--space-4);
+  font-weight: var(--weight-bold);
+  font-size: var(--text-base);
   cursor: pointer;
   transition: background 0.15s, border-color 0.15s;
 }
 .chip:hover {
   color: var(--text);
 }
-.chip[aria-pressed='true'] {
+.chip[aria-pressed='true'],
+.chip[aria-checked='true'] {
   background: var(--purple-soft);
   color: var(--purple-light);
   border-color: var(--purple);
@@ -239,20 +350,20 @@ h3 {
 
 .card {
   background: var(--surface);
-  border: 2px solid var(--border);
-  border-bottom-width: 5px;
-  border-radius: 18px;
+  border: var(--border-width) solid var(--border);
+  border-bottom-width: var(--edge);
+  border-radius: var(--radius-3xl);
 }
 .card-dashed {
   background: var(--surface-2);
-  border: 2px dashed var(--border);
-  border-radius: 18px;
+  border: var(--border-width) dashed var(--border);
+  border-radius: var(--radius-3xl);
 }
 
 .label {
-  font-size: 13px;
-  font-weight: 800;
-  letter-spacing: 0.06em;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-caps);
   text-transform: uppercase;
   color: var(--muted);
 }
@@ -265,10 +376,10 @@ h3 {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   padding: 5px 10px;
-  font-weight: 800;
-  font-size: 13px;
+  font-weight: var(--weight-bold);
+  font-size: var(--text-sm);
 }
 .tag-red {
   background: var(--red-soft);
@@ -286,6 +397,10 @@ h3 {
   background: var(--purple-soft);
   color: var(--purple-light);
 }
+.tag-neutral {
+  background: var(--surface-2);
+  color: var(--text-3);
+}
 
 /* ------------------------------------------------------------ progress bar */
 
@@ -293,13 +408,13 @@ h3 {
   flex: 1 1 auto;
   height: 16px;
   background: var(--border);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   overflow: hidden;
 }
 .bar > div {
   height: 100%;
   background: var(--yellow);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   transition: width 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
   position: relative;
 }
@@ -319,13 +434,13 @@ h3 {
 .field {
   width: 100%;
   background: var(--surface);
-  border: 2px solid var(--border);
-  border-bottom-width: 5px;
-  border-radius: 18px;
+  border: var(--border-width) solid var(--border);
+  border-bottom-width: var(--edge);
+  border-radius: var(--radius-3xl);
   color: var(--text);
-  font-size: 17px;
+  font-size: var(--text-md);
   line-height: 1.6;
-  padding: 14px 16px;
+  padding: 14px var(--space-4);
   outline: none;
   resize: vertical;
 }
@@ -335,11 +450,11 @@ h3 {
 .input {
   width: 100%;
   background: var(--surface);
-  border: 2px solid var(--border);
-  border-radius: 14px;
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius-xl);
   color: var(--text);
-  font-size: 15px;
-  font-weight: 600;
+  font-size: var(--text-base);
+  font-weight: var(--weight-medium);
   padding: 11px 14px;
   outline: none;
 }
@@ -509,6 +624,19 @@ h3 {
   border-top-color: var(--purple-link);
   animation: dl-spin 0.9s linear infinite;
   flex: none;
+}
+.spinner-sm {
+  width: 16px;
+  height: 16px;
+  border-width: 2px;
+}
+/* On filled buttons the spinner follows the button's text colour. */
+.btn .spinner {
+  width: 16px;
+  height: 16px;
+  border-width: 2px;
+  border-color: color-mix(in srgb, currentColor 35%, transparent);
+  border-top-color: currentColor;
 }
 
 .sr-only {
