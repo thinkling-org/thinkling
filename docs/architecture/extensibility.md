@@ -107,6 +107,15 @@ The plugin API is framework-agnostic:
 
 Built-in blocks stay Vue components wrapped with `vueBlock(Component)` (`src/blocks/vue-block.ts`). It mounts each block as its own small Vue app, passes `data` as the `config` prop plus only the host props the component declares, forwards the component's declared events to `ctx.emit`, and provides `ctx` under `BLOCK_CONTEXT` for `inject`. Blocks therefore cannot rely on the host app's plugins (Pinia, router) or provide/inject; module-level state such as the glossary is shared. Theming is exposed through CSS variables.
 
+### Styling contract
+
+Blocks render in the app's document, so they inherit its stylesheet. A block that wants to look native uses the [design system](../design-system.md):
+
+- **Tokens** are the stable theming API: the semantic colours (`--color-accent`, `--color-success`, `--color-warning`, `--color-danger`, `--color-info` and their `-soft`, `-ink`, `-border` variants), surfaces and text (`--surface`, `--border`, `--text`, `--muted`…), and the spacing, radius and type scales. Always give a fallback (`var(--color-success, #3ddc84)`), so the block still renders in an older host or a future sandbox.
+- **Global classes** give the app's controls without a framework: `btn` with `btn-primary`, `btn-sm` and the other modifiers, `chip` with `aria-pressed`, `tag` with `tag-green` and the other tones, `icon-btn` with `icon-btn-sm` and the other sizes, `card`, `input`, `field`, `bar`, `spinner`, `label`, `sr-only`. These are a convenience while blocks share the host document. If external plugins move to a sandboxed iframe, the host will have to inject this stylesheet there to keep them.
+
+Built-in blocks use the Vue primitives (`components/ui`), which render the same classes.
+
 ## Token budget: three levels
 
 | Level | Content | When it is in the prompt | Cost |
@@ -249,6 +258,7 @@ Built-in blocks may import app modules; external plugins cannot and use `ctx` in
 | `components/Markdown.vue` | 9 files | `ctx.renderMarkdown` |
 | `components/CodeBlock.vue` | 4 files | `ctx.renderCode` |
 | `components/Icon.vue` | 3 files | `ctx.renderIcon` |
+| `components/ui` (`UiButton`, `UiChip`, …) | 7 files | the global classes (`btn`, `chip`, …) and tokens, see [Styling contract](#styling-contract) |
 | `components/CodeTutor.vue` | code-comparison | none; stays built-in only (tied to lesson navigation) |
 | `lib/i18n.ts` `numberFormatter`, `uiLocale` | value-chart, linear-regression, system-sim | `ctx.formatNumber`, `ctx.locale` |
 | `vue` | all views | not shared; plugins bundle their own framework |
